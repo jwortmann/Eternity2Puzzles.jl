@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220">
+    <defs>
+        <mask id="mask">
+            <rect fill="white" width="48" height="48"/>
+        </mask>
+        <filter id="shadow">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="5"/>
+            <feOffset dy="5"/>
+            <feBlend in="SourceGraphic" in2="blurOut"/>
+        </filter>
+        <linearGradient id="dark-edge" y2="100%">
+            <stop offset="45%" stop-color="black" stop-opacity="0"/>
+            <stop offset="50%" stop-color="black" stop-opacity="0.8"/>
+        </linearGradient>
+        <linearGradient id="light-edge" y1="100%">
+            <stop offset="50%" stop-color="white" stop-opacity="0.5"/>
+            <stop offset="55%" stop-color="white" stop-opacity="0"/>
+        </linearGradient>
+    </defs>
+    <g filter="url(#shadow)" transform="scale(2)">
+        <g transform="translate(21, 20) rotate(315, 24, 24)">
+            <path fill="#4063d8" d="M0 0h48L24 24z"/>
+            <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
+            <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
+            <path mask="url(#mask)" fill="#9558b2" stroke="black" stroke-width="0.2" d="M12-5a5 5 0 0 0-5 5 5 5 0 0 0 5 5 5 5 0 0 0 4-2h5v5a5 5 0 0 0-2 4 5 5 0 0 0 5 5 5 5 0 0 0 5-5 5 5 0 0 0-2-4V3h5a5 5 0 0 0 4 2 5 5 0 0 0 5-5 5 5 0 0 0-5-5 5 5 0 0 0-4 2H16a5 5 0 0 0-4-2z"/>
+        </g>
+        <g transform="translate(41, 20) rotate(45, 24, 24)">
+            <path fill="#389826" d="M0 0h48L24 24z"/>
+            <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
+            <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
+            <path mask="url(#mask)" fill="#cb3c33" stroke="black" stroke-width="0.2" d="M7,0 l2,-2 h30 l2,2 l-6,6 l-2,-2 l-5,5 l2,2 l-6,6 l-6,-6 l2,-2 l-5,-5 l-2,2 z"/>
+        </g>
+        <g transform="translate(21, 40) rotate(225, 24, 24)">
+            <path fill="#cb3c33" d="M0 0h48L24 24z"/>
+            <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
+            <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
+            <path mask="url(#mask)" fill="#4063d8" stroke="black" stroke-width="0.2" d="M20.85-5.456 24-14l3.15 8.544L36.124-7 30.3 0l5.824 7-8.974-1.544L24 14l-3.15-8.544L11.876 7 17.7 0l-5.824-7z"/>
+        </g>
+        <g transform="translate(41, 40) rotate(135, 24, 24)">
+            <path fill="#9558b2" d="M0 0h48L24 24z"/>
+            <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
+            <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
+            <path mask="url(#mask)" fill="#389826" stroke="black" stroke-width="0.2" d="M6,0 v-10 H42 v10 l-6,6 l-9,-3 l3,9 l-6,6 l-6,-6 l3,-9 l-9,3 z"/>
+        </g>
+    </g>
+</svg>

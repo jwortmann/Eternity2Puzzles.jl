@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56">
+    <defs>
+        <filter id="shadow">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2.5"/>
+            <feBlend in="SourceGraphic" in2="blurOut"/>
+        </filter>
+        <mask id="mask">
+            <path fill="white" fill-rule="evenodd" d="M0,0 H56 V56 H0 Z M4,4 H52 V52 H4 Z"/>
+        </mask>
+    </defs>
+    <rect mask="url(#mask)" filter="url(#shadow)" x="4" y="4" width="48" height="48"/>
+</svg>
