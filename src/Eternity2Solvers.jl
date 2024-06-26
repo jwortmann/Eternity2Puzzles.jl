@@ -31,7 +31,12 @@ include("solvers/backtracking_recursive.jl")
 
 Start the interactive game.
 """
-play() = GameZero.rungame(joinpath(@__DIR__, "eternity2.jl"))
+function play()
+    _project = Base.active_project()
+    Base.set_active_project(abspath(@__DIR__, "..", "Project.toml"))
+    GameZero.rungame(joinpath(@__DIR__, "eternity2.jl"))
+    Base.set_active_project(_project)
+end
 
 
 """
