@@ -654,7 +654,7 @@ function on_mouse_up(g::Game, pos, button)
                     ui.overlay = :settings_menu
                     actors.overlay.image = "menu3.png"
                 elseif 573 < pos[2] < 621  # Quit
-                    exit()
+                    throw(GameZero.QuitException())
                 end
             end
         elseif ui.overlay == :settings_menu
