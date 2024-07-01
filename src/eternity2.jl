@@ -33,11 +33,11 @@ if isfile(cache_file)
     _pieces = DelimitedFiles.readdlm(cache_file, UInt8)
     if size(_pieces, 1) != 256
         @warn "Cached pieces incompatible with 16 x 16 board - using random pieces instead"
-        _pieces = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "pieces_16x16_rotated.txt"), UInt8)
+        _pieces = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
     end
 else
     @warn "Puzzle pieces are undefined - using random pieces instead"
-    _pieces = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "pieces_16x16_rotated.txt"), UInt8)
+    _pieces = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
 end
 
 const PIECES = repeat(_pieces, 1, 2)

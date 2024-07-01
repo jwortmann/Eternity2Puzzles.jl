@@ -198,15 +198,15 @@ function _get_pieces(pieces::Symbol)
         isfile(cache_file) || error("Puzzle pieces are undefined - call initialize_pieces first")
         return DelimitedFiles.readdlm(cache_file, UInt8)
     elseif pieces == :meta_16x16
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "pieces_16x16_rotated.txt"), UInt8)
+        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16.txt"), UInt8)
     elseif pieces == :meta_14x14
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "pieces_14x14.txt"), UInt8)
+        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_14x14.txt"), UInt8)
     elseif pieces == :meta_12x12
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "pieces_12x12.txt"), UInt8)
+        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_12x12.txt"), UInt8)
     elseif pieces == :meta_10x10
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "pieces_10x10.txt"), UInt8)
+        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_10x10.txt"), UInt8)
     elseif pieces == :clue1
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "pieces_6x6.txt"), UInt8)
+        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "clue1.txt"), UInt8)
     else
         error("Unknown option :$pieces")
     end
