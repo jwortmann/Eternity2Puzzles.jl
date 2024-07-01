@@ -22,8 +22,8 @@ further speed optimizations may be possible.
 end
 
 
-max_errors(depth::Integer, K, B, M, nu)::Int = floor(Int, (K + 1)/(1 + exp(-B * (depth - M - K)))^(1/nu))
-required_placed_sides(depth::Integer, total::Integer)::Int = clamp(floor(Int, (total + 300)/(1 + exp(-0.02 * (depth + 22))) - 280), 0, total)
+max_errors(depth::Integer, K, B, M, nu) = floor(Int, (K + 1)/(1 + exp(-B * (depth - M - K)))^(1/nu))
+required_placed_sides(depth::Integer, total::Integer) = clamp(floor(Int, (total + 300)/(1 + exp(-0.02 * (depth + 22))) - 280), 0, total)
 
 function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
     size(puzzle) == (16, 16) || error("This algorithm only works with board dimensions 16x16")
@@ -380,25 +380,19 @@ function _prepare_candidates_table(
     total_candidates > typemax(UInt16) && error("Lookup table contains too many pieces")
     candidates = Vector{UInt16}(undef, total_candidates)
     index_table = Matrix{NTuple{3, UInt16}}(undef, NCOLORS, NCOLORS)
-    start_idx = 1
+    idx = 1
     for right = 1:NCOLORS, bottom = 1:NCOLORS
-        len1 = length(candidates_table[right, bottom, 1])
-        len2 = length(candidates_table[right, bottom, 2])
-        idx1 = start_idx
-        if len1 > 0
-            idx2 = idx1 + len1 - 1
-            candidates[idx1:idx2] = candidates_table[right, bottom, 1]
-            start_idx = idx2 + 1
-        else
-            idx2 = start_idx - 1
+        idx1 = idx
+        for candidate in candidates_table[right, bottom, 1]
+            candidates[idx] = candidate
+            idx += 1
         end
-        if len2 > 0
-            idx3 = start_idx + len2 - 1
-            candidates[start_idx:idx3] = candidates_table[right, bottom, 2]
-            start_idx = idx3 + 1
-        else
-            idx3 = 0
+        idx2 = idx - 1
+        for candidate in candidates_table[right, bottom, 2]
+            candidates[idx] = candidate
+            idx += 1
         end
+        idx3 = idx - 1
         index_table[right, bottom] = (idx1, idx2, idx3)
     end
 
