@@ -18,9 +18,9 @@ filled board from a file in `.et2` format.
 The optional `pieces` keyword argument can be the name of a piece definitions file, an
 n×4 matrix, where n is the number of pieces, specifying the edge color numbers for each
 piece in the format outlined in the README, or one of the predefined symbols `:meta_16x16`,
-`:meta_14x14`, `:meta_12x12`, `:meta_10x10`, `:clue1`. The number of pieces must be
-compatible with the board dimensions. If `pieces` is not provided, the piece definitions are
-loaded from the cache (see [`initialize_pieces`](@ref)).
+`:meta_14x14`, `:meta_12x12`, `:meta_10x10`, `:clue1`, `:clue4`. The number of pieces must
+be compatible with the board dimensions. If `pieces` is not provided, the piece definitions
+are loaded from the cache (see [`initialize_pieces`](@ref)).
 
 `Eternity2Puzzle` has two fields; `board` and `pieces`. `board` contains the piece numbers
 and rotations for each row/column position of the board in form of a `Matrix{UInt16}`, where
@@ -207,6 +207,8 @@ function _get_pieces(pieces::Symbol)
         return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_10x10.txt"), UInt8)
     elseif pieces == :clue1
         return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "clue1.txt"), UInt8)
+    elseif pieces == :clue4
+        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "clue4.txt"), UInt8)
     else
         error("Unknown option :$pieces")
     end
