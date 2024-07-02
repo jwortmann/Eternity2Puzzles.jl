@@ -59,14 +59,21 @@ struct Eternity2Puzzle
 end
 
 function Eternity2Puzzle(
-    nrows::Integer=16,
-    ncols::Integer=16;
-    pieces::Union{AbstractMatrix{<:Integer}, AbstractString, Symbol}=:cached,
-    hint_pieces::Bool=false
+    nrows::Integer = 16,
+    ncols::Integer = 16;
+    pieces::Union{AbstractMatrix{<:Integer}, AbstractString, Symbol} = :cached,
+    hint_pieces::Bool = false
 )
-    _pieces = _get_pieces(pieces)
+    _pieces = try
+        _get_pieces(pieces)
+    catch
+        nrows == ncols == 16 || error("Puzzle pieces are undefined - call initialize_pieces first")
+        DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
+    end
     npieces = size(_pieces, 1)
-    npieces == nrows * ncols || @warn "The number of pieces ($npieces) is incompatible with the board dimensions ($nrows x $ncols = $(nrows * ncols))"
+    if nrows == ncols == 16 && npieces != 256
+        _pieces = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
+    end
     board = zeros(UInt16, nrows, ncols)
     if nrows == ncols == 16
         board[9, 8] = STARTER_PIECE << 2 | 2  # I8
@@ -82,7 +89,7 @@ end
 
 function Eternity2Puzzle(
     filename::AbstractString;
-    pieces::Union{AbstractMatrix{<:Integer}, AbstractString, Symbol}=:cached
+    pieces::Union{AbstractMatrix{<:Integer}, AbstractString, Symbol} = :cached
 )
     board = _load(filename)
     nrows, ncols = size(board)
@@ -179,7 +186,7 @@ Base.in(piece::Integer, puzzle::Eternity2Puzzle) = piece in puzzle.board .>> 2
 Open a preview image of the puzzle board.
 """
 function preview(puzzle::Eternity2Puzzle)
-    filepath = joinpath(@get_scratch!("preview"), "preview.png")
+    filepath = joinpath(@get_scratch!("eternity2"), "preview.png")
     open(filepath, "w") do file
         show(file, "image/png", puzzle)
     end
@@ -189,12 +196,23 @@ function preview(puzzle::Eternity2Puzzle)
 end
 
 
+function find(puzzle::Eternity2Puzzle, piece::Integer)
+    piece in puzzle || return (0, 0)
+    nrows, ncols = size(puzzle)
+    for col = 1:ncols, row = 1:nrows
+        if puzzle.board[row, col] >> 2 == piece
+            return (row, col)
+        end
+    end
+end
+
+
 _get_pieces(pieces::AbstractString) = parse_pieces(pieces)
 _get_pieces(pieces::AbstractMatrix{<:Integer}) = pieces
 
 function _get_pieces(pieces::Symbol)
     if pieces == :cached
-        cache_file = joinpath(@get_scratch!("pieces"), "pieces.txt")
+        cache_file = joinpath(@get_scratch!("eternity2"), "pieces.txt")
         isfile(cache_file) || error("Puzzle pieces are undefined - call initialize_pieces first")
         return DelimitedFiles.readdlm(cache_file, UInt8)
     elseif pieces == :meta_16x16
@@ -286,7 +304,7 @@ Load the puzzle pieces from an input file, which must be in plain text (.txt) fo
 contain rows with the four colors for each piece. See the package README file for details.
 """
 function initialize_pieces(filename::AbstractString)
-    DelimitedFiles.writedlm(joinpath(@get_scratch!("pieces"), "pieces.txt"), parse_pieces(filename))
+    DelimitedFiles.writedlm(joinpath(@get_scratch!("eternity2"), "pieces.txt"), parse_pieces(filename))
     nothing
 end
 
@@ -479,9 +497,9 @@ julia> generate_pieces(6, 6, frame_colors=3, inner_colors=6, seed=1234)
 function generate_pieces(
     nrows::Integer,
     ncols::Integer;
-    frame_colors::Integer=5,
-    inner_colors::Integer=17,
-    seed::Integer=1
+    frame_colors::Integer = 5,
+    inner_colors::Integer = 17,
+    seed::Integer = 1
 )
     nrows > 2 && ncols > 2 || error("The puzzle board must have at least 3 rows and columns")
     2 <= frame_colors <= 5 || error("The number of frame colors must be between 2 and 5")

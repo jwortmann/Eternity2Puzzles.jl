@@ -27,10 +27,11 @@ const initial_position_ymin = 38
 const initial_position_width = 12*32 + 11*6
 const initial_position_height = 22*32 + 21*6
 
+const cache_dir = get_scratch!(Base.UUID("7b8a590e-5f29-49cd-9d3d-d6aab43f7c56"), "eternity2")
+const pieces_file = joinpath(cache_dir, "pieces.txt")
 
-const cache_file = joinpath(get_scratch!(Base.UUID("7b8a590e-5f29-49cd-9d3d-d6aab43f7c56"), "pieces"), "pieces.txt")
-if isfile(cache_file)
-    _pieces = DelimitedFiles.readdlm(cache_file, UInt8)
+if isfile(pieces_file)
+    _pieces = DelimitedFiles.readdlm(pieces_file, UInt8)
     if size(_pieces, 1) != 256
         @warn "Cached pieces incompatible with 16 x 16 board - using random pieces instead"
         _pieces = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
@@ -78,15 +79,74 @@ mutable struct UIState
 end
 
 
-const puzzle = Eternity2Puzzle(16, 16, pieces=_pieces)
-const ui = UIState(0, 0, 0, [], Matrix{Union{Vector{Int}, Nothing}}(nothing, 16, 16), [], false, false, false, :main_menu, false, false, 0, 0, 0)
-
+const puzzle = Eternity2Puzzle(joinpath(cache_dir, "board.et2"), pieces=_pieces)
+size(puzzle) == (16, 16) || error("Puzzle board must be 16x16")
+const _initial_score = score(puzzle)
+const ui = UIState(0, 0, 0, [], Matrix{Union{Vector{Int}, Nothing}}(nothing, 16, 16), [], false, false, false, :main_menu, false, false, _initial_score, _initial_score, _initial_score)
 
 
 # The x and y coordinates of the positions on the right for a given piece number
 function initial_position(piece::Integer)
     row, col = divrem(piece - 1, 12)
     return (initial_position_xmin + col * 38, 38 + row * 38)
+end
+
+
+# For given x and y coordinates return the row and column numbers on the board.
+function coords_to_rowcol(x::Integer, y::Integer)
+    if board_min < x < board_max && board_min < y < board_max
+        return (div(y - board_min, 49) + 1, div(x - board_min, 49) + 1)
+    else
+        return (0, 0)
+    end
+end
+
+
+# For given row and column numbers of the board return the x and y coordinates.
+function rowcol_to_coords(row::Integer, col::Integer)
+    x = board_min + 1 + 49 * (col - 1)
+    y = board_min + 1 + 49 * (row - 1)
+    return (x, y)
+end
+
+
+# For given x and y coordinates return the piece index of the initial positions on the
+# righthand side. Returns 0 if the coordinates don't match any position. This is used to
+# check whether the mouse is hovering over an unplaced puzzle piece.
+function coords_to_initial_position(x::Integer, y::Integer)
+    xloc = x - initial_position_xmin
+    yloc = y - initial_position_ymin
+    if 0 <= xloc < initial_position_width && 0 <= yloc < initial_position_height
+        col, r = divrem(xloc, 38)
+        r > 32 && return 0
+        row, r = divrem(yloc, 38)
+        r > 32 && return 0
+        idx = row * 12 + col + 1
+        idx > 256 && return 0
+        return idx
+    end
+    return 0
+end
+
+
+function _score_pos(score, menu)
+    if menu
+        return if score > 99
+            (705, 678)
+        elseif score > 9
+            (720, 678)
+        else
+            (735, 678)
+        end
+    else
+        return if score > 99
+            (11, 10)
+        elseif score > 9
+            (19, 10)
+        else
+            (28, 10)
+        end
+    end
 end
 
 
@@ -162,22 +222,23 @@ function ActorCollection()
             image[i, i] = colorant"#323135"
             image[i, 49-i] = colorant"#323135"
         end
-        if idx == STARTER_PIECE
-            puzzle_pieces[idx] = PixelActor(image, scale=[1.0, 1.0])
-            puzzle_pieces[idx].pos = (404, 453)
-            puzzle_pieces[idx].angle = 180.0
-        else
+        row, col = find(puzzle, idx)
+        if (row, col) == (0, 0)
             pos = initial_position(idx)
             puzzle_pieces[idx] = PixelActor(image, scale=[0.666667, 0.666667])
             puzzle_pieces[idx].pos = pos
             candidates_highlights[idx] = Actor("highlight_small.png")
             candidates_highlights[idx].pos = pos
+        else
+            puzzle_pieces[idx] = PixelActor(image, scale=[1.0, 1.0])
+            puzzle_pieces[idx].pos = rowcol_to_coords(row, col)
+            puzzle_pieces[idx].angle = 90.0 * puzzle[row, col][2]
         end
     end
-    score_label = TextActor("0", "luckiestguy", font_size=16, color=Int[255,255,255,255])
-    score_label.pos = (28, 10)
-    score_label2 = TextActor("0", "luckiestguy", font_size=30, color=Int[221,221,221,255])
-    score_label2.pos = (735, 678)
+    score_label = TextActor(string(ui.score), "luckiestguy", font_size=16, color=Int[255,255,255,255])
+    score_label.pos = _score_pos(ui.score, false)
+    score_label2 = TextActor(string(ui.score), "luckiestguy", font_size=30, color=Int[221,221,221,255])
+    score_label2.pos = _score_pos(ui.score, true)
     checkmark1 = Actor("checkmark.png")
     checkmark1.pos = (591, 336)
     checkmark2 = Actor("checkmark.png")
@@ -198,43 +259,6 @@ function ActorCollection()
 end
 
 actors = ActorCollection()
-
-
-# For given x and y coordinates return the row and column numbers on the board.
-function coords_to_rowcol(x::Integer, y::Integer)
-    if board_min < x < board_max && board_min < y < board_max
-        return (div(y - board_min, 49) + 1, div(x - board_min, 49) + 1)
-    else
-        return (0, 0)
-    end
-end
-
-
-# For given row and column numbers of the board return the x and y coordinates.
-function rowcol_to_coords(row::Integer, col::Integer)
-    x = board_min + 1 + 49 * (col - 1)
-    y = board_min + 1 + 49 * (row - 1)
-    return (x, y)
-end
-
-
-# For given x and y coordinates return the piece index of the initial positions on the
-# righthand side. Returns 0 if the coordinates don't match any position. This is used to
-# check whether the mouse is hovering over an unplaced puzzle piece.
-function coords_to_initial_position(x::Integer, y::Integer)
-    xloc = x - initial_position_xmin
-    yloc = y - initial_position_ymin
-    if 0 <= xloc < initial_position_width && 0 <= yloc < initial_position_height
-        col, r = divrem(xloc, 38)
-        r > 32 && return 0
-        row, r = divrem(yloc, 38)
-        r > 32 && return 0
-        idx = row * 12 + col + 1
-        idx > 256 && return 0
-        return idx
-    end
-    return 0
-end
 
 
 # Animation for rotating a puzzle piece.
@@ -277,13 +301,7 @@ function update_score()
     ui.score = score(puzzle)
     ui.old_score == ui.score && return
     actors.score_label = TextActor(string(ui.score), "luckiestguy", font_size=16, color=Int[255,255,255,255])
-    actors.score_label.pos = if ui.score > 99
-        (11, 10)
-    elseif ui.score > 9
-        (19, 10)
-    else
-        (28, 10)
-    end
+    actors.score_label.pos = _score_pos(ui.score, false)
     ui.old_score = ui.score
 end
 
@@ -291,13 +309,7 @@ end
 function update_score2()
     ui.old_score2 == ui.score && return
     actors.score_label2 = TextActor(string(ui.score), "luckiestguy", font_size=30, color=Int[221,221,221,255])
-    actors.score_label2.pos = if ui.score > 99
-        (705, 678)
-    elseif ui.score > 9
-        (720, 678)
-    else
-        (735, 678)
-    end
+    actors.score_label2.pos = _score_pos(ui.score, true)
     ui.old_score2 = ui.score
 end
 

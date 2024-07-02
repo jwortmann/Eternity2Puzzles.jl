@@ -31,9 +31,9 @@ Piece number 139 is a mandatory starter-piece with a fixed position on the board
 
 ### Puzzle pieces
 
-It is unclear to me whether the original pieces of the Eternity II puzzle are allowed to be published, so for now this package doesn't contain the edge color definitions for those pieces.
+It is unclear to me whether the original pieces of the Eternity II puzzle are allowed to be published, so for now this package doesn't contain the edge color definitions of those pieces.
 It is recommended to specify the pieces in form of an input file, provided that you own the real version of the Eternity II puzzle.
-Alternatively, if the piece definitions are not given, they are automatically generated with colors from a published benchmark problem of the META 2010 contest.
+Alternatively, if the piece definitions are not given, they are automatically generated with colors from a published benchmark problem from the META 2010 contest.
 
 A piece definitions file must be in plain text format (*.txt*) and contain 256 rows with four color numbers on each row, separated by spaces; for example
 

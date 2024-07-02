@@ -31,11 +31,13 @@ include("solvers/backtracking_recursive.jl")
 
 Start the interactive game.
 """
-function play()
+function play(puzzle::Eternity2Puzzle = Eternity2Puzzle(16, 16))
+    save(puzzle, joinpath(@get_scratch!("eternity2"), "board.et2"))
     _project = Base.active_project()
     Base.set_active_project(abspath(@__DIR__, "..", "Project.toml"))
     GameZero.rungame(joinpath(@__DIR__, "eternity2.jl"))
     Base.set_active_project(_project)
+    nothing
 end
 
 
