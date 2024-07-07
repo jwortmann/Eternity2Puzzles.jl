@@ -99,7 +99,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
 
     prioritized_sides = [count(color in prioritized_colors for color in piece_colors) for piece_colors in eachrow(puzzle.pieces)]
     required_placed_sides_total = sum(prioritized_sides) + div(solver.target_score, 5) - 100
-    prioritized_pieces = [UInt16(piece) for (piece, piece_colors) in enumerate(eachrow(puzzle.pieces)) if any(color in prioritized_colors for color in piece_colors)]
+    prioritized_pieces = [piece for (piece, piece_colors) in enumerate(eachrow(puzzle.pieces)) if any(color in prioritized_colors for color in piece_colors)]
 
     # Add one more row/column at the bottom and the right edge of the board, filled with
     # only the border color. Then the side color constraints for the pieces on row/column 16
@@ -318,22 +318,22 @@ function _prepare_candidates_table(
     puzzle::Eternity2Puzzle,
     available::Vector{Bool},
     first_phase::Bool;
-    prioritized_pieces::Vector{UInt16} = UInt16[]
+    prioritized_pieces::Vector{Int} = Int[]
 )
     pieces = replace(puzzle.pieces, 0=>BORDER_COLOR)
     candidates_table = [UInt16[] for _ in 1:NCOLORS, _ in 1:NCOLORS, _ in 1:2]
 
     # The total amount of edges with that color over the remaining pieces
-    color_frequency = zeros(Int, NCOLORS)
+    # color_frequency = zeros(Int, NCOLORS)
 
     for (piece, colors) in enumerate(eachrow(pieces))
         available[piece] || continue
         for rotation = 0:3
             value = piece << 2 | rotation
-            top = colors[mod1(1 - rotation, 4)]
+            # top = colors[mod1(1 - rotation, 4)]
             right = colors[mod1(2 - rotation, 4)]
             bottom = colors[mod1(3 - rotation, 4)]
-            color_frequency[top] += 1
+            # color_frequency[top] += 1
             if first_phase
                 if piece < 5 && (rotation == 1 || rotation == 2)
                     continue
@@ -377,9 +377,8 @@ function _prepare_candidates_table(
     # matches to improve memory locality. The tuple values of the index table are the start
     # index, the end index for the exactly matching pieces, and the end index for the partly
     # matching pieces.
-    total_candidates > typemax(UInt16) && error("Lookup table contains too many pieces")
     candidates = Vector{UInt16}(undef, total_candidates)
-    index_table = Matrix{NTuple{3, UInt16}}(undef, NCOLORS, NCOLORS)
+    index_table = Matrix{NTuple{3, Int}}(undef, NCOLORS, NCOLORS)
     idx = 1
     for right = 1:NCOLORS, bottom = 1:NCOLORS
         idx1 = idx
