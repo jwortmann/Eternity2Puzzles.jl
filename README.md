@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="img/logo.png">
+  <img src="svg/logo.svg">
 </p>
 
 Eternity2Solvers.jl is an implementation of the [Eternity II puzzle](https://en.wikipedia.org/wiki/Eternity_II_puzzle) in [Julia](https://julialang.org/).
@@ -45,11 +45,7 @@ A piece definitions file must be in plain text format (*.txt*) and contain 256 r
 The color numbers must be ordered in clockwise direction, starting with the top side (i.e. top, right, bottom, left).
 To reproduce the original pieces from the Eternity II puzzle, use the following numbers:
 
-<picture>
-    <source media="(prefers-color-scheme: dark)" srcset="img/colors_preview_dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="img/colors_preview_light.png">
-    <img src="img/colors_preview_light.png">
-</picture>
+![Color numbers](svg/colors_preview.svg)
 
 After creating the file, call the `initialize_pieces` function with the file path:
 

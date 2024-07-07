@@ -1,4 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 830 470">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 830 470" width="830" height="470">
+    <style>
+        text {
+            font-size: 20px;
+            fill: black;
+        }
+        @media (prefers-color-scheme: dark) {
+            text {
+                fill: white;
+            }
+        }
+    </style>
     <defs>
         <mask id="mask">
             <rect fill="white" x="0" y="0" width="48" height="48"/>
@@ -211,29 +222,27 @@
             </g>
         </g>
     </g>
-    <g fill="white" font-size="20px" font-family="Recursive Sans Casual Static">
-        <text x="45" y="134">0</text>
-        <text x="149" y="134">1</text>
-        <text x="253" y="134">2</text>
-        <text x="357" y="134">3</text>
-        <text x="461" y="134">4</text>
-        <text x="565" y="134">5</text>
-        <text x="669" y="134">6</text>
-        <text x="773" y="134">7</text>
-        <text x="45" y="294">8</text>
-        <text x="149" y="294">9</text>
-        <text x="248" y="294">10</text>
-        <text x="352" y="294">11</text>
-        <text x="456" y="294">12</text>
-        <text x="560" y="294">13</text>
-        <text x="664" y="294">14</text>
-        <text x="768" y="294">15</text>
-        <text x="40" y="454">16</text>
-        <text x="144" y="454">17</text>
-        <text x="248" y="454">18</text>
-        <text x="352" y="454">19</text>
-        <text x="456" y="454">20</text>
-        <text x="560" y="454">21</text>
-        <text x="664" y="454">22</text>
-    </g>
+    <text x="45" y="134">0</text>
+    <text x="149" y="134">1</text>
+    <text x="253" y="134">2</text>
+    <text x="357" y="134">3</text>
+    <text x="461" y="134">4</text>
+    <text x="565" y="134">5</text>
+    <text x="669" y="134">6</text>
+    <text x="773" y="134">7</text>
+    <text x="45" y="294">8</text>
+    <text x="149" y="294">9</text>
+    <text x="248" y="294">10</text>
+    <text x="352" y="294">11</text>
+    <text x="456" y="294">12</text>
+    <text x="560" y="294">13</text>
+    <text x="664" y="294">14</text>
+    <text x="768" y="294">15</text>
+    <text x="40" y="454">16</text>
+    <text x="144" y="454">17</text>
+    <text x="248" y="454">18</text>
+    <text x="352" y="454">19</text>
+    <text x="456" y="454">20</text>
+    <text x="560" y="454">21</text>
+    <text x="664" y="454">22</text>
 </svg>
