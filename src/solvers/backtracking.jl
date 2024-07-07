@@ -55,7 +55,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
     # Colors which should be eliminated early during the search; pick one of the frame
     # colors 1..5 which is least often used in the corner pieces, and two inner colors 6..22
     # which result in the smallest amount of pieces containing these three colors.
-    c1 = findmin(count(isequal(c1), puzzle.pieces[1:4, :]) for c1 = 1:5)[2]
+    c1 = findmin(count(isequal(color), puzzle.pieces[1:4, :]) for color = 1:5)[2]
     _, c2, c3 = findmin(collect((count(any(color in (c1, c2, c3) for color in piece_colors) for piece_colors in eachrow(puzzle.pieces)), c2, c3) for c2 = 6:21 for c3 = c2+1:22))[1]
     prioritized_colors = [c1, c2, c3]
     # prioritized_colors = [5, 15, 19]  # 94 pieces, 122 sides total
@@ -98,7 +98,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
     @assert length(search_order) == 256
 
     prioritized_sides = [count(color in prioritized_colors for color in piece_colors) for piece_colors in eachrow(puzzle.pieces)]
-    required_placed_sides_total = sum(prioritized_sides) + div(solver.target_score, 5) - 101
+    required_placed_sides_total = sum(prioritized_sides) + div(solver.target_score, 5) - 100
     prioritized_pieces = [UInt16(piece) for (piece, piece_colors) in enumerate(eachrow(puzzle.pieces)) if any(color in prioritized_colors for color in piece_colors)]
 
     # Add one more row/column at the bottom and the right edge of the board, filled with

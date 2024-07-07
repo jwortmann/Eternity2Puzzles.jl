@@ -63,12 +63,11 @@ function solve!(
 
     if isnothing(alg)
         seed = floor(Int, 1000 * t0)
-        if size(puzzle) == (16, 16) && puzzle[9, 8] == (STARTER_PIECE, 2)
-            # alg = BacktrackingSearch(target_score=471, seed=seed)
-            alg = BacktrackingSearch(target_score=460, seed=seed)
-            # alg = BacktrackingSearch(target_score=462, seed=4)  # for benchmarking (~ 7 sec)
+        alg = if size(puzzle) == (16, 16) && puzzle[9, 8] == (STARTER_PIECE, 2)
+            # BacktrackingSearch(target_score=471, seed=seed)
+            BacktrackingSearch(target_score=460, seed=seed)
         else
-            alg = BacktrackingSearchRecursive(seed)
+            BacktrackingSearchRecursive(seed)
         end
     end
 
