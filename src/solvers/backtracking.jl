@@ -165,9 +165,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
                 # table
                 for piece = next_idx[depth]:4
                     available[piece] || continue
-                    value = piece << 2 | 2
-                    colors[value, 3] == bottom || continue
-                    board[row, col] = value
+                    puzzle.pieces[piece, 1] == bottom || continue
+                    board[row, col] = piece << 2 | 2
                     available[piece] = false
                     next_idx[depth] = piece + 1
                     iters += 1
@@ -233,34 +232,34 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
         fill!(cumulative_errors, 0)
         fill!(next_idx, 1)
 
+        row, col, max_errors = position_data[depth]
+
         # This is the main backtracking loop; it should be as fast as possible, i.e. avoid
         # allocations, function calls and unnecessary operations.
         @inbounds while depth > 128
             errors = cumulative_errors[depth]
             @label next_iter
-            row, col, max_errors = position_data[depth]
-            value = board[row, col]
-            if value != EMPTY
-                available[value >> 2] = true
-                board[row, col] = EMPTY
-            end
             right = colors[board[row, col + 1], 4]
             bottom = colors[board[row + 1, col], 1]
             if depth == 196  # top-right corner
                 for piece = next_idx[depth]:4
                     available[piece] || continue
-                    value = piece << 2 | 2
-                    colors[value, 3] == bottom || continue
-                    board[row, col] = value
+                    puzzle.pieces[piece, 1] == bottom || continue
+                    board[row, col] = piece << 2 | 2
                     available[piece] = false
                     next_idx[depth] = piece + 1
                     depth += 1
                     cumulative_errors[depth] = errors
+                    row, col, max_errors = position_data[depth]
                     iters += 1
                     @goto next_iter
                 end
+                available[board[row, col] >> 2] = true
+                board[row, col] = EMPTY
                 next_idx[depth] = 1
                 depth -= 1
+                row, col, max_errors = position_data[depth]
+                available[board[row, col] >> 2] = true
                 continue
             end
             start_idx, end_idx1, end_idx2 = index_table[right, bottom]
@@ -280,6 +279,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
                 end
                 depth += 1
                 cumulative_errors[depth] = errors
+                row, col, max_errors = position_data[depth]
                 iters += 1
                 @goto next_iter
             end
@@ -294,12 +294,20 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
                     depth += 1
                     errors += 1
                     cumulative_errors[depth] = errors
+                    row, col, max_errors = position_data[depth]
                     iters += 1
                     @goto next_iter
                 end
             end
+            value = board[row, col]
+            if value != EMPTY
+                available[value >> 2] = true
+                board[row, col] = EMPTY
+            end
             next_idx[depth] = 1
             depth -= 1
+            row, col, max_errors = position_data[depth]
+            available[board[row, col] >> 2] = true
         end
         restarts += 1
         _display_board(puzzle, iters, restarts)

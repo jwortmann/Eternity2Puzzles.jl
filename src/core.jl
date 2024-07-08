@@ -109,7 +109,7 @@ function Base.show(io::IO, ::MIME"text/plain", puzzle::Eternity2Puzzle)
     else
         "$nrows×$ncols Eternity2Puzzle with $npieces $(npieces == 1 ? "piece" : "pieces"):"
     end
-    grid = join([join([val == 0x0000 ? " ---/-" : "$(lpad(val >> 2, 4))/$(val & 3)" for val in row]) for row in eachrow(puzzle.board)], "\n")
+    grid = join([join([0 < val >> 2 <= nrows * ncols ? "$(lpad(val >> 2, 4))/$(val & 3)" : " ---/-" for val in row]) for row in eachrow(puzzle.board)], "\n")
     println(io, header * "\n" * grid)
 end
 
