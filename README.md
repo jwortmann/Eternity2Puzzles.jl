@@ -1,12 +1,12 @@
 <p>
-  <h1 align="center">Eternity2Solvers.jl</h1>
+  <h1 align="center">Eternity2Puzzles.jl</h1>
 </p>
 
 <p align="center">
   <img src="svg/logo.svg">
 </p>
 
-Eternity2Solvers.jl is an implementation of the [Eternity II puzzle](https://en.wikipedia.org/wiki/Eternity_II_puzzle) in [Julia](https://julialang.org/).
+Eternity2Puzzles.jl is an implementation of the [Eternity II puzzle](https://en.wikipedia.org/wiki/Eternity_II_puzzle) in [Julia](https://julialang.org/).
 You can either play the puzzle as an interactive game, or attempt to find a solution using a brute-force backtracking search.
 
 
@@ -15,7 +15,7 @@ You can either play the puzzle as an interactive game, or attempt to find a solu
 ```
 julia> ]
 
-pkg> add https://github.com/jwortmann/Eternity2Solvers.jl
+pkg> add https://github.com/jwortmann/Eternity2Puzzles.jl
 ```
 
 > [!IMPORTANT]
@@ -50,7 +50,7 @@ To reproduce the original pieces from the Eternity II puzzle, use the following 
 After creating the file, call the `initialize_pieces` function with the file path:
 
 ```julia
-julia> using Eternity2Solvers
+julia> using Eternity2Puzzles
 
 julia> initialize_pieces("path/to/e2pieces.txt")
 ```
@@ -63,7 +63,7 @@ Subsequent calls of `initialize_pieces` override the cache.
 To play the interactive game, type in the Julia REPL:
 
 ```julia
-julia> using Eternity2Solvers
+julia> using Eternity2Puzzles
 
 julia> play()
 ```

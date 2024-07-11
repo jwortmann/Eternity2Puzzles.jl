@@ -1,4 +1,4 @@
-module Eternity2Solvers
+module Eternity2Puzzles
 
 using Colors
 import DelimitedFiles

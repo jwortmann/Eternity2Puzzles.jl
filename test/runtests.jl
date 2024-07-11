@@ -1,4 +1,4 @@
-using Eternity2Solvers
+using Eternity2Puzzles
 using Test
 
 
