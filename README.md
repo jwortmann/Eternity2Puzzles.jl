@@ -73,7 +73,7 @@ Puzzle pieces can be moved with the left mouse button and rotated with a right c
 If you prefer to let the computer do the work, generate an empty puzzle board and call the `solve!` function to start the default search algorithm:
 
 ```julia
-julia> puzzle = Eternity2Puzzle(16, 16)  # or: Eternity2Puzzle(16, 16; pieces=:meta_16x16)
+julia> puzzle = Eternity2Puzzle(16, 16)  # or: Eternity2Puzzle(:meta_16x16)
 16×16 Eternity2Puzzle with 1 piece:
 ...
 

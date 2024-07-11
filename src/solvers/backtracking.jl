@@ -1,6 +1,4 @@
-const NCOLORS = 23
 const BORDER_COLOR = UInt8(NCOLORS)
-const EMPTY = 0x0000
 const BORDER = 0x0001
 
 
@@ -22,9 +20,6 @@ further speed optimizations may be possible.
 end
 
 
-max_errors(depth::Integer, K, B, M, nu) = floor(Int, (K + 1)/(1 + exp(-B * (depth - M - K)))^(1/nu))
-required_placed_sides(depth::Integer, total::Integer) = clamp(floor(Int, (total + 300)/(1 + exp(-0.02 * (depth + 22))) - 280), 0, total)
-
 function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
     size(puzzle) == (16, 16) || error("This algorithm only works with board dimensions 16x16")
     puzzle[9, 8] == (STARTER_PIECE, 2) || error("Expected starter-piece on row 9 column 8")
@@ -45,8 +40,14 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
     colors = Matrix{UInt8}(undef, 256 << 2 | 3, 4)
     colors[BORDER, :] .= BORDER_COLOR
 
-    for (piece, piece_colors) in enumerate(eachrow(replace(puzzle.pieces, 0=>BORDER_COLOR))), direction = 1:4, rotation = 0:3
-        colors[piece << 2 | rotation, direction] = piece_colors[mod1(direction - rotation, 4)]
+    corner_pieces = NTuple{2, Int}[]
+    for (piece, piece_colors) in enumerate(eachrow(replace(puzzle.pieces, 0=>BORDER_COLOR))), rotation = 0:3
+        for direction = 1:4
+            colors[piece << 2 | rotation, direction] = piece_colors[mod1(direction - rotation, 4)]
+        end
+        if piece_colors[mod1(1 - rotation, 4)] == BORDER_COLOR && piece_colors[mod1(2 - rotation, 4)] == BORDER_COLOR
+            push!(corner_pieces, (piece, rotation))
+        end
     end
 
     STARTER_PIECE_BOTTOM_COLOR = puzzle.pieces[STARTER_PIECE, 1]
@@ -98,7 +99,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
     @assert length(search_order) == 256
 
     prioritized_sides = [count(color in prioritized_colors for color in piece_colors) for piece_colors in eachrow(puzzle.pieces)]
-    required_placed_sides_total = sum(prioritized_sides) + div(solver.target_score, 5) - 100
+    max_prioritized_sides = sum(prioritized_sides) + div(solver.target_score, 5) - 100
     prioritized_pieces = [piece for (piece, piece_colors) in enumerate(eachrow(puzzle.pieces)) if any(color in prioritized_colors for color in piece_colors)]
 
     # Add one more row/column at the bottom and the right edge of the board, filled with
@@ -110,14 +111,14 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
     next_idx = ones(Int, 256)
     cumulative_errors = zeros(Int, 256)
 
-    iters = 0  # only the amount of piece placements is counted, i.e. half of the total loop iterations
+    iters = 0  # only the number of piece placements is counted, i.e. half of the total loop iterations
     restarts = 0
     best_score = 0
 
     # Precompute the row/column position for each search depth, as well as the amount of
     # required placed sides with the prioritized colors (for the first half) and allowed
     # errors (for the second half)
-    position_data = [(fldmod1(position, 16)..., depth > 128 ? max_errors(depth, K, B, M, nu) : required_placed_sides(depth, required_placed_sides_total)) for (depth, position) in enumerate(search_order)]
+    position_data = [_position_data(position, depth, max_prioritized_sides, K, B, M, nu) for (depth, position) in enumerate(search_order)]::Vector{NTuple{3, Int}}
     min_error_depths = findall(>(0), diff([pos[3] for pos in position_data[129:256]])) .+ 129
     @info min_error_depths
 
@@ -144,7 +145,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
         fill!(next_idx, 1)
 
         placed_sides = count(puzzle.pieces[STARTER_PIECE, side] in prioritized_colors for side in 1:4)
-        candidates, index_table = _prepare_candidates_table(puzzle, available, true; prioritized_pieces)
+        candidates, index_table = _prepare_candidates_table(puzzle, available, first.(corner_pieces), true; prioritized_pieces)
 
         depth = 2
         last_restart = iters
@@ -163,10 +164,12 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
             if (row, col) == (1, 16)
                 # Special case for the top-right corner, which is not included in the lookup
                 # table
-                for piece = next_idx[depth]:4
+                for idx = next_idx[depth]:4
+                    piece, rotation = corner_pieces[idx]
                     available[piece] || continue
-                    puzzle.pieces[piece, 1] == bottom || continue
-                    board[row, col] = piece << 2 | 2
+                    value = piece << 2 | rotation
+                    colors[value, 3] == bottom || continue
+                    board[row, col] = value
                     available[piece] = false
                     next_idx[depth] = piece + 1
                     iters += 1
@@ -226,7 +229,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
             available[board[row, col] >> 2] = false
         end
 
-        candidates, index_table = _prepare_candidates_table(puzzle, available, false)
+        candidates, index_table = _prepare_candidates_table(puzzle, available, first.(corner_pieces), false)
 
         depth = 129
         fill!(cumulative_errors, 0)
@@ -242,10 +245,12 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
             right = colors[board[row, col + 1], 4]
             bottom = colors[board[row + 1, col], 1]
             if depth == 196  # top-right corner
-                for piece = next_idx[depth]:4
+                for idx = next_idx[depth]:4
+                    piece, rotation = corner_pieces[idx]
                     available[piece] || continue
-                    puzzle.pieces[piece, 1] == bottom || continue
-                    board[row, col] = piece << 2 | 2
+                    value = piece << 2 | rotation
+                    colors[value, 3] == bottom || continue
+                    board[row, col] = value
                     available[piece] = false
                     next_idx[depth] = piece + 1
                     depth += 1
@@ -325,6 +330,7 @@ end
 function _prepare_candidates_table(
     puzzle::Eternity2Puzzle,
     available::Vector{Bool},
+    corner_pieces::Vector{Int},
     first_phase::Bool;
     prioritized_pieces::Vector{Int} = Int[]
 )
@@ -338,19 +344,21 @@ function _prepare_candidates_table(
         available[piece] || continue
         for rotation = 0:3
             value = piece << 2 | rotation
-            # top = colors[mod1(1 - rotation, 4)]
+            top = colors[mod1(1 - rotation, 4)]
             right = colors[mod1(2 - rotation, 4)]
             bottom = colors[mod1(3 - rotation, 4)]
             # color_frequency[top] += 1
             if first_phase
-                if piece < 5 && (rotation == 1 || rotation == 2)
+                if piece in corner_pieces && top == BORDER_COLOR
                     continue
                 end
                 push!(candidates_table[right, bottom, 1], value)
             else
                 bottom == BORDER_COLOR && continue
                 # right == BORDER_COLOR && continue
-                piece > 4 || rotation == 1 || continue
+                if piece in corner_pieces && (right == BORDER_COLOR || bottom == BORDER_COLOR)
+                    continue
+                end
                 push!(candidates_table[right, bottom, 1], value)
                 # Consider pieces with one wrong color, except for the frame colors 1..5
                 for idx = 6:22
@@ -407,11 +415,32 @@ function _prepare_candidates_table(
 end
 
 
+function _position_data(
+    position::Int,
+    depth::Int,
+    max_prioritized_sides::Int,
+    K::Int,
+    B::Float64,
+    M::Int,
+    nu::Float64
+)
+    row, col = fldmod1(position, 16)
+    val = if depth > 128
+        # maximum amount of allowed errors
+        floor(Int, (K + 1)/(1 + exp(-B * (depth - M - K)))^(1/nu))
+    else
+        # minimum amount of sides with the prioritized colors
+        floor(Int, clamp((max_prioritized_sides + 300)/(1 + exp(-0.02 * (depth + 22))) - 280, 0, max_prioritized_sides))
+    end
+    return (row, col, val)
+end
+
+
 function _display_board(
     puzzle::Eternity2Puzzle,
-    iters = 0,
-    restarts = 0;
-    clear = true
+    iters::Int = 0,
+    restarts::Int = 0;
+    clear::Bool = true
 )
     if clear
         print("\e[19F")

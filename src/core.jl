@@ -1,4 +1,6 @@
+const NCOLORS = 23
 const STARTER_PIECE = 139
+const EMPTY = 0x0000
 
 const board_img = PNGFiles.load(joinpath(@__DIR__, "images", "board.png"))
 const colors_img = PNGFiles.load(joinpath(@__DIR__, "images", "colors.png"))
@@ -96,6 +98,30 @@ function Eternity2Puzzle(
     _pieces = _get_pieces(pieces)
     npieces = size(_pieces, 1)
     npieces == nrows * ncols || @warn "The number of pieces ($npieces) is incompatible with the board dimensions ($nrows x $ncols = $(nrows * ncols))"
+    return Eternity2Puzzle(board, _pieces)
+end
+
+function Eternity2Puzzle(pieces::Symbol)
+    board = if pieces == :meta_16x16
+        _board = zeros(UInt16, 16, 16)
+        _board[9, 8] = STARTER_PIECE << 2 | 2
+        _board
+    elseif pieces == :meta_14x14
+        zeros(UInt16, 14, 14)
+    elseif pieces == :meta_12x12
+        zeros(UInt16, 12, 12)
+    elseif pieces == :meta_10x10
+        zeros(UInt16, 10, 10)
+    elseif pieces == :clue1
+        zeros(UInt16, 6, 6)
+    elseif pieces == :clue2
+        zeros(UInt16, 6, 12)
+    elseif pieces == :clue4
+        zeros(UInt16, 6, 12)
+    else
+        error("Unknown option :$pieces")
+    end
+    _pieces = _get_pieces(pieces)
     return Eternity2Puzzle(board, _pieces)
 end
 
