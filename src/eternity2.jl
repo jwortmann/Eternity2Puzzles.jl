@@ -664,6 +664,7 @@ function on_mouse_up(g::Game, pos, button)
                     save(puzzle)
                 elseif 483 < pos[2] < 521  # Settings
                     ui.overlay = :settings_menu
+                    ui.draw_button_hover = false
                     actors.overlay.image = "menu3.png"
                 elseif 573 < pos[2] < 621  # Quit
                     throw(GameZero.QuitException())
