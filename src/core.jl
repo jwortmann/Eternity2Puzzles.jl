@@ -66,16 +66,9 @@ function Eternity2Puzzle(
     pieces::Union{AbstractMatrix{<:Integer}, AbstractString, Symbol} = :cached,
     hint_pieces::Bool = false
 )
-    _pieces = try
-        _get_pieces(pieces)
-    catch
-        nrows == ncols == 16 || error("Puzzle pieces are undefined - call initialize_pieces first")
-        DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
-    end
+    _pieces = _get_pieces(pieces)
     npieces = size(_pieces, 1)
-    if nrows == ncols == 16 && npieces != 256
-        _pieces = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
-    end
+    npieces == nrows * ncols || error("The number of pieces ($npieces) is incompatible with the board dimensions $nrows x $ncols - call initialize_pieces first")
     board = zeros(UInt16, nrows, ncols)
     if nrows == ncols == 16
         board[9, 8] = STARTER_PIECE << 2 | 2  # I8
@@ -97,7 +90,7 @@ function Eternity2Puzzle(
     nrows, ncols = size(board)
     _pieces = _get_pieces(pieces)
     npieces = size(_pieces, 1)
-    npieces == nrows * ncols || @warn "The number of pieces ($npieces) is incompatible with the board dimensions ($nrows x $ncols = $(nrows * ncols))"
+    npieces == nrows * ncols || error("The number of pieces ($npieces) is incompatible with the board dimensions $nrows x $ncols - call initialize_pieces first")
     return Eternity2Puzzle(board, _pieces)
 end
 
@@ -239,8 +232,11 @@ _get_pieces(pieces::AbstractMatrix{<:Integer}) = pieces
 function _get_pieces(pieces::Symbol)
     if pieces == :cached
         cache_file = joinpath(@get_scratch!("eternity2"), "pieces.txt")
-        isfile(cache_file) || error("Puzzle pieces are undefined - call initialize_pieces first")
-        return DelimitedFiles.readdlm(cache_file, UInt8)
+        if isfile(cache_file)
+            return DelimitedFiles.readdlm(cache_file, UInt8)
+        end
+        @warn "Puzzle pieces are undefined - using predefined pieces instead"
+        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
     elseif pieces == :meta_16x16
         return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16.txt"), UInt8)
     elseif pieces == :meta_14x14
@@ -255,9 +251,8 @@ function _get_pieces(pieces::Symbol)
         return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "clue2.txt"), UInt8)
     elseif pieces == :clue4
         return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "clue4.txt"), UInt8)
-    else
-        error("Unknown option :$pieces")
     end
+    error("Unknown option :$pieces")
 end
 
 

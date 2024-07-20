@@ -30,14 +30,13 @@ const initial_position_height = 22*32 + 21*6
 const cache_dir = get_scratch!(Base.UUID("7b8a590e-5f29-49cd-9d3d-d6aab43f7c56"), "eternity2")
 const pieces_file = joinpath(cache_dir, "pieces.txt")
 
-if isfile(pieces_file)
-    _pieces = DelimitedFiles.readdlm(pieces_file, UInt8)
-    if size(_pieces, 1) != 256
-        @warn "Cached pieces incompatible with 16 x 16 board - using random pieces instead"
-        _pieces = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
-    end
+_pieces = if isfile(pieces_file)
+    DelimitedFiles.readdlm(pieces_file, UInt8)
 else
-    @warn "Puzzle pieces are undefined - using random pieces instead"
+    DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
+end
+if size(_pieces, 1) != 256
+    @warn "Cached pieces incompatible with 16 x 16 board - using predefined pieces instead"
     _pieces = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
 end
 
