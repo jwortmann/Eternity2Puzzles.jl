@@ -1,4 +1,6 @@
 const NCOLORS = 23
+const FRAME_COLORS = 1:5
+const INNER_COLORS = 6:22
 const STARTER_PIECE = 139
 const EMPTY = 0x0000
 

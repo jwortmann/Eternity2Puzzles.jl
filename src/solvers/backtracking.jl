@@ -40,7 +40,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
     colors = Matrix{UInt8}(undef, 256 << 2 | 3, 4)
     colors[BORDER, :] .= BORDER_COLOR
 
-    corner_pieces = NTuple{2, Int}[]
+    corner_pieces = NTuple{2, Int}[]  # Pre-rotated corner pieces for the top-right corner
     for (piece, piece_colors) in enumerate(eachrow(replace(puzzle.pieces, 0=>BORDER_COLOR))), rotation = 0:3
         for direction = 1:4
             colors[piece << 2 | rotation, direction] = piece_colors[mod1(direction - rotation, 4)]
@@ -56,7 +56,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
     # Colors which should be eliminated early during the search; pick one of the frame
     # colors 1..5 which is least often used in the corner pieces, and two inner colors 6..22
     # which result in the smallest amount of pieces containing these three colors.
-    c1 = findmin(count(isequal(color), puzzle.pieces[1:4, :]) for color = 1:5)[2]
+    corner_pieces_colors = [puzzle.pieces[piece, direction] for piece in first.(corner_pieces) for direction = 1:4]
+    c1 = findmin(count(isequal(color), corner_pieces_colors) for color = 1:5)[2]
     _, c2, c3 = findmin(collect((count(any(color in (c1, c2, c3) for color in piece_colors) for piece_colors in eachrow(puzzle.pieces)), c2, c3) for c2 = 6:21 for c3 = c2+1:22))[1]
     prioritized_colors = [c1, c2, c3]
     # prioritized_colors = [5, 15, 19]  # 94 pieces, 122 sides total
@@ -96,7 +97,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
           1
     ]
 
-    @assert length(search_order) == 256
+    @assert length(search_order) == length(unique(search_order)) == 256
 
     prioritized_sides = [count(color in prioritized_colors for color in piece_colors) for piece_colors in eachrow(puzzle.pieces)]
     max_prioritized_sides = sum(prioritized_sides) + div(solver.target_score, 5) - 100
@@ -259,8 +260,6 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
                     iters += 1
                     @goto next_iter
                 end
-                available[board[row, col] >> 2] = true
-                board[row, col] = EMPTY
                 next_idx[depth] = 1
                 depth -= 1
                 row, col, max_errors = position_data[depth]
@@ -303,11 +302,6 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
                     iters += 1
                     @goto next_iter
                 end
-            end
-            value = board[row, col]
-            if value != EMPTY
-                available[value >> 2] = true
-                board[row, col] = EMPTY
             end
             next_idx[depth] = 1
             depth -= 1
@@ -361,11 +355,15 @@ function _prepare_candidates_table(
                 end
                 push!(candidates_table[right, bottom, 1], value)
                 # Consider pieces with one wrong color, except for the frame colors 1..5
-                for idx = 6:22
-                    if idx != right && 5 < right < BORDER_COLOR
+                if right in INNER_COLORS
+                    for idx in INNER_COLORS
+                        idx == right && continue
                         push!(candidates_table[idx, bottom, 2], value)
                     end
-                    if idx != bottom && 5 < bottom < BORDER_COLOR
+                end
+                if bottom in INNER_COLORS
+                    for idx in INNER_COLORS
+                        idx == bottom && continue
                         push!(candidates_table[right, idx, 2], value)
                     end
                 end
