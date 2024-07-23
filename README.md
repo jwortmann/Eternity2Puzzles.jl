@@ -15,7 +15,7 @@ You can either play the puzzle as an interactive game, or attempt to find a solu
 ```
 julia> ]
 
-pkg> add https://github.com/jwortmann/Eternity2Puzzles.jl
+pkg> add Eternity2Puzzles
 ```
 
 > [!IMPORTANT]
@@ -33,9 +33,9 @@ Piece number 139 is a mandatory starter-piece with a fixed position on the board
 
 It is unclear to me whether the original pieces of the Eternity II puzzle are allowed to be published, so for now this package doesn't contain the edge color definitions of those pieces.
 It is recommended to specify the pieces in form of an input file, provided that you own the real version of the Eternity II puzzle.
-Alternatively, if the piece definitions are not given, they are automatically generated with colors from a published benchmark problem from the META 2010 contest.
+Alternatively, if the pieces definition is not given, they are automatically generated with colors from a published benchmark problem from the META 2010 contest.
 
-A piece definitions file must be in plain text format (*.txt*) and contain 256 rows with four color numbers on each row, separated by spaces; for example
+A pieces definition file must be in plain text format (*.txt*) and contain 256 rows with four color numbers on each row, separated by spaces; for example
 
 ```
 1 2 0 0
@@ -55,7 +55,7 @@ julia> using Eternity2Puzzles
 julia> initialize_pieces("path/to/e2pieces.txt")
 ```
 
-It is sufficient to do this only a single time after installing the package; the given piece definitions are saved to a persistent cache on disk.
+It is sufficient to do this only a single time after installing the package; the given pieces are saved to a persistent cache on disk.
 Subsequent calls of `initialize_pieces` override the cache.
 
 ### Usage
