@@ -16,32 +16,53 @@ false && include("core.jl")  # make file contents visible to LSP
 
 const WIDTH = 1392
 const HEIGHT = 912
-const BACKGROUND = "background.png"
 
+struct BoundingBox
+    xmin::Int
+    ymin::Int
+    xmax::Int
+    ymax::Int
+end
 
-# Window coordinates
-const board_min = 60
-const board_max = 844
+Base.in(pos::Tuple{Integer, Integer}, bb::BoundingBox) = bb.xmin <= pos[1] <= bb.xmax && bb.ymin <= pos[2] <= bb.ymax
+
+const cache_dir = get_scratch!(Base.UUID("7b8a590e-5f29-49cd-9d3d-d6aab43f7c56"), "eternity2")
+const board = _load(joinpath(cache_dir, "board.et2"))
+
+const NROWS, NCOLS = size(board)
+const NPIECES = NROWS * NCOLS
+
+const BACKGROUND, BOARD_BOUNDING_BOX, puzzle = if (NROWS, NCOLS) == (16, 16)
+    pieces_file = joinpath(cache_dir, "pieces.txt")
+    _pieces = if isfile(pieces_file)
+        DelimitedFiles.readdlm(pieces_file, UInt8)
+    else
+        DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
+    end
+    if size(_pieces, 1) != 256
+        @warn "Cached pieces incompatible with 16 x 16 board - using predefined pieces instead"
+        _pieces = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
+    end
+    ("background.png", BoundingBox(61, 61, 844, 844), Eternity2Puzzle(board, _pieces))
+elseif (NROWS, NCOLS) == (6, 6)
+    ("background_6x6.png", BoundingBox(306, 306, 598, 598), Eternity2Puzzle(board, _get_pieces(:clue1)))
+elseif (NROWS, NCOLS) == (6, 12)
+    ("background_6x12.png", BoundingBox(159, 306, 745, 598), Eternity2Puzzle(board, _get_pieces(:clue2)))
+else
+    error("Unsupported board dimensions")
+end
+
 const initial_position_xmin = 898
 const initial_position_ymin = 38
 const initial_position_width = 12*32 + 11*6
 const initial_position_height = 22*32 + 21*6
 
-const cache_dir = get_scratch!(Base.UUID("7b8a590e-5f29-49cd-9d3d-d6aab43f7c56"), "eternity2")
-const pieces_file = joinpath(cache_dir, "pieces.txt")
-
-_pieces = if isfile(pieces_file)
-    DelimitedFiles.readdlm(pieces_file, UInt8)
-else
-    DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
-end
-if size(_pieces, 1) != 256
-    @warn "Cached pieces incompatible with 16 x 16 board - using predefined pieces instead"
-    _pieces = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
-end
-
-const PIECES = repeat(_pieces, 1, 2)
+const PIECES = repeat(puzzle.pieces, 1, 2)
 const BORDER_COLOR = 0
+
+const CORNER_PIECES = [piece for (piece, piece_colors) in enumerate(eachrow(puzzle.pieces)) if count(isequal(BORDER_COLOR), piece_colors) == 2]
+const EDGE_PIECES = [piece for (piece, piece_colors) in enumerate(eachrow(puzzle.pieces)) if count(isequal(BORDER_COLOR), piece_colors) == 1]
+const INNER_PIECES = [piece for (piece, piece_colors) in enumerate(eachrow(puzzle.pieces)) if count(isequal(BORDER_COLOR), piece_colors) == 0]
 
 linspace(a, b, n) = [a + (b-a)*k/(n-1) for k in 0:n-1]
 smoothstep(a, b, n) = [a + (b-a)*(3*(k/(n-1))^2 - 2*(k/(n-1))^3) for k in 0:n-1]
@@ -78,8 +99,6 @@ mutable struct UIState
 end
 
 
-const puzzle = Eternity2Puzzle(joinpath(cache_dir, "board.et2"), pieces=_pieces)
-size(puzzle) == (16, 16) || error("Puzzle board must be 16x16")
 const _initial_score = score(puzzle)
 const ui = UIState(0, 0, 0, [], Matrix{Union{Vector{Int}, Nothing}}(nothing, 16, 16), [], false, false, false, :main_menu, false, false, _initial_score, _initial_score, _initial_score)
 
@@ -93,18 +112,19 @@ end
 
 # For given x and y coordinates return the row and column numbers on the board.
 function coords_to_rowcol(x::Integer, y::Integer)
-    if board_min < x < board_max && board_min < y < board_max
-        return (div(y - board_min, 49) + 1, div(x - board_min, 49) + 1)
-    else
-        return (0, 0)
+    if (x, y) in BOARD_BOUNDING_BOX
+        row = div(y - BOARD_BOUNDING_BOX.ymin, 49) + 1
+        col = div(x - BOARD_BOUNDING_BOX.xmin, 49) + 1
+        return (row, col)
     end
+    return (0, 0)
 end
 
 
 # For given row and column numbers of the board return the x and y coordinates.
 function rowcol_to_coords(row::Integer, col::Integer)
-    x = board_min + 1 + 49 * (col - 1)
-    y = board_min + 1 + 49 * (row - 1)
+    x = BOARD_BOUNDING_BOX.xmin + 49 * (col - 1)
+    y = BOARD_BOUNDING_BOX.ymin + 49 * (row - 1)
     return (x, y)
 end
 
@@ -121,7 +141,7 @@ function coords_to_initial_position(x::Integer, y::Integer)
         row, r = divrem(yloc, 38)
         r > 32 && return 0
         idx = row * 12 + col + 1
-        idx > 256 && return 0
+        idx > NPIECES && return 0
         return idx
     end
     return 0
@@ -197,14 +217,13 @@ end
 
 function ActorCollection()
     colors = PNGFiles.load(joinpath(@__DIR__, "images", "colors.png"))
-    puzzle_pieces = Vector{Actor}(undef, 256)
-    error_highlights = Vector{Actor}(undef, 4 * 256)
-    candidates_highlights = Vector{Actor}(undef, 256)
+    puzzle_pieces = Vector{Actor}(undef, NPIECES)
+    error_highlights = Vector{Actor}(undef, 4 * NPIECES)
+    candidates_highlights = Vector{Actor}(undef, NPIECES)
 
-    for idx = 1:256
-        row, col = fldmod1(idx, 16)
-        x = board_min + 49 * (col - 1)
-        y = board_min + 49 * (row - 1)
+    for idx = 1:NPIECES
+        row, col = fldmod1(idx, NCOLS)
+        x, y = rowcol_to_coords(row, col)
         error_highlights[4*(idx-1)+1] = Actor("highlight1.png")
         error_highlights[4*(idx-1)+1].pos = (x, y)
         error_highlights[4*(idx-1)+2] = Actor("highlight2.png")
@@ -221,13 +240,13 @@ function ActorCollection()
             image[i, i] = colorant"#323135"
             image[i, 49-i] = colorant"#323135"
         end
+        pos = initial_position(idx)
+        candidates_highlights[idx] = Actor("highlight_small.png")
+        candidates_highlights[idx].pos = pos
         row, col = find(puzzle, idx)
         if (row, col) == (0, 0)
-            pos = initial_position(idx)
             puzzle_pieces[idx] = PixelActor(image, scale=[0.666667, 0.666667])
             puzzle_pieces[idx].pos = pos
-            candidates_highlights[idx] = Actor("highlight_small.png")
-            candidates_highlights[idx].pos = pos
         else
             puzzle_pieces[idx] = PixelActor(image, scale=[1.0, 1.0])
             puzzle_pieces[idx].pos = rowcol_to_coords(row, col)
@@ -257,7 +276,7 @@ function ActorCollection()
     )
 end
 
-actors = ActorCollection()
+const actors = ActorCollection()
 
 
 # Animation for rotating a puzzle piece.
@@ -320,7 +339,7 @@ function update_board_highlight(pos)
         actors.puzzle_pieces[ui.dragged_piece].pos = (pos[1] - 24, pos[2] - 24)
         row, col = coords_to_rowcol(pos[1], pos[2])
         if (row, col) != (0, 0) && puzzle.board[row, col] == 0x0000
-            actors.board_highlight.pos = (board_min + 49 * (col - 1), board_min + 49 * (row - 1))
+            actors.board_highlight.pos = (BOARD_BOUNDING_BOX.xmin + 49 * col - 50, BOARD_BOUNDING_BOX.ymin + 49 * row - 50)
             ui.draw_board_highlight = true
         else
             ui.draw_board_highlight = false
@@ -334,29 +353,32 @@ end
 function update_error_highlights()
     ui.highlight_errors || return
     empty!(ui.errors)
-    # Frame edges
-    for i = 1:16
-        val = puzzle.board[1, i]
-        if val != 0x0000 && PIECES[val >> 2, 5 - val & 3] != BORDER_COLOR
-            push!(ui.errors, 4*i-3)
-        end
-        val = puzzle.board[16, i]
-        if val != 0x0000 && PIECES[val >> 2, 7 - val & 3] != BORDER_COLOR
-            push!(ui.errors, 959+4*i)
-        end
-        val = puzzle.board[i, 1]
+    # Horizontal border edges
+    for row = 1:NROWS
+        val = puzzle.board[row, 1]
         if val != 0x0000 && PIECES[val >> 2, 4 - val & 3] != BORDER_COLOR
-            push!(ui.errors, 64*i-60)
+            push!(ui.errors, 4 * NCOLS * (row - 1) + 4)
         end
-        val = puzzle.board[i, 16]
+        val = puzzle.board[row, NCOLS]
         if val != 0x0000 && PIECES[val >> 2, 6 - val & 3] != BORDER_COLOR
-            push!(ui.errors, 64*i-2)
+            push!(ui.errors, 4 * NCOLS * row - 2)
+        end
+    end
+    # Vertical border edges
+    for col = 1:NCOLS
+        val = puzzle.board[1, col]
+        if val != 0x0000 && PIECES[val >> 2, 5 - val & 3] != BORDER_COLOR
+            push!(ui.errors, 4 * col - 3)
+        end
+        val = puzzle.board[NROWS, col]
+        if val != 0x0000 && PIECES[val >> 2, 7 - val & 3] != BORDER_COLOR
+            push!(ui.errors, 4 * NCOLS * (NROWS - 1) + 4 * col - 1)
         end
     end
     # Horizontal inner edges
-    for col = 1:15, row = 1:16
-        idx1 = 64 * (row - 1) + 4 * (col - 1) + 2
-        idx2 = 64 * (row - 1) + 4 * col + 4
+    for col = 1:NCOLS-1, row = 1:NROWS
+        idx1 = 4 * NCOLS * (row - 1) + 4 * col - 2
+        idx2 = 4 * NCOLS * (row - 1) + 4 * col + 4
         p1 = puzzle.board[row, col]
         if p1 != 0x0000
             p1_right = PIECES[p1 >> 2, 6 - p1 & 3]
@@ -381,9 +403,9 @@ function update_error_highlights()
         end
     end
     # Vertical inner edges
-    for col = 1:16, row = 1:15
-        idx1 = 64 * (row - 1) + 4 * (col - 1) + 3
-        idx2 = 64 * row + 4 * (col - 1) + 1
+    for col = 1:NCOLS, row = 1:NROWS-1
+        idx1 = 4 * NCOLS * (row - 1) + 4 * col - 1
+        idx2 = 4 * NCOLS * row + 4 * col - 3
         p1 = puzzle.board[row, col]
         if p1 != 0x0000
             p1_bottom = PIECES[p1 >> 2, 7 - p1 & 3]
@@ -419,12 +441,12 @@ function update_highlighted_pieces(row::Integer, col::Integer)
         constraints_filter = .!isnothing.(edge_colors)
         any(constraints_filter) || return
         constraints = edge_colors[constraints_filter]
-        pieces_category = if (row == 1 || row == 16) && (col == 1 || col == 16)
-            1:4
-        elseif row == 1 || row == 16 || col == 1 || col == 16
-            5:60
+        pieces_category = if (row == 1 || row == NROWS) && (col == 1 || col == NCOLS)
+            CORNER_PIECES
+        elseif row == 1 || row == NROWS || col == 1 || col == NCOLS
+            EDGE_PIECES
         else
-            61:256
+            INNER_PIECES
         end
         for idx in pieces_category
             if idx << 2 | 0 in puzzle.board || idx << 2 | 1 in puzzle.board || idx << 2 | 2 in puzzle.board || idx << 2 | 3 in puzzle.board
@@ -457,14 +479,14 @@ function load!(puzzle::Eternity2Puzzle)
         isfile(filename) || return
         load!(puzzle, filename)
         # reset entire board
-        for idx = 1:256
+        for idx = 1:NPIECES
             idx == STARTER_PIECE && continue
             actors.puzzle_pieces[idx].pos = initial_position(idx)
             actors.puzzle_pieces[idx].angle = 0.0
             actors.puzzle_pieces[idx].scale = [2//3, 2//3]
         end
         # place pieces
-        for col = 1:16, row = 1:16
+        for col = 1:NCOLS, row = 1:NROWS
             val = puzzle.board[row, col]
             val == 0x0000 && continue
             piece, rotation = val >> 2, val & 3
@@ -513,7 +535,7 @@ end
 function draw(g::Game)
     draw(actors.score_label)
     ui.draw_board_highlight && draw(actors.board_highlight)
-    for idx = 1:256
+    for idx = 1:NPIECES
         if idx == ui.dragged_piece || idx == ui.animated_piece
             continue
         end
@@ -589,7 +611,7 @@ function on_mouse_move(g::Game, pos)
         update_board_highlight(pos)
     elseif ui.highlight_matching_pieces
         row, col = coords_to_rowcol(pos[1], pos[2])
-        if (row, col) != (0, 0) && puzzle.board[row, col] == 0
+        if (row, col) != (0, 0) && puzzle.board[row, col] == 0x0000
             update_highlighted_pieces(row, col)
         else
             ui.matching_pieces = Int[]
@@ -602,10 +624,11 @@ function on_mouse_down(g::Game, pos, button)
     isnothing(ui.overlay) || return
     row, col = coords_to_rowcol(pos[1], pos[2])
     if button == MouseButtons.LEFT && ui.dragged_piece == 0
-        if (row, col) != (0, 0) && (row, col) != (9, 8)
+        if (row, col) != (0, 0)
             val = puzzle.board[row, col]
             if val != 0x0000  # pick up piece from board
                 piece = val >> 2
+                piece == STARTER_PIECE && return
                 ui.dragged_piece = piece
                 ui.dragged_piece_rotation = val & 3
                 puzzle.board[row, col] = 0x0000
@@ -618,7 +641,7 @@ function on_mouse_down(g::Game, pos, button)
             end
         else
             piece = coords_to_initial_position(pos[1], pos[2])
-            if piece == 0 || piece << 2 | 0 in puzzle.board || piece << 2 | 1 in puzzle.board || piece << 2 | 2 in puzzle.board || piece << 2 | 3 in puzzle.board
+            if piece == 0 || piece in puzzle
                 return
             end
             # pick up piece from start pile
@@ -632,15 +655,16 @@ function on_mouse_down(g::Game, pos, button)
         if ui.dragged_piece > 0
             ui.dragged_piece_rotation = mod(ui.dragged_piece_rotation + 1, 4)
             rotate_animation(ui.dragged_piece, ui.dragged_piece_rotation)
-        elseif (row, col) != (0, 0) && (row, col) != (9, 8)
+        elseif (row, col) != (0, 0)
             val = puzzle.board[row, col]
             if val != 0x0000
                 piece = val >> 2
-                rotation = val & 3
-                puzzle.board[row, col] = piece << 2 | mod(rotation + 1, 4)
+                piece == STARTER_PIECE && return
+                rotation = mod(val & 3 + 1, 4)
+                puzzle.board[row, col] = piece << 2 | rotation
                 clear_matching_cache()
                 update_error_highlights()
-                rotate_animation(piece, rotation + 1)
+                rotate_animation(piece, rotation)
                 update_score()
             end
         end

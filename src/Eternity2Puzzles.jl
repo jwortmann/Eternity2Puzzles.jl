@@ -28,6 +28,8 @@ include("solvers/backtracking_recursive.jl")
 
 """
     play()
+    play(:clue1)
+    play(:clue2)
 
 Start the interactive game.
 """
@@ -38,6 +40,18 @@ function play(puzzle::Eternity2Puzzle = Eternity2Puzzle(16, 16))
     GameZero.rungame(joinpath(@__DIR__, "eternity2.jl"))
     Base.set_active_project(_project)
     nothing
+end
+
+function play(puzzle::Symbol)
+    if puzzle == :clue1
+        play(Eternity2Puzzle(:clue1))
+    elseif puzzle == :clue2
+        play(Eternity2Puzzle(:clue2))
+    elseif puzzle == :clue4
+        error("Clue puzzle 4 not yet supported")
+    else
+        error("Unknown option :$puzzle")
+    end
 end
 
 
