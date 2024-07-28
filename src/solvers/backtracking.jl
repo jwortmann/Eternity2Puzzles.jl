@@ -1,5 +1,5 @@
 const BORDER_COLOR = UInt8(NCOLORS)
-const BORDER = 0x0001
+const BORDER_COLOR2 = UInt8(NCOLORS + 1)
 
 
 """
@@ -38,16 +38,11 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
     # Prepare a table that contains the edge colors in all directions for all possible
     # UInt16 values of the pieces and rotations
     colors = Matrix{UInt8}(undef, 256 << 2 | 3, 4)
-    colors[BORDER, :] .= BORDER_COLOR
+    colors[0x0001, :] .= BORDER_COLOR
+    colors[0x0002, :] .= BORDER_COLOR2
 
-    corner_pieces = NTuple{2, Int}[]  # Pre-rotated corner pieces for the top-right corner
-    for (piece, piece_colors) in enumerate(eachrow(replace(puzzle.pieces, 0=>BORDER_COLOR))), rotation = 0:3
-        for direction = 1:4
-            colors[piece << 2 | rotation, direction] = piece_colors[mod1(direction - rotation, 4)]
-        end
-        if piece_colors[mod1(1 - rotation, 4)] == BORDER_COLOR && piece_colors[mod1(2 - rotation, 4)] == BORDER_COLOR
-            push!(corner_pieces, (piece, rotation))
-        end
+    for (piece, piece_colors) in enumerate(eachrow(replace(puzzle.pieces, 0=>BORDER_COLOR))), side = 1:4, rotation = 0:3
+        colors[piece << 2 | rotation, side] = piece_colors[mod1(side - rotation, 4)]
     end
 
     STARTER_PIECE_BOTTOM_COLOR = puzzle.pieces[STARTER_PIECE, 1]
@@ -56,8 +51,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
     # Colors which should be eliminated early during the search; pick one of the frame
     # colors 1..5 which is least often used in the corner pieces, and two inner colors 6..22
     # which result in the smallest amount of pieces containing these three colors.
-    corner_pieces_colors = [puzzle.pieces[piece, direction] for piece in first.(corner_pieces) for direction = 1:4]
-    c1 = findmin(count(isequal(color), corner_pieces_colors) for color = 1:5)[2]
+    corner_colors = [piece_colors[side] for piece_colors in eachrow(puzzle.pieces) for side = 1:4 if count(isequal(0), piece_colors) == 2]
+    c1 = findmin(count(isequal(color), corner_colors) for color = 1:5)[2]
     _, c2, c3 = findmin(collect((count(any(color in (c1, c2, c3) for color in piece_colors) for piece_colors in eachrow(puzzle.pieces)), c2, c3) for c2 = 6:21 for c3 = c2+1:22))[1]
     prioritized_colors = [c1, c2, c3]
     # prioritized_colors = [5, 15, 19]  # 94 pieces, 122 sides total
@@ -106,8 +101,12 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
     # Add one more row/column at the bottom and the right edge of the board, filled with
     # only the border color. Then the side color constraints for the pieces on row/column 16
     # can be obtained by indexing the 17th row/column and without the need to have a special
-    # case for these edge pieces in the code.
-    board = fill(BORDER, 17, 17)
+    # case for these edge pieces in the code. Furthermore a special value is assigned to the
+    # border sides of the corner pieces, so that the corner pieces are automatically placed
+    # at the correct positions and no special casing for them is required within the loops.
+    board = fill(0x0002, 17, 17)
+    board[17, 2:15] .= 0x0001  # non-corner sides
+    board[2:15, 17] .= 0x0001  # non-corner sides
     available = fill(true, 256)
     next_idx = ones(Int, 256)
     cumulative_errors = zeros(Int, 256)
@@ -146,7 +145,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
         fill!(next_idx, 1)
 
         placed_sides = count(puzzle.pieces[STARTER_PIECE, side] in prioritized_colors for side in 1:4)
-        candidates, index_table = _prepare_candidates_table(puzzle, available, first.(corner_pieces), true; prioritized_pieces)
+        candidates, index_table = _prepare_candidates_table(puzzle, available, true; prioritized_pieces)
 
         depth = 2
         last_restart = iters
@@ -161,48 +160,28 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
                 placed_sides -= prioritized_sides[piece]
             end
             piece_found = false
+            right = colors[board[row, col + 1], 4]
             bottom = colors[board[row + 1, col], 1]
-            if (row, col) == (1, 16)
-                # Special case for the top-right corner, which is not included in the lookup
-                # table
-                for idx = next_idx[depth]:4
-                    piece, rotation = corner_pieces[idx]
-                    available[piece] || continue
-                    value = piece << 2 | rotation
-                    colors[value, 3] == bottom || continue
-                    board[row, col] = value
-                    available[piece] = false
-                    next_idx[depth] = piece + 1
-                    iters += 1
-                    depth += 1
-                    piece_found = true
-                    break
+            start_index, end_index, _ = index_table[right, bottom]
+            for idx = max(next_idx[depth], start_index):end_index
+                value = candidates[idx]
+                piece = value >> 2
+                available[piece] || continue
+                piece_sides = prioritized_sides[piece]
+                placed_sides + piece_sides >= min_placed_sides || continue
+                if (row, col) == (10, 8)
+                    piece > 60 && colors[value, 1] == STARTER_PIECE_BOTTOM_COLOR || continue
+                elseif (row, col) == (9, 9)
+                    piece > 60 && colors[value, 4] == STARTER_PIECE_RIGHT_COLOR || continue
                 end
-            else
-                right = colors[board[row, col + 1], 4]
-                start_index, end_index, _ = index_table[right, bottom]
-                for idx = max(next_idx[depth], start_index):end_index
-                    value = candidates[idx]
-                    piece = value >> 2
-                    available[piece] || continue
-                    piece_sides = prioritized_sides[piece]
-                    placed_sides + piece_sides >= min_placed_sides || continue
-                    if (row, col) == (16, 1)
-                        colors[value, 4] == BORDER_COLOR || continue
-                    elseif (row, col) == (10, 8)
-                        piece > 60 && colors[value, 1] == STARTER_PIECE_BOTTOM_COLOR || continue
-                    elseif (row, col) == (9, 9)
-                        piece > 60 && colors[value, 4] == STARTER_PIECE_RIGHT_COLOR || continue
-                    end
-                    board[row, col] = value
-                    available[piece] = false
-                    placed_sides += piece_sides
-                    next_idx[depth] = idx + 1
-                    iters += 1
-                    depth += 1
-                    piece_found = true
-                    break
-                end
+                board[row, col] = value
+                available[piece] = false
+                placed_sides += piece_sides
+                next_idx[depth] = idx + 1
+                iters += 1
+                depth += 1
+                piece_found = true
+                break
             end
             if !piece_found
                 # Usually it should take less than a second to fill the first half of the
@@ -230,7 +209,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
             available[board[row, col] >> 2] = false
         end
 
-        candidates, index_table = _prepare_candidates_table(puzzle, available, first.(corner_pieces), false)
+        candidates, index_table = _prepare_candidates_table(puzzle, available, false)
 
         depth = 129
         fill!(cumulative_errors, 0)
@@ -245,27 +224,6 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
             @label next_iter
             right = colors[board[row, col + 1], 4]
             bottom = colors[board[row + 1, col], 1]
-            if depth == 196  # top-right corner
-                for idx = next_idx[depth]:4
-                    piece, rotation = corner_pieces[idx]
-                    available[piece] || continue
-                    value = piece << 2 | rotation
-                    colors[value, 3] == bottom || continue
-                    board[row, col] = value
-                    available[piece] = false
-                    next_idx[depth] = piece + 1
-                    depth += 1
-                    cumulative_errors[depth] = errors
-                    row, col, max_errors = position_data[depth]
-                    iters += 1
-                    @goto next_iter
-                end
-                next_idx[depth] = 1
-                depth -= 1
-                row, col, max_errors = position_data[depth]
-                available[board[row, col] >> 2] = true
-                continue
-            end
             start_idx, end_idx1, end_idx2 = index_table[right, bottom]
             for idx = max(next_idx[depth], start_idx):end_idx1
                 value = candidates[idx]
@@ -324,35 +282,31 @@ end
 function _prepare_candidates_table(
     puzzle::Eternity2Puzzle,
     available::Vector{Bool},
-    corner_pieces::Vector{Int},
     first_phase::Bool;
     prioritized_pieces::Vector{Int} = Int[]
 )
     pieces = replace(puzzle.pieces, 0=>BORDER_COLOR)
-    candidates_table = [UInt16[] for _ in 1:NCOLORS, _ in 1:NCOLORS, _ in 1:2]
+    bottom_colors = first_phase ? NCOLORS + 1 : NCOLORS - 1
+    candidates_table = [UInt16[] for _ in 1:NCOLORS+1, _ in 1:bottom_colors, _ in 1:2]
 
     # The total amount of edges with that color over the remaining pieces
     # color_frequency = zeros(Int, NCOLORS)
 
     for (piece, colors) in enumerate(eachrow(pieces))
         available[piece] || continue
+        if count(color == BORDER_COLOR for color in colors) == 2
+            replace!(colors, BORDER_COLOR=>BORDER_COLOR2)
+        end
         for rotation = 0:3
             value = piece << 2 | rotation
-            top = colors[mod1(1 - rotation, 4)]
             right = colors[mod1(2 - rotation, 4)]
             bottom = colors[mod1(3 - rotation, 4)]
-            # color_frequency[top] += 1
+            # color_frequency[right] += 1
             if first_phase
-                if piece in corner_pieces && top == BORDER_COLOR
-                    continue
-                end
                 push!(candidates_table[right, bottom, 1], value)
             else
                 bottom == BORDER_COLOR && continue
-                # right == BORDER_COLOR && continue
-                if piece in corner_pieces && (right == BORDER_COLOR || bottom == BORDER_COLOR)
-                    continue
-                end
+                bottom == BORDER_COLOR2 && continue
                 push!(candidates_table[right, bottom, 1], value)
                 # Consider pieces with one wrong color, except for the frame colors 1..5
                 if right in INNER_COLORS
@@ -392,9 +346,9 @@ function _prepare_candidates_table(
     # index, the end index for the exactly matching pieces, and the end index for the partly
     # matching pieces.
     candidates = Vector{UInt16}(undef, total_candidates)
-    index_table = Matrix{NTuple{3, Int}}(undef, NCOLORS, NCOLORS)
+    index_table = Matrix{NTuple{3, Int}}(undef, NCOLORS+1, bottom_colors)
     idx = 1
-    for right = 1:NCOLORS, bottom = 1:NCOLORS
+    for right = 1:NCOLORS+1, bottom = 1:bottom_colors
         idx1 = idx
         for candidate in candidates_table[right, bottom, 1]
             candidates[idx] = candidate
