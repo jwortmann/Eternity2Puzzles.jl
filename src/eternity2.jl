@@ -32,6 +32,8 @@ const board = _load(joinpath(cache_dir, "board.et2"))
 const NROWS, NCOLS = size(board)
 const NPIECES = NROWS * NCOLS
 
+const MAXIMUM_SCORE = 2 * NROWS * NCOLS - NROWS - NCOLS
+
 const BACKGROUND, BOARD_BOUNDING_BOX, puzzle = if (NROWS, NCOLS) == (16, 16)
     pieces_file = joinpath(cache_dir, "pieces.txt")
     _pieces = if isfile(pieces_file)
@@ -255,7 +257,7 @@ function ActorCollection()
     end
     score_label = TextActor(string(ui.score), "luckiestguy", font_size=16, color=Int[255,255,255,255])
     score_label.pos = _score_pos(ui.score, false)
-    score_label2 = TextActor(string(ui.score), "luckiestguy", font_size=30, color=Int[221,221,221,255])
+    score_label2 = TextActor("$(ui.score)/$MAXIMUM_SCORE", "luckiestguy", font_size=30, color=Int[221,221,221,255])
     score_label2.pos = _score_pos(ui.score, true)
     checkmark1 = Actor("checkmark.png")
     checkmark1.pos = (591, 336)
@@ -326,7 +328,7 @@ end
 # Updates the score shown in the menu
 function update_score2()
     ui.old_score2 == ui.score && return
-    actors.score_label2 = TextActor(string(ui.score), "luckiestguy", font_size=30, color=Int[221,221,221,255])
+    actors.score_label2 = TextActor("$(ui.score)/$MAXIMUM_SCORE", "luckiestguy", font_size=30, color=Int[221,221,221,255])
     actors.score_label2.pos = _score_pos(ui.score, true)
     ui.old_score2 = ui.score
 end
