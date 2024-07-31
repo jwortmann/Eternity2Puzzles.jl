@@ -96,22 +96,23 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
     @assert length(search_order) == length(unique(search_order)) == 256
 
     prioritized_sides = [count(color in prioritized_colors for color in piece_colors) for piece_colors in eachrow(puzzle.pieces)]
-    # max_prioritized_sides = sum(prioritized_sides) + div(solver.target_score, 5) - 100
-    max_prioritized_sides = sum(prioritized_sides) - 6
+    max_prioritized_sides = sum(prioritized_sides) + div(solver.target_score, 10) - 53
     prioritized_pieces = [piece for (piece, piece_colors) in enumerate(eachrow(puzzle.pieces)) if any(color in prioritized_colors for color in piece_colors)]
 
     # Add one more row/column at the bottom and the right edge of the board, filled with
     # only the border color. Then the side color constraints for the pieces on row/column 16
     # can be obtained by indexing the 17th row/column and without the need to have a special
-    # case for these edge pieces in the code. Furthermore a special value is assigned to the
-    # border sides of the corner pieces, so that the corner pieces are automatically placed
-    # at the correct positions and no special casing for them is required within the loops.
+    # case for these edge pieces in the code. Furthermore, a different border color value is
+    # assigned to the border sides of the corner pieces. This automatically prevents the
+    # corner pieces from being placed at the non-corner positions of the frame and ensures
+    # that only corner pieces are considered for the corner positions, without the need for
+    # special cases for the corner positions within the loops.
     board = fill(0x0002, 17, 17)
     board[17, 2:15] .= 0x0001  # non-corner sides
     board[2:15, 17] .= 0x0001  # non-corner sides
     available = fill(true, 256)
     next_idx = ones(Int, 256)
-    cumulative_errors = zeros(Int, 256)
+    state = Vector{NTuple{4, Int}}(undef, 256)
 
     iters = 0  # only the number of piece placements is counted, i.e. half of the total loop iterations
     restarts = 0
@@ -143,24 +144,18 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
 
         board[1:16, 1:16] .= EMPTY
         board[9, 8] = STARTER_PIECE << 2 | 2
-        fill!(available, true); available[STARTER_PIECE] = false
+        fill!(available, true)
+        available[STARTER_PIECE] = false
         fill!(next_idx, 1)
 
         placed_sides = count(puzzle.pieces[STARTER_PIECE, side] in prioritized_colors for side in 1:4)
         candidates, index_table = _prepare_candidates_table(puzzle, available, true; prioritized_pieces)
 
         depth = 2
+        row, col, min_placed_sides = position_data[depth]
         last_restart = iters
 
         @inbounds while depth < min_error_depths[1]
-            row, col, min_placed_sides = position_data[depth]
-            value = board[row, col]
-            if value != EMPTY
-                piece = value >> 2
-                available[piece] = true
-                board[row, col] = EMPTY
-                placed_sides -= prioritized_sides[piece]
-            end
             piece_found = false
             right = colors[board[row, col + 1], 2]
             bottom = colors[board[row + 1, col], 1]
@@ -182,6 +177,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
                 next_idx[depth] = idx + 1
                 iters += 1
                 depth += 1
+                row, col, min_placed_sides = position_data[depth]
                 piece_found = true
                 break
             end
@@ -196,6 +192,10 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
                 next_idx[depth] = 1
                 depth -= 1
                 depth == 1 && error("Could not fill bottom half with prioritized colors")
+                row, col, min_placed_sides = position_data[depth]
+                piece = board[row, col] >> 2
+                available[piece] = true
+                placed_sides -= prioritized_sides[piece]
             end
         end
 
@@ -216,18 +216,17 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
         candidates, index_table = _prepare_candidates_table(puzzle, available, false)
 
         depth = 129
-        fill!(cumulative_errors, 0)
-        fill!(next_idx, 1)
 
         row, col, max_errors = position_data[depth]
         right = colors[board[row, col + 1], 2]
         bottom = colors[board[row + 1, col], 1]
         start_idx, end_idx1, end_idx2 = index_table[right, bottom]
+        errors = 0
+        state[depth] = (start_idx, end_idx1, end_idx2, errors)
 
         # This is the main backtracking loop; it should be as fast as possible, i.e. avoid
         # allocations, function calls and unnecessary operations.
         @inbounds while depth > 128
-            errors = cumulative_errors[depth]
             @label next_iter
             for idx = start_idx:end_idx1
                 value = candidates[idx]
@@ -235,7 +234,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
                 available[piece] || continue
                 board[row, col] = value
                 available[piece] = false
-                next_idx[depth] = idx + 1
+                state[depth] = (idx + 1, end_idx1, end_idx2, errors)
                 score = 2 * depth - errors - 32
                 if score > best_score
                     best_score = score
@@ -244,7 +243,6 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
                     depth == 256 && return
                 end
                 depth += 1
-                cumulative_errors[depth] = errors
                 row, col, max_errors = position_data[depth]
                 right = colors[board[row, col + 1], 2]
                 bottom = colors[board[row + 1, col], 1]
@@ -259,10 +257,9 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
                     available[piece] || continue
                     board[row, col] = value
                     available[piece] = false
-                    next_idx[depth] = idx + 1
+                    state[depth] = (idx + 1, end_idx1, end_idx2, errors)
                     depth += 1
                     errors += 1
-                    cumulative_errors[depth] = errors
                     row, col, max_errors = position_data[depth]
                     right = colors[board[row, col + 1], 2]
                     bottom = colors[board[row + 1, col], 1]
@@ -273,11 +270,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
             end
             depth -= 1
             row, col, max_errors = position_data[depth]
-            right = colors[board[row, col + 1], 2]
-            bottom = colors[board[row + 1, col], 1]
-            _, end_idx1, end_idx2 = index_table[right, bottom]
-            start_idx = next_idx[depth]
             available[board[row, col] >> 2] = true
+            start_idx, end_idx1, end_idx2, errors = state[depth]
         end
         restarts += 1
         _display_board(puzzle, iters, restarts)
@@ -407,8 +401,7 @@ function _display_board(
     clear::Bool = true
 )
     if clear
-        print("\e[19F")
-        print("\e[0J")
+        print("\e[19F\e[0J")
     end
     display(puzzle)
     println("Iterations: $(round(iters/1_000_000_000, digits=2)) B    Restarts: $restarts")

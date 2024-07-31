@@ -101,7 +101,7 @@ mutable struct UIState
 end
 
 
-const _initial_score = score(puzzle)
+const _initial_score = score(puzzle)[1]
 const ui = UIState(0, 0, 0, [], Matrix{Union{Vector{Int}, Nothing}}(nothing, 16, 16), [], false, false, false, :main_menu, false, false, _initial_score, _initial_score, _initial_score)
 
 
@@ -318,7 +318,7 @@ end
 
 # Updates the score shown in the top left corner
 function update_score()
-    ui.score = score(puzzle)
+    ui.score = score(puzzle)[1]
     ui.old_score == ui.score && return
     actors.score_label = TextActor(string(ui.score), "luckiestguy", font_size=16, color=Int[255,255,255,255])
     actors.score_label.pos = _score_pos(ui.score, false)
@@ -515,7 +515,7 @@ end
 
 function save(puzzle::Eternity2Puzzle)
     try
-        filename = "$(score(puzzle)).et2"
+        filename = "$(score(puzzle)[1]).et2"
         filepath = NativeFileDialog.save_file(filename, filterlist="et2")
         if filepath == ""
             return

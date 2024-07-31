@@ -123,14 +123,15 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", puzzle::Eternity2Puzzle)
     nrows, ncols = size(puzzle.board)
-    npieces = count(@. 0 < puzzle.board >> 2 <= nrows * ncols)
-    _score = score(puzzle)
+    npieces = nrows * ncols
+    placed_pieces = count(@. 0 < puzzle.board >> 2 <= npieces)
+    _score, errors = score(puzzle)
     header = if _score > 0
-        "$nrows×$ncols Eternity2Puzzle with $npieces $(npieces == 1 ? "piece" : "pieces"), $_score matching edges and $(error_count(puzzle)) errors:"
+        "$nrows×$ncols Eternity2Puzzle with $placed_pieces $(placed_pieces == 1 ? "piece" : "pieces"), $_score matching edges and $errors errors:"
     else
-        "$nrows×$ncols Eternity2Puzzle with $npieces $(npieces == 1 ? "piece" : "pieces"):"
+        "$nrows×$ncols Eternity2Puzzle with $placed_pieces $(placed_pieces == 1 ? "piece" : "pieces"):"
     end
-    grid = join([join([0 < val >> 2 <= nrows * ncols ? "$(lpad(val >> 2, 4))/$(val & 3)" : " ---/-" for val in row]) for row in eachrow(puzzle.board)], "\n")
+    grid = join([join([0 < val >> 2 <= npieces ? "$(lpad(val >> 2, 4))/$(val & 3)" : " ---/-" for val in row]) for row in eachrow(puzzle.board)], "\n")
     println(io, header * "\n" * grid)
 end
 
@@ -350,54 +351,12 @@ end
 """
     score(puzzle::Eternity2Puzzle)
 
-Return the number of matching edge pairs on the board.
+Return the number of matching and non-matching edge pairs on the board.
 """
 function score(puzzle::Eternity2Puzzle)
     nrows, ncols = size(puzzle.board)
     npieces = nrows * ncols
     matching_edges = 0
-    for col = 1:ncols-1, row = 1:nrows-1
-        val1 = puzzle.board[row, col]
-        p1, r1 = val1 >> 2, val1 & 3
-        0 < p1 <= npieces || continue
-        val2 = puzzle.board[row, col + 1]
-        p2, r2 = val2 >> 2, val2 & 3
-        if 0 < p2 <= npieces && 0x00 != puzzle.pieces[p1, mod1(2 - r1, 4)] == puzzle.pieces[p2, mod1(4 - r2, 4)]
-            matching_edges += 1
-        end
-        val3 = puzzle.board[row + 1, col]
-        p3, r3 = val3 >> 2, val3 & 3
-        if 0 < p3 <= npieces && 0x00 != puzzle.pieces[p1, mod1(3 - r1, 4)] == puzzle.pieces[p3, mod1(1 - r3, 4)]
-            matching_edges += 1
-        end
-    end
-    for col = 1:ncols-1
-        val1 = puzzle.board[nrows, col]
-        p1, r1 = val1 >> 2, val1 & 3
-        0 < p1 <= npieces || continue
-        val2 = puzzle.board[nrows, col + 1]
-        p2, r2 = val2 >> 2, val2 & 3
-        if 0 < p2 <= npieces && 0x00 != puzzle.pieces[p1, mod1(2 - r1, 4)] == puzzle.pieces[p2, mod1(4 - r2, 4)]
-            matching_edges += 1
-        end
-    end
-    for row = 1:nrows-1
-        val1 = puzzle.board[row, ncols]
-        p1, r1 = val1 >> 2, val1 & 3
-        0 < p1 <= npieces || continue
-        val2 = puzzle.board[row + 1, ncols]
-        p2, r2 = val2 >> 2, val2 & 3
-        if 0 < p2 <= npieces && 0x00 != puzzle.pieces[p1, mod1(3 - r1, 4)] == puzzle.pieces[p2, mod1(1 - r2, 4)]
-            matching_edges += 1
-        end
-    end
-    return matching_edges
-end
-
-
-function error_count(puzzle::Eternity2Puzzle)
-    nrows, ncols = size(puzzle.board)
-    npieces = nrows * ncols
     errors = 0
     for col = 1:ncols-1, row = 1:nrows-1
         val1 = puzzle.board[row, col]
@@ -405,13 +364,25 @@ function error_count(puzzle::Eternity2Puzzle)
         0 < p1 <= npieces || continue
         val2 = puzzle.board[row, col + 1]
         p2, r2 = val2 >> 2, val2 & 3
-        if 0 < p2 <= npieces && puzzle.pieces[p1, mod1(2 - r1, 4)] != puzzle.pieces[p2, mod1(4 - r2, 4)]
-            errors += 1
+        if 0 < p2 <= npieces
+            if puzzle.pieces[p1, mod1(2 - r1, 4)] == puzzle.pieces[p2, 4 - r2]
+                if puzzle.pieces[p2, 4 - r2] != 0x00
+                    matching_edges += 1
+                end
+            else
+                errors += 1
+            end
         end
         val3 = puzzle.board[row + 1, col]
         p3, r3 = val3 >> 2, val3 & 3
-        if 0 < p3 <= npieces && puzzle.pieces[p1, mod1(3 - r1, 4)] != puzzle.pieces[p3, mod1(1 - r3, 4)]
-            errors += 1
+        if 0 < p3 <= npieces
+            if puzzle.pieces[p1, mod1(3 - r1, 4)] == puzzle.pieces[p3, mod1(1 - r3, 4)]
+                if puzzle.pieces[p1, mod1(3 - r1, 4)] != 0x00
+                    matching_edges += 1
+                end
+            else
+                errors += 1
+            end
         end
     end
     for col = 1:ncols-1
@@ -421,7 +392,11 @@ function error_count(puzzle::Eternity2Puzzle)
         val2 = puzzle.board[nrows, col + 1]
         p2, r2 = val2 >> 2, val2 & 3
         0 < p2 <= npieces || continue
-        if puzzle.pieces[p1, mod1(2 - r1, 4)] != puzzle.pieces[p2, mod1(4 - r2, 4)]
+        if puzzle.pieces[p1, mod1(2 - r1, 4)] == puzzle.pieces[p2, 4 - r2]
+            if puzzle.pieces[p2, 4 - r2] != 0x00
+                matching_edges += 1
+            end
+        else
             errors += 1
         end
     end
@@ -432,11 +407,15 @@ function error_count(puzzle::Eternity2Puzzle)
         val2 = puzzle.board[row + 1, ncols]
         p2, r2 = val2 >> 2, val2 & 3
         0 < p2 <= npieces || continue
-        if puzzle.pieces[p1, mod1(3 - r1, 4)] != puzzle.pieces[p2, mod1(1 - r2, 4)]
+        if puzzle.pieces[p1, mod1(3 - r1, 4)] == puzzle.pieces[p2, mod1(1 - r2, 4)]
+            if puzzle.pieces[p1, mod1(3 - r1, 4)] != 0x00
+                matching_edges += 1
+            end
+        else
             errors += 1
         end
     end
-    return errors
+    return matching_edges, errors
 end
 
 
