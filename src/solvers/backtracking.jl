@@ -37,12 +37,13 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
 
     # Prepare a table that contains the edge colors in all directions for all possible
     # UInt16 values of the pieces and rotations
-    colors = Matrix{UInt8}(undef, 256 << 2 | 3, 4)
+    colors = Matrix{UInt8}(undef, 256 << 2 | 3, 2)
     colors[0x0001, :] .= BORDER_COLOR
     colors[0x0002, :] .= BORDER_COLOR2
 
-    for (piece, piece_colors) in enumerate(eachrow(replace(puzzle.pieces, 0=>BORDER_COLOR))), side = 1:4, rotation = 0:3
-        colors[piece << 2 | rotation, side] = piece_colors[mod1(side - rotation, 4)]
+    for (piece, piece_colors) in enumerate(eachrow(replace(puzzle.pieces, 0=>BORDER_COLOR))), rotation = 0:3
+        colors[piece << 2 | rotation, 1] = piece_colors[mod1(1 - rotation, 4)]
+        colors[piece << 2 | rotation, 2] = piece_colors[4 - rotation]
     end
 
     STARTER_PIECE_BOTTOM_COLOR = puzzle.pieces[STARTER_PIECE, 1]
@@ -95,7 +96,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
     @assert length(search_order) == length(unique(search_order)) == 256
 
     prioritized_sides = [count(color in prioritized_colors for color in piece_colors) for piece_colors in eachrow(puzzle.pieces)]
-    max_prioritized_sides = sum(prioritized_sides) + div(solver.target_score, 5) - 100
+    # max_prioritized_sides = sum(prioritized_sides) + div(solver.target_score, 5) - 100
+    max_prioritized_sides = sum(prioritized_sides) - 6
     prioritized_pieces = [piece for (piece, piece_colors) in enumerate(eachrow(puzzle.pieces)) if any(color in prioritized_colors for color in piece_colors)]
 
     # Add one more row/column at the bottom and the right edge of the board, filled with
@@ -160,7 +162,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
                 placed_sides -= prioritized_sides[piece]
             end
             piece_found = false
-            right = colors[board[row, col + 1], 4]
+            right = colors[board[row, col + 1], 2]
             bottom = colors[board[row + 1, col], 1]
             start_index, end_index, _ = index_table[right, bottom]
             for idx = max(next_idx[depth], start_index):end_index
@@ -172,7 +174,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
                 if (row, col) == (10, 8)
                     piece > 60 && colors[value, 1] == STARTER_PIECE_BOTTOM_COLOR || continue
                 elseif (row, col) == (9, 9)
-                    piece > 60 && colors[value, 4] == STARTER_PIECE_RIGHT_COLOR || continue
+                    piece > 60 && colors[value, 2] == STARTER_PIECE_RIGHT_COLOR || continue
                 end
                 board[row, col] = value
                 available[piece] = false
@@ -187,8 +189,10 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
                 # Usually it should take less than a second to fill the first half of the
                 # board, but sometimes this phase gets "stuck" while searching for a valid
                 # arrangement containing the pieces with the prioritized colors. To avoid
-                # this case, restart if the loop iterations exceed 2e8.
-                iters - last_restart < 200_000_000 || @goto restart
+                # this case, restart if the loop iterations exceed 2*2e8.
+                if iters - last_restart > 200_000_000
+                    @goto restart
+                end
                 next_idx[depth] = 1
                 depth -= 1
                 depth == 1 && error("Could not fill bottom half with prioritized colors")
@@ -216,16 +220,16 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
         fill!(next_idx, 1)
 
         row, col, max_errors = position_data[depth]
+        right = colors[board[row, col + 1], 2]
+        bottom = colors[board[row + 1, col], 1]
+        start_idx, end_idx1, end_idx2 = index_table[right, bottom]
 
         # This is the main backtracking loop; it should be as fast as possible, i.e. avoid
         # allocations, function calls and unnecessary operations.
         @inbounds while depth > 128
             errors = cumulative_errors[depth]
             @label next_iter
-            right = colors[board[row, col + 1], 4]
-            bottom = colors[board[row + 1, col], 1]
-            start_idx, end_idx1, end_idx2 = index_table[right, bottom]
-            for idx = max(next_idx[depth], start_idx):end_idx1
+            for idx = start_idx:end_idx1
                 value = candidates[idx]
                 piece = value >> 2
                 available[piece] || continue
@@ -242,11 +246,14 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
                 depth += 1
                 cumulative_errors[depth] = errors
                 row, col, max_errors = position_data[depth]
+                right = colors[board[row, col + 1], 2]
+                bottom = colors[board[row + 1, col], 1]
+                start_idx, end_idx1, end_idx2 = index_table[right, bottom]
                 iters += 1
                 @goto next_iter
             end
             if errors < max_errors
-                for idx = max(next_idx[depth], end_idx1 + 1):end_idx2
+                for idx = start_idx:end_idx2
                     value = candidates[idx]
                     piece = value >> 2
                     available[piece] || continue
@@ -257,13 +264,19 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
                     errors += 1
                     cumulative_errors[depth] = errors
                     row, col, max_errors = position_data[depth]
+                    right = colors[board[row, col + 1], 2]
+                    bottom = colors[board[row + 1, col], 1]
+                    start_idx, end_idx1, end_idx2 = index_table[right, bottom]
                     iters += 1
                     @goto next_iter
                 end
             end
-            next_idx[depth] = 1
             depth -= 1
             row, col, max_errors = position_data[depth]
+            right = colors[board[row, col + 1], 2]
+            bottom = colors[board[row + 1, col], 1]
+            _, end_idx1, end_idx2 = index_table[right, bottom]
+            start_idx = next_idx[depth]
             available[board[row, col] >> 2] = true
         end
         restarts += 1
@@ -285,16 +298,15 @@ function _prepare_candidates_table(
     first_phase::Bool;
     prioritized_pieces::Vector{Int} = Int[]
 )
-    pieces = replace(puzzle.pieces, 0=>BORDER_COLOR)
     bottom_colors = first_phase ? NCOLORS + 1 : NCOLORS - 1
     candidates_table = [UInt16[] for _ in 1:NCOLORS+1, _ in 1:bottom_colors, _ in 1:2]
 
     # The total amount of edges with that color over the remaining pieces
     # color_frequency = zeros(Int, NCOLORS)
 
-    for (piece, colors) in enumerate(eachrow(pieces))
+    for (piece, colors) in enumerate(eachrow(replace(puzzle.pieces, 0=>BORDER_COLOR)))
         available[piece] || continue
-        if count(color == BORDER_COLOR for color in colors) == 2
+        if count(isequal(BORDER_COLOR), colors) == 2
             replace!(colors, BORDER_COLOR=>BORDER_COLOR2)
         end
         for rotation = 0:3
