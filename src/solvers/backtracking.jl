@@ -127,7 +127,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
 
     _display_board(puzzle, clear=false)
 
-    while best_score < solver.target_score
+    while best_score - 32 < solver.target_score
 
         # ======================== Phase 1: bottom half of the board =======================
 
@@ -228,16 +228,17 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
         # allocations, function calls and unnecessary operations.
         @inbounds while depth > 128
             @label next_iter
-            for idx = start_idx:end_idx1
+            for idx = start_idx:end_idx2
                 value = candidates[idx]
                 piece = value >> 2
                 available[piece] || continue
                 board[row, col] = value
                 available[piece] = false
                 state[depth] = (idx + 1, end_idx1, end_idx2, errors)
-                score = 2 * depth - errors - 32
-                if score > best_score
-                    best_score = score
+                if idx > end_idx1
+                    errors += 1
+                elseif 2 * depth > best_score + errors
+                    best_score = 2 * depth - errors  # The actual score is 32 lower, but we can ignore the constant
                     puzzle.board[:, :] = board[1:16, 1:16]
                     _display_board(puzzle, iters, restarts)
                     depth == 256 && return
@@ -248,25 +249,10 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
                 bottom = colors[board[row + 1, col], 1]
                 start_idx, end_idx1, end_idx2 = index_table[right, bottom]
                 iters += 1
-                @goto next_iter
-            end
-            if errors < max_errors
-                for idx = start_idx:end_idx2
-                    value = candidates[idx]
-                    piece = value >> 2
-                    available[piece] || continue
-                    board[row, col] = value
-                    available[piece] = false
-                    state[depth] = (idx + 1, end_idx1, end_idx2, errors)
-                    depth += 1
-                    errors += 1
-                    row, col, max_errors = position_data[depth]
-                    right = colors[board[row, col + 1], 2]
-                    bottom = colors[board[row + 1, col], 1]
-                    start_idx, end_idx1, end_idx2 = index_table[right, bottom]
-                    iters += 1
-                    @goto next_iter
+                if errors == max_errors
+                    end_idx2 = end_idx1
                 end
+                @goto next_iter
             end
             depth -= 1
             row, col, max_errors = position_data[depth]
