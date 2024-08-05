@@ -1,6 +1,6 @@
 """
     BacktrackingSearchRecursive()
-    BacktrackingSearchRecursive(; seed::Integer)
+    BacktrackingSearchRecursive(seed::Integer)
 
 A simple recursive backtracking search which can be used with all board sizes. Pre-placed
 pieces on the board won't be modified during the search. If there exists a solution, this
@@ -9,12 +9,12 @@ the board and backtracking if no more matching piece can be placed. Pieces are o
 if all edge colors match exactly. The algorithm stops when a solution is found, or if the
 entire search space is exhausted without finding a solution.
 
-This algorithm should be able to solve smaller boards with dimensions 6x6 or 8x8, but it is
+This algorithm should be able to solve smaller boards with dimensions up to 6x6, but it is
 not optimized for speed and it won't get anywhere close to a full solution of the original
 16x16 Eternity II board. Due to the huge search space which is explored in a depth first
 search, the initial pieces that are placed on the first rows of the board are unlikely to
-ever be modified later, and the search very likely gets stuck in a local optimum for most of
-the time.
+ever be modified later, and only a tiny and probably uninteresting fraction of the search
+space is searched.
 
 The only runtime optimization is to precompute lookup tables of the matching piece
 candidates for any given color constraints. Piece candidates for a board position can be
@@ -24,7 +24,7 @@ individually each time.
 # Examples
 
 ```julia
-julia> puzzle = Eternity2Puzzle(6, 6; pieces=:clue1)
+julia> puzzle = Eternity2Puzzle(:clue1)
 6×6 Eternity2Puzzle with 0 pieces:
 ...
 
