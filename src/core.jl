@@ -40,7 +40,7 @@ puzzle are:
 # Examples
 
 ```julia
-julia> puzzle = Eternity2Puzzle(16, 16)
+julia> puzzle = Eternity2Puzzle()
 16×16 Eternity2Puzzle with 1 piece:
 ...
 
@@ -50,10 +50,6 @@ julia> puzzle[9, 8]  # Get the piece number and rotation at row 9, column 8
 julia> puzzle[3, 3] = (208, 3)  # Assign piece 208 with a 270° rotation to row 3, column 3
 ```
 
-!!! info
-    If the code is run within a [Pluto.jl](https://juliahub.com/ui/Packages/General/Pluto)
-    notebook, the board with the puzzle pieces is rendered directly inside the notebook.
-
 Note that assigning and obtaining the piece values by indexing `Eternity2Puzzle` directly is
 not optimized for performance, i.e. it is not recommended to be used in a hot loop.
 """
@@ -62,11 +58,39 @@ struct Eternity2Puzzle
     pieces::Matrix{UInt8}  # npieces × 4
 end
 
+function Eternity2Puzzle(; hint_pieces::Bool = false)
+    # The Eternity2Puzzle constructor without positional arguments returns the regular
+    # Eternity II board with 16 rows and 16 columns, and with the mandatory starter-piece
+    # pre-placed. The pieces definitions are loaded from cache if they are compatible with
+    # the board dimensions, and otherwise it uses the pieces from the META 2010 benchmark
+    # problem.
+    board = zeros(UInt16, 16, 16)
+    board[9, 8] = STARTER_PIECE << 2 | 2  # I8
+    if hint_pieces
+        board[3, 3] = 208 << 2 | 3        # C3
+        board[3, 14] = 255 << 2 | 3       # C14
+        board[14, 3] = 181 << 2 | 3       # N3
+        board[14, 14] = 249 << 2 | 0      # N14
+    end
+    cache_file = joinpath(@get_scratch!("eternity2"), "pieces.txt")
+    if !isfile(cache_file)
+        @warn "Puzzle pieces are undefined - using predefined pieces instead"
+        pieces = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16.txt"), UInt8)
+        return Eternity2Puzzle(board, pieces)
+    end
+    pieces = DelimitedFiles.readdlm(cache_file, UInt8)
+    if size(pieces, 1) != 256
+        @warn "Cached puzzle pieces are incompatible with the board dimensions - using predefined pieces instead"
+        pieces = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16.txt"), UInt8)
+        return Eternity2Puzzle(board, pieces)
+    end
+    return Eternity2Puzzle(board, pieces)
+end
+
 function Eternity2Puzzle(
-    nrows::Integer = 16,
-    ncols::Integer = 16;
-    pieces::Union{AbstractMatrix{<:Integer}, AbstractString, Symbol} = :cached,
-    hint_pieces::Bool = false
+    nrows::Integer,
+    ncols::Integer;
+    pieces::Union{AbstractMatrix{<:Integer}, AbstractString, Symbol} = :cached
 )
     _pieces = _get_pieces(pieces)
     npieces = size(_pieces, 1)
@@ -74,12 +98,6 @@ function Eternity2Puzzle(
     board = zeros(UInt16, nrows, ncols)
     if nrows == ncols == 16
         board[9, 8] = STARTER_PIECE << 2 | 2  # I8
-        if hint_pieces
-            board[3, 3] = 208 << 2 | 3        # C3
-            board[3, 14] = 255 << 2 | 3       # C14
-            board[14, 3] = 181 << 2 | 3       # N3
-            board[14, 14] = 249 << 2 | 0      # N14
-        end
     end
     return Eternity2Puzzle(board, _pieces)
 end
@@ -552,8 +570,8 @@ function generate_pieces(
     maxiters = 1000
 
     for _ in 1:maxiters
-        shuffle!(frame_edges)
-        shuffle!(inner_edges)
+        Random.shuffle!(frame_edges)
+        Random.shuffle!(inner_edges)
         # Randomly assign the frame colors to adjacent edges of the frame pieces
         he[1, :] = frame_edges[1:ncols-1]
         he[end, :] = frame_edges[ncols:2ncols-2]
@@ -608,9 +626,9 @@ function generate_pieces(
 
         if validate(pieces)
             # Remap piece numbers randomly
-            corner_pieces_idx = shuffle(corner_pieces_range)
-            edge_pieces_idx = shuffle(edge_pieces_range)
-            inner_pieces_idx = shuffle(inner_pieces_range)
+            corner_pieces_idx = Random.shuffle(corner_pieces_range)
+            edge_pieces_idx = Random.shuffle(edge_pieces_range)
+            inner_pieces_idx = Random.shuffle(inner_pieces_range)
             pieces[corner_pieces_range, :] = pieces[corner_pieces_idx, :]
             pieces[edge_pieces_range, :] = pieces[edge_pieces_idx, :]
             pieces[inner_pieces_range, :] = pieces[inner_pieces_idx, :]

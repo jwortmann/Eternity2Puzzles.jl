@@ -4,7 +4,7 @@ using Colors
 import DelimitedFiles
 import GameZero
 import PNGFiles
-using Random
+import Random
 using Scratch: @get_scratch!
 
 export Eternity2Puzzle

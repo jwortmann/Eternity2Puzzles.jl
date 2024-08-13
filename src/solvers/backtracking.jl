@@ -21,9 +21,11 @@ end
 
 
 function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
-    size(puzzle) == (16, 16) || error("This algorithm only works with board dimensions 16x16")
+    nrows, ncols = size(puzzle)
+    maximum_score = 2 * nrows * ncols - nrows - ncols
+    nrows == ncols == 16 || error("This algorithm only works with board dimensions 16x16")
     puzzle[9, 8] == (STARTER_PIECE, 2) || error("Expected starter-piece on row 9 column 8")
-    449 < solver.target_score < 479 || error("Target score outside of allowed range 450..478")
+    450 <= solver.target_score <= maximum_score - 2 || error("Target score outside of allowed range 450..478")
 
     @info "Parameters" solver.target_score solver.seed
     Random.seed!(solver.seed)
@@ -96,7 +98,6 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
 
     prioritized_sides = [count(color in prioritized_colors for color in piece_colors) for piece_colors in eachrow(puzzle.pieces)]
     required_prioritized_sides = sum(prioritized_sides) + div(solver.target_score, 10) - 53
-    prioritized_pieces = [piece for (piece, piece_colors) in enumerate(eachrow(puzzle.pieces)) if any(color in prioritized_colors for color in piece_colors)]
 
     # Add one more row/column at the bottom and the right edge of the board, filled with
     # only the border color. Then the side color constraints for the pieces on row/column 16
@@ -120,7 +121,18 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
     # Precompute the row/column position for each search depth, as well as the amount of
     # required placed sides with the prioritized colors (for the first half) and allowed
     # errors (for the second half)
-    board_position = [_position_data(position, depth, required_prioritized_sides, K, B, M, nu) for (depth, position) in enumerate(search_order)]::Vector{NTuple{3, Int}}
+    board_position = Vector{NTuple{3, Int}}(undef, 256)
+    for depth = 1:128
+        row, col = fldmod1(search_order[depth], 16)
+        sides = floor(Int, clamp((required_prioritized_sides + 300)/(1 + exp(-0.02 * (depth + 22))) - 280, 0, required_prioritized_sides))
+        board_position[depth] = (row, col, sides)
+    end
+    for depth = 129:256
+        row, col = fldmod1(search_order[depth], 16)
+        allowed_errors = floor(Int, (K + 1)/(1 + exp(-B * (depth - M - K)))^(1/nu))
+        board_position[depth] = (row, col, allowed_errors)
+    end
+
     allowed_error_depths = findall(>(0), diff(last.(board_position[129:256]))) .+ 129
     @info allowed_error_depths
 
@@ -147,8 +159,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
         available[STARTER_PIECE] = false
         fill!(next_idx, 1)
 
-        placed_sides = count(puzzle.pieces[STARTER_PIECE, side] in prioritized_colors for side in 1:4)
-        candidates, index_table = _prepare_candidates_table(puzzle, available, true; prioritized_pieces)
+        placed_sides = count(in(prioritized_colors), puzzle.pieces[STARTER_PIECE, :])::Int
+        candidates, index_table = _prepare_candidates_table(puzzle, available; prioritized_colors)
 
         depth = 2
         row, col, min_placed_sides = board_position[depth]
@@ -212,7 +224,9 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearch)
             available[board[row, col] >> 2] = false
         end
 
-        candidates, index_table = _prepare_candidates_table(puzzle, available, false)
+        # Note that for this phase the order of the candidates doesn't matter, because all
+        # of them are tried exhaustively before the search is restarted.
+        candidates, index_table = _prepare_candidates_table(puzzle, available; shuffle=false, allow_errors=true)
 
         depth = 129
 
@@ -273,11 +287,12 @@ end
 # frame pieces are expected to tile relatively well.
 function _prepare_candidates_table(
     puzzle::Eternity2Puzzle,
-    available::Vector{Bool},
-    first_phase::Bool;
-    prioritized_pieces::Vector{Int} = Int[]
+    available::Vector{Bool};
+    prioritized_colors::Vector{Int} = Int[],
+    shuffle::Bool = true,
+    allow_errors::Bool = false
 )
-    bottom_colors = first_phase ? NCOLORS + 1 : NCOLORS - 1
+    bottom_colors = allow_errors ? NCOLORS - 1 : NCOLORS + 1
     candidates_table = [UInt16[] for _ in 1:NCOLORS+1, _ in 1:bottom_colors, _ in 1:2]
 
     # The total amount of edges with that color over the remaining pieces
@@ -293,9 +308,7 @@ function _prepare_candidates_table(
             right = colors[mod1(2 - rotation, 4)]
             bottom = colors[mod1(3 - rotation, 4)]
             # color_frequency[right] += 1
-            if first_phase
-                push!(candidates_table[right, bottom, 1], value)
-            else
+            if allow_errors
                 bottom == BORDER_COLOR && continue
                 bottom == BORDER_COLOR2 && continue
                 push!(candidates_table[right, bottom, 1], value)
@@ -312,16 +325,25 @@ function _prepare_candidates_table(
                         push!(candidates_table[right, idx, 2], value)
                     end
                 end
+            else
+                push!(candidates_table[right, bottom, 1], value)
             end
         end
     end
+
+    reorder_prioritized = length(prioritized_colors) > 0
+    prioritized_pieces = reorder_prioritized ? [piece for (piece, colors) in enumerate(eachrow(puzzle.pieces)) if any(in(prioritized_colors), colors)] : Int[]
 
     total_candidates = 0
     for idx in eachindex(candidates_table)
         len = length(candidates_table[idx])
         total_candidates += len
-        if first_phase && len > 1
-            shuffle!(candidates_table[idx])
+        len > 1 || continue
+        if shuffle
+            Random.shuffle!(candidates_table[idx])
+        end
+        if reorder_prioritized
+            # TODO is there a better way to move the prioritized pieces to the start?
             for i = 2:len
                 if candidates_table[idx][i] >> 2 in prioritized_pieces
                     pushfirst!(candidates_table[idx], popat!(candidates_table[idx], i))
@@ -355,27 +377,6 @@ function _prepare_candidates_table(
     end
 
     return (candidates, index_table)
-end
-
-
-function _position_data(
-    position::Int,
-    depth::Int,
-    required_prioritized_sides::Int,
-    K::Int,
-    B::Float64,
-    M::Int,
-    nu::Float64
-)
-    row, col = fldmod1(position, 16)
-    val = if depth > 128
-        # maximum amount of allowed errors
-        floor(Int, (K + 1)/(1 + exp(-B * (depth - M - K)))^(1/nu))
-    else
-        # minimum amount of sides with the prioritized colors
-        floor(Int, clamp((required_prioritized_sides + 300)/(1 + exp(-0.02 * (depth + 22))) - 280, 0, required_prioritized_sides))
-    end
-    return (row, col, val)
 end
 
 
