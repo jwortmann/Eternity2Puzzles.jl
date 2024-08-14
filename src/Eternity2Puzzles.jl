@@ -9,8 +9,9 @@ using Scratch: @get_scratch!
 
 export Eternity2Puzzle
 export Eternity2Solver
-export BacktrackingSearch
-export BacktrackingSearchRecursive
+export SimpleBacktrackingSearch
+export HeuristicBacktrackingSearch
+export RecursiveBacktrackingSearch
 export initialize_pieces
 export generate_pieces
 export play
@@ -22,8 +23,8 @@ export save
 
 
 include("core.jl")
-include("solvers/backtracking.jl")
-include("solvers/backtracking_recursive.jl")
+include("solvers/heuristic_backtracking.jl")
+include("solvers/recursive_backtracking.jl")
 
 
 """
@@ -78,10 +79,9 @@ function solve!(
     if isnothing(alg)
         seed = floor(Int, 1000 * t0)
         alg = if size(puzzle) == (16, 16) && puzzle[9, 8] == (STARTER_PIECE, 2)
-            # BacktrackingSearch(target_score=471, seed=seed)
-            BacktrackingSearch(target_score=460, seed=seed)
+            HeuristicBacktrackingSearch(target_score=460, seed=seed)
         else
-            BacktrackingSearchRecursive(seed)
+            RecursiveBacktrackingSearch(seed)
         end
     end
 

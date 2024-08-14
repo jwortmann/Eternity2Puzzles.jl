@@ -1,6 +1,3 @@
-const NCOLORS = 23
-const FRAME_COLORS = 1:5
-const INNER_COLORS = 6:22
 const STARTER_PIECE = 139
 const EMPTY = 0x0000
 
@@ -448,6 +445,51 @@ function parse_pieces(filename::AbstractString)
     end
     size(pieces, 2) == 4 || error("Unexpected number of rows")
     return pieces
+end
+
+
+# This function remaps the color numbers to consecutive numbers starting at 1, and possibly
+# reorders the colors such that the colors in the frame come first, followed by the inner
+# colors. The border color, which is assumed to be 0 in the input data, plus another
+# "virtual" border color for the corner pieces are appended at the end of the number list.
+# The function returns a new matrix for the piece definitions with the remapped color
+# numbers, as well as UnitRanges for the remapped frame colors and for the inner colors.
+function remap_piece_colors(puzzle::Eternity2Puzzle)
+    frame_colors = Set{UInt8}()
+    # Find the edge pieces and extract the frame colors, i.e. the sides which are adjacent
+    # to the border.
+    for piece_colors in eachrow(puzzle.pieces)
+        if count(isequal(0), piece_colors) == 1
+            border_edge_index = findfirst(isequal(0), piece_colors)
+            push!(frame_colors, piece_colors[mod1(border_edge_index + 1, 4)])
+            push!(frame_colors, piece_colors[mod1(border_edge_index - 1, 4)])
+        end
+    end
+    frame_colors = sort(collect(frame_colors))
+    unique_colors = sort(unique(puzzle.pieces))
+    @assert unique_colors[1] == 0 "Border color must be 0"
+    popfirst!(unique_colors)
+    inner_colors = setdiff(unique_colors, frame_colors)
+    remapped_colors = [frame_colors; inner_colors]
+    push!(remapped_colors, 0)
+    ncolors = length(remapped_colors)
+    border_color = UInt8(ncolors)
+    virtual_border_color = UInt8(ncolors + 1)
+    remapped_pieces = replace(puzzle.pieces, [color => UInt8(findfirst(isequal(color), remapped_colors)) for color in remapped_colors]...)
+    # Find the corner pieces and assign a different "virtual" border color value to their
+    # border sides. This "trick" automatically ensures that only the corner pieces are
+    # placed at the corner positions of the puzzle board, without the need for a special
+    # check within the inner loop of the backtracking algorithm.
+    for piece_colors in eachrow(remapped_pieces)
+        if count(isequal(border_color), piece_colors) == 2
+            replace!(piece_colors, border_color=>virtual_border_color)
+        end
+    end
+    frame_colors_count = length(frame_colors)
+    frame_colors_range = 1:frame_colors_count
+    inner_colors_count = length(inner_colors)
+    inner_colors_range = frame_colors_count+1:frame_colors_count+inner_colors_count
+    return (remapped_pieces, frame_colors_range, inner_colors_range)
 end
 
 

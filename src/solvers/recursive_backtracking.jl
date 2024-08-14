@@ -1,6 +1,6 @@
 """
-    BacktrackingSearchRecursive()
-    BacktrackingSearchRecursive(seed::Integer)
+    RecursiveBacktrackingSearch()
+    RecursiveBacktrackingSearch(seed::Integer)
 
 A simple recursive backtracking search which can be used with all board sizes. Pre-placed
 pieces on the board won't be modified during the search. If there exists a solution, this
@@ -28,7 +28,7 @@ julia> puzzle = Eternity2Puzzle(:clue1)
 6×6 Eternity2Puzzle with 0 pieces:
 ...
 
-julia> solve!(puzzle, alg=BacktrackingSearchRecursive())
+julia> solve!(puzzle, alg=RecursiveBacktrackingSearch())
 6×6 Eternity2Puzzle with 36 pieces, 60 matching edges and 0 errors:
   26/1   7/1  23/1  31/1  21/1  34/2
   12/0  32/2   6/3  29/2   2/0  17/2
@@ -40,12 +40,12 @@ julia> solve!(puzzle, alg=BacktrackingSearchRecursive())
 julia> preview(puzzle)
 ```
 """
-@kwdef struct BacktrackingSearchRecursive <: Eternity2Solver
+@kwdef struct RecursiveBacktrackingSearch <: Eternity2Solver
     seed::Int = 1
 end
 
 
-function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearchRecursive)
+function solve!(puzzle::Eternity2Puzzle, solver::RecursiveBacktrackingSearch)
     nrows, ncols = size(puzzle.board)
     npieces = size(puzzle.pieces, 1)
     npieces == nrows * ncols || error("The number of pieces ($npieces) is incompatible with the board dimensions ($nrows x $ncols = $(nrows * ncols))")
@@ -130,7 +130,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::BacktrackingSearchRecursive)
     Random.seed!(solver.seed)
     for idx in eachindex(candidates)
         length(candidates[idx]) > 1 || continue
-        shuffle!(candidates[idx])
+        Random.shuffle!(candidates[idx])
     end
 
     positions = Tuple{Int, Int, Int}[]
