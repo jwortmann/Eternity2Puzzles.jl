@@ -223,6 +223,7 @@ Base.in(piece::Integer, puzzle::Eternity2Puzzle) = piece in puzzle.board .>> 2
 Open a preview image of the puzzle board.
 """
 function preview(puzzle::Eternity2Puzzle)
+    maximum(puzzle.pieces) <= 22 || error("Cannot preview puzzle with given color patterns. Highest color number must not exceed 22.")
     filepath = joinpath(@get_scratch!("eternity2"), "preview.png")
     open(filepath, "w") do file
         show(file, "image/png", puzzle)
