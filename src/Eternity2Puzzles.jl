@@ -3,6 +3,7 @@ module Eternity2Puzzles
 using Colors
 import DelimitedFiles
 import GameZero
+import NativeFileDialog
 import PNGFiles
 import Random
 using Scratch: @get_scratch!
