@@ -55,19 +55,21 @@ struct Eternity2Puzzle
     pieces::Matrix{UInt8}  # npieces × 4
 end
 
-function Eternity2Puzzle(; hint_pieces::Bool = false)
+function Eternity2Puzzle(; starter_piece::Bool = true, hint_pieces::Bool = false)
     # The Eternity2Puzzle constructor without positional arguments returns the regular
     # Eternity II board with 16 rows and 16 columns, and with the mandatory starter-piece
     # pre-placed. The pieces definitions are loaded from cache if they are compatible with
     # the board dimensions, and otherwise it uses the pieces from the META 2010 benchmark
     # problem.
     board = zeros(UInt16, 16, 16)
-    board[9, 8] = STARTER_PIECE << 2 | 2  # I8
+    if starter_piece
+        board[9, 8] = 139 << 2 | 2    # I8
+    end
     if hint_pieces
-        board[3, 3] = 208 << 2 | 3        # C3
-        board[3, 14] = 255 << 2 | 3       # C14
-        board[14, 3] = 181 << 2 | 3       # N3
-        board[14, 14] = 249 << 2 | 0      # N14
+        board[3, 3] = 208 << 2 | 3    # C3
+        board[3, 14] = 255 << 2 | 3   # C14
+        board[14, 3] = 181 << 2 | 3   # N3
+        board[14, 14] = 249 << 2 | 0  # N14
     end
     cache_file = joinpath(@get_scratch!("eternity2"), "pieces.txt")
     if !isfile(cache_file)
@@ -87,13 +89,14 @@ end
 function Eternity2Puzzle(
     nrows::Integer,
     ncols::Integer;
-    pieces::Union{AbstractMatrix{<:Integer}, AbstractString, Symbol} = :cached
+    pieces::Union{AbstractMatrix{<:Integer}, AbstractString, Symbol} = :cached,
+    starter_piece::Bool = true
 )
     _pieces = _get_pieces(pieces)
     npieces = size(_pieces, 1)
-    npieces == nrows * ncols || error("The number of pieces ($npieces) is incompatible with the board dimensions $nrows x $ncols - call initialize_pieces first")
+    npieces >= nrows * ncols || error("The number of pieces ($npieces) is incompatible with the board dimensions $nrows x $ncols - call initialize_pieces first")
     board = zeros(UInt16, nrows, ncols)
-    if nrows == ncols == 16
+    if starter_piece && nrows == ncols == 16
         board[9, 8] = STARTER_PIECE << 2 | 2  # I8
     end
     return Eternity2Puzzle(board, _pieces)
@@ -138,15 +141,14 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", puzzle::Eternity2Puzzle)
     nrows, ncols = size(puzzle.board)
-    npieces = nrows * ncols
-    placed_pieces = count(@. 0 < puzzle.board >> 2 <= npieces)
+    placed_pieces = count(@. puzzle.board >> 2 != 0x0000)
     _score, errors = score(puzzle)
     header = if _score > 0
         "$nrows×$ncols Eternity2Puzzle with $placed_pieces $(placed_pieces == 1 ? "piece" : "pieces"), $_score matching edges and $errors errors:"
     else
         "$nrows×$ncols Eternity2Puzzle with $placed_pieces $(placed_pieces == 1 ? "piece" : "pieces"):"
     end
-    grid = join([join([0 < val >> 2 <= npieces ? "$(lpad(val >> 2, 4))/$(val & 3)" : " ---/-" for val in row]) for row in eachrow(puzzle.board)], "\n")
+    grid = join([join([val >> 2 != 0x0000 ? "$(lpad(val >> 2, 4))/$(val & 3)" : " ---/-" for val in row]) for row in eachrow(puzzle.board)], "\n")
     println(io, header * "\n" * grid)
 end
 
@@ -171,7 +173,7 @@ function Base.show(io::IO, ::MIME"image/png", puzzle::Eternity2Puzzle)
         dark_gray = colorant"#323135"
         for col = 1:ncols, row = 1:nrows
             value = puzzle.board[row, col]
-            0 < value >> 2 <= nrows * ncols || continue
+            value >> 2 == 0x0000 && continue
             piece = value >> 2
             rotation = value & 3
             x = 49 * col - 47

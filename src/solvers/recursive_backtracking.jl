@@ -48,9 +48,9 @@ end
 function solve!(puzzle::Eternity2Puzzle, solver::RecursiveBacktrackingSearch)
     nrows, ncols = size(puzzle.board)
     npieces = size(puzzle.pieces, 1)
-    npieces == nrows * ncols || error("The number of pieces ($npieces) is incompatible with the board dimensions ($nrows x $ncols = $(nrows * ncols))")
+    @assert npieces >= nrows * ncols "Number of pieces is incompatible with the board dimensions"
     _colors = sort(unique(puzzle.pieces))
-    _colors[1] == 0 || error("Border color must be 0")
+    @assert _colors[1] == 0 "Border color must be 0"
     # Remap the color numbers from 1 to ncolors, so that they can be used as array indices
     ncolors = border_color = length(_colors)
     popfirst!(_colors)
