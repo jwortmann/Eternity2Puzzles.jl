@@ -51,12 +51,10 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
     colors[0x0001, :] .= border_color
     colors[0x0002, :] .= border_color + 1
 
-    for (piece, piece_colors) in enumerate(eachrow(pieces)), rotation = 0:3, side = 1:2
-        colors[piece << 2 | rotation, side] = piece_colors[mod1(side - rotation, 4)]
-    end
-
     _candidates = [UInt16[] for _ in 1:ncolors+1, _ in 1:ncolors+1]
     for (piece, piece_colors) in enumerate(eachrow(pieces)), rotation = 0:3
+        colors[piece << 2 | rotation, 1] = piece_colors[mod1(1 - rotation, 4)]
+        colors[piece << 2 | rotation, 2] = piece_colors[mod1(2 - rotation, 4)]
         left = piece_colors[4 - rotation]
         bottom = piece_colors[mod1(3 - rotation, 4)]
         push!(_candidates[left, bottom], piece << 2 | rotation)

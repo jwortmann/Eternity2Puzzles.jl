@@ -66,10 +66,10 @@ function Eternity2Puzzle(; starter_piece::Bool = true, hint_pieces::Bool = false
         board[9, 8] = 139 << 2 | 2    # I8
     end
     if hint_pieces
-        board[3, 3] = 208 << 2 | 3    # C3
-        board[3, 14] = 255 << 2 | 3   # C14
-        board[14, 3] = 181 << 2 | 3   # N3
-        board[14, 14] = 249 << 2 | 0  # N14
+        board[14, 3] = 181 << 2 | 3   # N3  (Clue Puzzle 1)
+        board[3, 14] = 255 << 2 | 3   # C14 (Clue Puzzle 2)
+        board[14, 14] = 249 << 2 | 0  # N14 (Clue Puzzle 3)
+        board[3, 3] = 208 << 2 | 3    # C3  (Clue Puzzle 4)
     end
     cache_file = joinpath(@get_scratch!("eternity2"), "pieces.txt")
     if !isfile(cache_file)
@@ -110,7 +110,7 @@ function Eternity2Puzzle(
     nrows, ncols = size(board)
     _pieces = _get_pieces(pieces)
     npieces = size(_pieces, 1)
-    npieces == nrows * ncols || error("The number of pieces ($npieces) is incompatible with the board dimensions $nrows x $ncols - call initialize_pieces first")
+    npieces >= nrows * ncols || error("The number of pieces ($npieces) is incompatible with the board dimensions $nrows x $ncols - call initialize_pieces first")
     return Eternity2Puzzle(board, _pieces)
 end
 
@@ -141,14 +141,14 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", puzzle::Eternity2Puzzle)
     nrows, ncols = size(puzzle.board)
-    placed_pieces = count(@. puzzle.board >> 2 != 0x0000)
+    placed_pieces = count(!=(0x0000), puzzle.board)
     _score, errors = score(puzzle)
     header = if _score > 0
         "$nrows×$ncols Eternity2Puzzle with $placed_pieces $(placed_pieces == 1 ? "piece" : "pieces"), $_score matching edges and $errors errors:"
     else
         "$nrows×$ncols Eternity2Puzzle with $placed_pieces $(placed_pieces == 1 ? "piece" : "pieces"):"
     end
-    grid = join([join([val >> 2 != 0x0000 ? "$(lpad(val >> 2, 4))/$(val & 3)" : " ---/-" for val in row]) for row in eachrow(puzzle.board)], "\n")
+    grid = join([join([val != 0x0000 ? "$(lpad(val >> 2, 4))/$(val & 3)" : " ---/-" for val in row]) for row in eachrow(puzzle.board)], "\n")
     println(io, header * "\n" * grid)
 end
 
@@ -451,12 +451,21 @@ function parse_pieces(filename::AbstractString)
 end
 
 
-# This function remaps the color numbers to consecutive numbers starting at 1, and possibly
-# reorders the colors such that the colors in the frame come first, followed by the inner
-# colors. The border color, which is assumed to be 0 in the input data, plus another
-# "virtual" border color for the corner pieces are appended at the end of the number list.
-# The function returns a new matrix for the piece definitions with the remapped color
-# numbers, as well as UnitRanges for the remapped frame colors and for the inner colors.
+"""
+    remap_piece_colors(puzzle::Eternity2Puzzle)
+
+Remap and reorder the color numbers such that colors are consecutive numbers starting at 1,
+with all frame color numbers first and all inner color numbers last. The border color and
+another "virtual" border color for the corner pieces are appended to the end of the number
+list.
+
+While the relative orderings of the color numbers within the set of the frame colors and the
+set of the inner colors are preserved, gaps between the color numbers are eliminated, so
+that they can be used as array indices.
+
+Return a new matrix for the piece definitions using the remapped color numbers, and two
+`UnitRange`s for the numbers of the remapped frame colors and inner colors.
+"""
 function remap_piece_colors(puzzle::Eternity2Puzzle)
     frame_colors = Set{UInt8}()
     # Find the edge pieces and extract the frame colors, i.e. the sides which are adjacent
