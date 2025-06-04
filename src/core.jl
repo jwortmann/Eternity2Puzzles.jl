@@ -505,6 +505,157 @@ function remap_piece_colors(puzzle::Eternity2Puzzle)
 end
 
 
+# Number of k-permutations of n (as BigFloat); perm(n, k) = n!/(n-k)!
+perm(n, k) = prod(n-k+1:n; init=big(1.0))
+
+# Number of k-combinations of n; comb(n, k) = n!/((n-k)!k!)
+comb(n, k) = prod((n+1-i)/i for i = 1:min(k, n-k); init=1.0)
+
+
+"""
+    estimate_solutions(puzzle::Eternity2Puzzle)
+    estimate_solutions(puzzle::Eternity2Puzzle; verbose=true)
+
+Estimate the total number of valid solutions for a given [`Eternity2Puzzle`](@ref), based on
+a probability model for edge matching puzzles developed by Brendan Owen.
+
+Pre-placed pieces on the board are considered to be additional constraints that must be
+satisfied in a solution.
+
+If the `verbose` keyword argument is enabled, the estimated number of partial solutions gets
+printed after each placed piece (assuming a rowscan search order starting at the bottom left
+corner).
+
+Return the number of solutions as a BigFloat.
+
+!!! note
+    It can take around 2-3 minutes to calculate the number of solutions for the full 16x16
+    Eternity II puzzle.
+
+# References
+
+https://groups.io/g/eternity2/message/5209
+"""
+function estimate_solutions(puzzle::Eternity2Puzzle; verbose=false)
+    nrows, ncols = size(puzzle)
+    pieces, frame_colors_range, inner_colors_range = remap_piece_colors(puzzle)
+
+    # Number of different frame and inner color types
+    frame_colors = length(frame_colors_range)
+    inner_colors = length(inner_colors_range)
+
+    # Number of frame joins and inner joins for each color
+    frame_joins = Int[count(isequal(color), pieces)/2 for color in frame_colors_range]
+    inner_joins = Int[count(isequal(color), pieces)/2 for color in inner_colors_range]
+
+    # Number of frame joins and inner joins on the board
+    total_frame_joins = 2 * (nrows - 1) + 2 * (ncols - 1)
+    total_inner_joins = (nrows - 1) * (ncols - 2) + (nrows - 2) * (ncols - 1)
+
+    @assert sum(frame_joins) >= total_frame_joins
+    @assert sum(inner_joins) >= total_inner_joins
+
+    # Number of corner, edge and inner tiles
+    # TODO allow more puzzle pieces than tiles on the board
+    total_corner_tiles = 4
+    total_edge_tiles = 2 * (nrows - 2) + 2 * (ncols - 2)
+    total_inner_tiles = (nrows - 2) * (ncols - 2)
+
+    # Number of pre-placed corner, edge and inner pieces
+    fixed_corner_tiles = count(!=(0x0000), [puzzle.board[pos...] for pos in [(1, 1), (1, ncols), (nrows, 1), (nrows, ncols)]])
+    fixed_edge_tiles = count(!=(0x0000), Iterators.flatten([puzzle.board[1, 2:end-1], puzzle.board[end, 2:end-1], puzzle.board[2:end-1, 1], puzzle.board[2:end-1, end]]))
+    fixed_inner_tiles = count(!=(0x0000), puzzle.board[2:end-1, 2:end-1])
+
+    # Vb(i, b) = Number of valid configurations of b frame joins can be made using 2b edges of colors 1 to i
+    Vb = OffsetArrays.Origin(0)(zeros(BigFloat, frame_colors + 1, total_frame_joins + 1))
+    Vb[0, 0] = 1.0
+    for i = 1:frame_colors, b = 0:total_frame_joins
+        Vb[i, b] = sum(Vb[i-1, b-j] * perm(frame_joins[i], j)^2 * comb(b, j) for j = 0:b)
+    end
+
+    # Vm(i, m) = Number of valid configurations of m inner joins can be made using 2m edges of colors 1 to i
+    Vm = OffsetArrays.Origin(0)(zeros(BigFloat, inner_colors + 1, total_inner_joins + 1))
+    Vm[0, 0] = 1.0
+    for i = 1:inner_colors, m = 0:total_inner_joins
+        Vm[i, m] = sum(Vm[i-1, m-j] * perm(2 * inner_joins[i], 2j) * comb(m, j) for j = 0:m)
+    end
+
+    estimated_solutions = 1.0
+
+    if verbose  # Estimate the number of partial solutions after each placed piece
+        fixed_positions = [(row, col) for row = 1:nrows for col = 1:ncols if !iszero(puzzle.board[row, col])]
+        empty_positions = [(row, col) for row = nrows:-1:1 for col = 1:ncols if iszero(puzzle.board[row, col])]  # rowscan
+        search_path = vcat(fixed_positions, empty_positions)
+        board = zeros(Int, nrows, ncols)
+
+        for placed_pieces = 1:nrows*ncols
+            row, col = search_path[placed_pieces]
+            board[row, col] = placed_pieces
+            if placed_pieces > fixed_corner_tiles + fixed_edge_tiles + fixed_inner_tiles
+                placed_corner_pieces = count(>(0), [board[pos...] for pos in [(1, 1), (1, ncols), (nrows, 1), (nrows, ncols)]])
+                placed_edge_pieces = count(>(0), Iterators.flatten([board[1, 2:end-1], board[end, 2:end-1], board[2:end-1, 1], board[2:end-1, end]]))
+                placed_inner_pieces = count(>(0), board[2:end-1, 2:end-1])
+                b = 0  # Completed frame joins
+                m = 0  # Completed inner joins
+                for row = 1:nrows-1
+                    if board[row, 1] > 0 && board[row+1, 1] > 0
+                        b += 1
+                    end
+                    if board[row, ncols] > 0 && board[row+1, ncols] > 0
+                        b += 1
+                    end
+                    for col = 2:ncols-1
+                        if board[row, col] > 0 && board[row+1, col] > 0
+                            m += 1
+                        end
+                    end
+                end
+                for col = 1:ncols-1
+                    if board[1, col] > 0 && board[1, col+1] > 0
+                        b += 1
+                    end
+                    if board[nrows, col] > 0 && board[nrows, col+1] > 0
+                        b += 1
+                    end
+                    for row = 2:nrows-1
+                        if board[row, col] > 0 && board[row, col+1] > 0
+                            m += 1
+                        end
+                    end
+                end
+
+                # Number of corner piece configurations
+                cc = perm(total_corner_tiles - fixed_corner_tiles, placed_corner_pieces - fixed_corner_tiles)
+                # Number of edge piece configurations
+                ec = perm(total_edge_tiles - fixed_edge_tiles, placed_edge_pieces - fixed_edge_tiles)
+                # Number of inner piece configurations
+                ic = perm(total_inner_tiles - fixed_inner_tiles, placed_inner_pieces - fixed_inner_tiles) * 4.0^(placed_inner_pieces - fixed_inner_tiles)
+                # Number of piece configurations
+                total_configurations = cc * ec * ic
+                # Probability b valid joins are made using 2b frame edges
+                pb = Vb[frame_colors, b] / perm(total_frame_joins, b)^2
+                # Probability m valid joins are made using 2m inner edges
+                pm = Vm[inner_colors, m] / perm(2 * total_inner_joins, 2 * m)
+                estimated_solutions = total_configurations * pb * pm
+            end
+            println("$placed_pieces   $estimated_solutions")
+        end
+    else
+        corner_tiles = total_corner_tiles - fixed_corner_tiles
+        edge_tiles = total_edge_tiles - fixed_edge_tiles
+        inner_tiles = total_inner_tiles - fixed_inner_tiles
+        # Number of piece configurations
+        total_configurations = perm(corner_tiles, corner_tiles) * perm(edge_tiles, edge_tiles) * perm(inner_tiles, inner_tiles) * 4.0^inner_tiles
+        # Probability for all frame joins are valid
+        pb = Vb[frame_colors, total_frame_joins] / perm(total_frame_joins, total_frame_joins)^2
+        # Probability for all inner joins are valid
+        pm = Vm[inner_colors, total_inner_joins] / perm(2 * total_inner_joins, 2 * total_inner_joins)
+        estimated_solutions = total_configurations * pb * pm
+    end
+    return estimated_solutions
+end
+
+
 """
     get_color_constraints(puzzle::Eternity2Puzzle, row::Integer, col::Integer)
 

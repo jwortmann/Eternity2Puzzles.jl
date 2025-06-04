@@ -4,6 +4,7 @@ using Colors
 import DelimitedFiles
 import GameZero
 import NativeFileDialog
+import OffsetArrays
 import PNGFiles
 import Random
 using Scratch: @get_scratch!
@@ -14,6 +15,7 @@ export SimpleBacktrackingSearch
 export HeuristicBacktrackingSearch
 export RecursiveBacktrackingSearch
 export initialize_pieces
+export estimate_solutions
 export generate_pieces
 export play
 export preview
