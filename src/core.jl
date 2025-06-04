@@ -505,8 +505,8 @@ function remap_piece_colors(puzzle::Eternity2Puzzle)
 end
 
 
-# Number of k-permutations of n (as BigFloat); perm(n, k) = n!/(n-k)!
-perm(n, k) = prod(n-k+1:n; init=big(1.0))
+# Number of k-permutations of n (as Float128); perm(n, k) = n!/(n-k)!
+perm(n, k) = prod(n-k+1:n; init=Float128(1.0))
 
 # Number of k-combinations of n; comb(n, k) = n!/((n-k)!k!)
 comb(n, k) = prod((n+1-i)/i for i = 1:min(k, n-k); init=1.0)
@@ -526,11 +526,7 @@ If the `verbose` keyword argument is enabled, the estimated number of partial so
 printed after each placed piece (assuming a rowscan search order starting at the bottom left
 corner).
 
-Return the number of solutions as a BigFloat.
-
-!!! note
-    It can take around 2-3 minutes to calculate the number of solutions for the full 16x16
-    Eternity II puzzle.
+Return the number of solutions as a Float128.
 
 # References
 
@@ -567,14 +563,14 @@ function estimate_solutions(puzzle::Eternity2Puzzle; verbose=false)
     fixed_inner_tiles = count(!=(0x0000), puzzle.board[2:end-1, 2:end-1])
 
     # Vb(i, b) = Number of valid configurations of b frame joins can be made using 2b edges of colors 1 to i
-    Vb = OffsetArrays.Origin(0)(zeros(BigFloat, frame_colors + 1, total_frame_joins + 1))
+    Vb = OffsetArrays.Origin(0)(zeros(Float128, frame_colors + 1, total_frame_joins + 1))
     Vb[0, 0] = 1.0
     for i = 1:frame_colors, b = 0:total_frame_joins
         Vb[i, b] = sum(Vb[i-1, b-j] * perm(frame_joins[i], j)^2 * comb(b, j) for j = 0:b)
     end
 
     # Vm(i, m) = Number of valid configurations of m inner joins can be made using 2m edges of colors 1 to i
-    Vm = OffsetArrays.Origin(0)(zeros(BigFloat, inner_colors + 1, total_inner_joins + 1))
+    Vm = OffsetArrays.Origin(0)(zeros(Float128, inner_colors + 1, total_inner_joins + 1))
     Vm[0, 0] = 1.0
     for i = 1:inner_colors, m = 0:total_inner_joins
         Vm[i, m] = sum(Vm[i-1, m-j] * perm(2 * inner_joins[i], 2j) * comb(m, j) for j = 0:m)
