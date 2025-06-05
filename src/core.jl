@@ -562,18 +562,39 @@ function estimate_solutions(puzzle::Eternity2Puzzle; verbose=false)
     fixed_edge_tiles = count(!=(0x0000), Iterators.flatten([puzzle.board[1, 2:end-1], puzzle.board[end, 2:end-1], puzzle.board[2:end-1, 1], puzzle.board[2:end-1, end]]))
     fixed_inner_tiles = count(!=(0x0000), puzzle.board[2:end-1, 2:end-1])
 
+    # Precomputed table with number of k-permutations of n
+    nmax = max(maximum(frame_joins), 2*maximum(inner_joins))
+    kmax = max(total_frame_joins, 2*total_inner_joins)
+    P = OffsetArrays.Origin(0)(zeros(Float128, nmax+1, kmax+1))
+    for n = 0:nmax, k = 0:n
+        P[n, k] = perm(n, k)
+    end
+
+    # Precomputed table with number of k-combinations of n (Pascal's triangle)
+    nmax = max(total_frame_joins, total_inner_joins)
+    C = OffsetArrays.Origin(0)(zeros(Float128, nmax+1, nmax+1))
+    for n = 0:nmax, k = 0:n
+        C[n, k] = comb(n, k)
+    end
+
     # Vb(i, b) = Number of valid configurations of b frame joins can be made using 2b edges of colors 1 to i
     Vb = OffsetArrays.Origin(0)(zeros(Float128, frame_colors + 1, total_frame_joins + 1))
     Vb[0, 0] = 1.0
-    for i = 1:frame_colors, b = 0:total_frame_joins
-        Vb[i, b] = sum(Vb[i-1, b-j] * perm(frame_joins[i], j)^2 * comb(b, j) for j = 0:b)
+    for i = 1:frame_colors
+        n = frame_joins[i]
+        for b = 0:total_frame_joins
+            Vb[i, b] = sum(Vb[i-1, b-j] * P[n, j]^2 * C[b, j] for j = 0:min(n, b))
+        end
     end
 
     # Vm(i, m) = Number of valid configurations of m inner joins can be made using 2m edges of colors 1 to i
     Vm = OffsetArrays.Origin(0)(zeros(Float128, inner_colors + 1, total_inner_joins + 1))
     Vm[0, 0] = 1.0
-    for i = 1:inner_colors, m = 0:total_inner_joins
-        Vm[i, m] = sum(Vm[i-1, m-j] * perm(2 * inner_joins[i], 2j) * comb(m, j) for j = 0:m)
+    for i = 1:inner_colors
+        n = inner_joins[i]
+        for m = 0:total_inner_joins
+            Vm[i, m] = sum(Vm[i-1, m-j] * P[2n, 2j] * C[m, j] for j = 0:min(n, m))
+        end
     end
 
     estimated_solutions = 1.0
