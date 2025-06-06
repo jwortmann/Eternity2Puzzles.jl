@@ -42,7 +42,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
     npieces = size(puzzle.pieces, 1)
     ncolors = border_color = length(unique(puzzle.pieces))
 
-    @assert all(isequal(0x0000), puzzle.board) "Initial board must be empty"
+    @assert iszero(puzzle.board) "Initial board must be empty"
     @assert npieces >= nrows * ncols "Number of pieces is incompatible with the board dimensions"
 
     pieces, _, _ = remap_piece_colors(puzzle)
