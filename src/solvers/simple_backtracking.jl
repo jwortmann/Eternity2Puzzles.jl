@@ -47,7 +47,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
 
     pieces, _, _ = remap_piece_colors(puzzle)
 
-    colors = Matrix{UInt8}(undef, npieces << 2 | 3, 2)
+    colors = FixedSizeMatrix{UInt8}(undef, npieces << 2 | 3, 2)
     colors[0x0001, :] .= border_color
     colors[0x0002, :] .= border_color + 1
 
@@ -64,8 +64,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
             Random.shuffle!(_candidates[idx])
         end
     end
-    candidates = Vector{UInt16}(undef, mapreduce(length, +, _candidates))
-    index_table = Matrix{UnitRange{Int}}(undef, ncolors+1, ncolors+1)
+    candidates = FixedSizeVector{UInt16}(undef, mapreduce(length, +, _candidates))
+    index_table = FixedSizeMatrix{UnitRange{Int}}(undef, ncolors+1, ncolors+1)
     idx = 1
     for left = 1:ncolors+1, bottom = 1:ncolors+1
         start_idx = idx
@@ -77,25 +77,35 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
         index_table[left, bottom] = start_idx:end_idx
     end
 
-    board = fill(0x0002, nrows + 1, ncols + 1)
+    board = FixedSizeMatrix{UInt16}(undef, nrows+1, ncols+1)
+    fill!(board, 0x0002)
     board[2:end-2, 1] .= 0x0001
     board[end, 3:end-1] .= 0x0001
     board[1:end-1, 2:end] .= 0x0000
 
-    rowcol = if ncols <= nrows
-        [(row, col + 1) for row = nrows:-1:1 for col = 1:ncols]  # rowscan
-    else
-        [(row, col + 1) for col = 1:ncols for row = nrows:-1:1]  # colscan
+    rowcol = FixedSizeVector{NTuple{2, Int}}(undef, nrows*ncols)
+    idx = 1
+    if ncols <= nrows  # scan rows
+        for row = nrows:-1:1, col = 1:ncols
+            rowcol[idx] = (row, col+1)
+            idx += 1
+        end
+    else  # scan columns
+        for col = 1:ncols, row = nrows:-1:1
+            rowcol[idx] = (row, col+1)
+            idx += 1
+        end
     end
 
-    available = fill(true, npieces)
-    idx_range = Vector{UnitRange{Int}}(undef, nrows*ncols)
+    available = FixedSizeVector{Bool}(undef, npieces)
+    fill!(available, true)
+    idx_range = FixedSizeVector{UnitRange{Int}}(undef, nrows*ncols)
 
     depth = 1
     best_depth = 0
     row, col = rowcol[1]
-    left = colors[board[row, col - 1], 2]
-    bottom = colors[board[row + 1, col], 1]
+    left = colors[board[row, col-1], 2]
+    bottom = colors[board[row+1, col], 1]
     _idx_range = index_table[left, bottom]
 
     iters = 0
@@ -123,8 +133,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
             idx_range[depth] = idx+1:_idx_range.stop
             depth += 1
             row, col = rowcol[depth]
-            left = colors[board[row, col - 1], 2]
-            bottom = colors[board[row + 1, col], 1]
+            left = colors[board[row, col-1], 2]
+            bottom = colors[board[row+1, col], 1]
             _idx_range = index_table[left, bottom]
             @goto next
         end

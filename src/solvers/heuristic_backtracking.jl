@@ -110,11 +110,13 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
     # corner pieces from being placed at the non-corner positions of the frame and ensures
     # that only corner pieces are considered for the corner positions, without the need for
     # special cases for the corner positions within the loops.
-    board = fill(0x0002, nrows+1, ncols+1)
+    board = FixedSizeMatrix{UInt16}(undef, nrows+1, ncols+1)
+    fill!(board, 0x0002)
     board[nrows+1, 3:ncols] .= 0x0001  # non-corner sides bottom frame pieces
     board[2:nrows-1, 1] .= 0x0001  # non-corner sides left frame pieces
-    available = fill(true, npieces)
-    state = Vector{NTuple{4, Int}}(undef, maxdepth)
+    available = FixedSizeVector{Bool}(undef, npieces)
+    fill!(available, true)
+    state = FixedSizeVector{NTuple{4, Int}}(undef, maxdepth)
 
     iters = 0  # only the number of piece placements is counted, i.e. half of the total loop iterations
     restarts = 0
@@ -123,7 +125,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
     # Precompute the row/column position for each search depth, as well as the amount of
     # required placed sides with the prioritized colors (for the first half) and allowed
     # errors (for the second half)
-    board_position = Vector{NTuple{3, Int}}(undef, maxdepth)
+    board_position = FixedSizeVector{NTuple{3, Int}}(undef, maxdepth)
     for depth = 1:phase2_depth
         row, col = _parse_position(search_order[depth])
         min_placed_sides = floor(Int, clamp((required_prioritized_sides + 300)/(1 + exp(-0.02 * (depth + 22))) - 280, 0, required_prioritized_sides))
@@ -167,8 +169,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
         last_restart = iters
 
         row, col, min_placed_sides = board_position[depth]
-        left = colors[board[row, col - 1], 2]
-        bottom = colors[board[row + 1, col], 1]
+        left = colors[board[row, col-1], 2]
+        bottom = colors[board[row+1, col], 1]
         start_index, end_index, _ = index_table[left, bottom]
 
         @inbounds while depth < allowed_error_depths[1]
@@ -191,8 +193,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
                 depth += 1
                 iters += 1
                 row, col, min_placed_sides = board_position[depth]
-                left = colors[board[row, col - 1], 2]
-                bottom = colors[board[row + 1, col], 1]
+                left = colors[board[row, col-1], 2]
+                bottom = colors[board[row+1, col], 1]
                 start_index, end_index, _ = index_table[left, bottom]
                 piece_found = true
                 break
@@ -235,8 +237,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
         depth = phase2_depth
 
         row, col, max_errors = board_position[depth]
-        left = colors[board[row, col - 1], 2]
-        bottom = colors[board[row + 1, col], 1]
+        left = colors[board[row, col-1], 2]
+        bottom = colors[board[row+1, col], 1]
         start_index, end_index1, end_index2 = index_table[left, bottom]
         errors = 0
 
@@ -250,7 +252,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
                 available[piece] || continue
                 board[row, col] = value
                 available[piece] = false
-                state[depth] = (idx + 1, end_index1, end_index2, errors)
+                state[depth] = (idx+1, end_index1, end_index2, errors)
                 iters += 1
                 if idx > end_index1
                     errors += 1
@@ -262,8 +264,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
                 end
                 depth += 1
                 row, col, max_errors = board_position[depth]
-                left = colors[board[row, col - 1], 2]
-                bottom = colors[board[row + 1, col], 1]
+                left = colors[board[row, col-1], 2]
+                bottom = colors[board[row+1, col], 1]
                 start_index, end_index1, end_index2 = index_table[left, bottom]
                 if errors == max_errors
                     end_index2 = end_index1
@@ -292,11 +294,11 @@ _parse_position(pos::String) = pos[1] - 'A' + 1, parse(Int, pos[2:end])
 # there are only 5 different frame colors (4 if one color was already eliminated), so the
 # frame pieces are expected to tile relatively well.
 function _prepare_candidates_table(
-    pieces::Matrix{UInt8},
+    pieces::AbstractMatrix{UInt8},
     inner_colors::UnitRange{Int},
     ncolors::Int,
-    available::Vector{Bool};
-    prioritized_colors::Vector{Int} = Int[],
+    available::AbstractVector{Bool};
+    prioritized_colors::AbstractVector{Int} = Int[],
     shuffle::Bool = true,
     allow_errors::Bool = false
 )
@@ -361,8 +363,8 @@ function _prepare_candidates_table(
     # matches to improve memory locality. The tuple values of the index table are the start
     # index, the end index for the exactly matching pieces, and the end index for the partly
     # matching pieces.
-    candidates = Vector{UInt16}(undef, total_candidates)
-    index_table = Matrix{NTuple{3, Int}}(undef, ncolors + 2, bottom_colors)
+    candidates = FixedSizeVector{UInt16}(undef, total_candidates)
+    index_table = FixedSizeMatrix{NTuple{3, Int}}(undef, ncolors+2, bottom_colors)
     idx = 1
     for left = 1:ncolors+2, bottom = 1:bottom_colors
         idx1 = idx
@@ -379,7 +381,7 @@ function _prepare_candidates_table(
         index_table[left, bottom] = (idx1, idx2, idx3)
     end
 
-    return (candidates, index_table)
+    return candidates, index_table
 end
 
 

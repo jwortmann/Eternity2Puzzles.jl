@@ -2,6 +2,7 @@ module Eternity2Puzzles
 
 using Colors
 import DelimitedFiles
+using FixedSizeArrays
 import GameZero
 import NativeFileDialog
 import OffsetArrays
