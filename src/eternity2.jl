@@ -47,9 +47,9 @@ const BACKGROUND, BOARD_BOUNDING_BOX, puzzle = if (NROWS, NCOLS) == (16, 16)
     end
     ("background.png", BoundingBox(61, 61, 844, 844), Eternity2Puzzle(board, _pieces))
 elseif (NROWS, NCOLS) == (6, 6)
-    ("background_6x6.png", BoundingBox(306, 306, 598, 598), Eternity2Puzzle(board, _get_pieces(:clue1)))
+    ("background_6x6.png", BoundingBox(306, 306, 598, 598), Eternity2Puzzle(board, _get_pieces(:clue1)[1]))
 elseif (NROWS, NCOLS) == (6, 12)
-    ("background_6x12.png", BoundingBox(159, 306, 745, 598), Eternity2Puzzle(board, _get_pieces(:clue2)))
+    ("background_6x12.png", BoundingBox(159, 306, 745, 598), Eternity2Puzzle(board, _get_pieces(:clue2)[1]))
 else
     error("Unsupported board dimensions")
 end

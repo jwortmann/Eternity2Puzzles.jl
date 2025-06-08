@@ -9,30 +9,46 @@ abstract type Eternity2Solver end
 
 """
     Eternity2Puzzle()
-    Eternity2Puzzle(nrows::Int, ncols::Int; pieces::Union{Matrix{Int}, String, Symbol})
-    Eternity2Puzzle(filename::String; pieces::Union{Matrix{Int}, String, Symbol})
+    Eternity2Puzzle(; starter_piece::Bool = true, hint_pieces::Bool = false)
+    Eternity2Puzzle(pieces::Symbol)
+    Eternity2Puzzle(pieces::String)
+    Eternity2Puzzle(nrows::Int, ncols::Int)
+    Eternity2Puzzle(nrows::Int, ncols::Int, pieces::Union{Symbol, String, Matrix{Int}}; board::String)
 
-Create a puzzle board with `nrows` rows and `ncols` columns (by default 16×16).
-Alternatively, a `filename` can be passed to load an existing solution or a partially
-filled board from a file in `.et2` format.
 
-The optional `pieces` keyword argument can be the name of a piece definitions file, an
-n×4 matrix, where n is the total amount of pieces, specifying the edge color numbers for
-each piece in the format outlined in the README, or one of the predefined symbols
-`:meta_16x16`, `:meta_14x14`, `:meta_12x12`, `:meta_10x10`, `:clue1`, `:clue2`, `:clue4`.
-The amount of pieces must be compatible with the board dimensions. If `pieces` is not
-provided, the piece definitions are loaded from the cache (see [`initialize_pieces`](@ref)).
+The `Eternity2Puzzle` type represents a puzzle instance consisting of the piece definitions
+and the pieces configuration on the board.
 
-`Eternity2Puzzle` has two fields; `board` and `pieces`. `board` contains the piece numbers
-and rotations for each row/column position of the board in form of a `Matrix{UInt16}`, where
-the first 14 bits in each entry represent the piece number and the last 2 bits are used for
-the rotation in clockwise direction. By convention `0x0000` is used for empty positions on
-the board.
+The constructor can be called in different ways:
 
-The piece number and rotation at a given row and column can also be obtained as a tuple of
-two integers by indexing the `Eternity2Puzzle` struct directly. For example the number and
-rotation of the pre-placed starter-piece at row 9, column 8 of the original Eternity II
-puzzle are:
+The default constructor without arguments creates a puzzle with 16 rows and 16 columns and
+with the original Eternity II pieces. The keyword arguments `starter_piece` and
+`hint_pieces` control whether the mandatory starter-piece and the four hint pieces from the
+clue puzzles 1-4 should be pre-placed on the board. A solution or a partially filled board
+can be loaded with the `board` keyword argument, which should be the filepath to a file in
+`.et2` format. If a `board` is provided, the `starter_piece` and `hint_pieces` arguments are
+ignored.
+
+The board size can be adjusted by passing two integer arguments `nrows` and `ncols`.
+A different set of pieces with corresponding board size can be used by passing
+ - one of the predefined symbols `:meta_16x16`, `:meta_14x14`, `:meta_12x12`, `:meta_10x10`,
+   `:clue1`, `:clue2`, `:clue4`
+ - the filepath to a file containing the edge color numbers for the pieces as outlined in
+   the README
+ - or a `Matrix{Int}` in the same format (in this case `nrows` and `ncols` must also be
+   given as input arguments)
+
+The `Eternity2Puzzle` type has two fields; `board` and `pieces`. `board` contains the piece
+numbers and rotations for each row/column position of the board in form of a
+`Matrix{UInt16}`, where the first 14 bits in each entry represent the piece number and the
+last 2 bits are used for the rotation in clockwise direction. By convention the value `0` is
+used for empty positions on the board. `pieces` is a `Matrix{UInt8}` with rows containing
+the four color numbers for all of the pieces.
+
+The piece number and rotation at a given row and column on the board can also be obtained as
+a tuple of two integers by indexing the `Eternity2Puzzle` type directly. For example, the
+number and rotation of the pre-placed starter-piece on square I8 (row 9, column 8) of the
+original Eternity II puzzle are:
 
 # Examples
 
@@ -41,99 +57,74 @@ julia> puzzle = Eternity2Puzzle()
 16×16 Eternity2Puzzle with 1 piece:
 ...
 
-julia> puzzle[9, 8]  # Get the piece number and rotation at row 9, column 8
+julia> puzzle[9, 8]  # Get number and rotation of the piece on square I8 (row 9, column 8)
 (139, 2)
-
-julia> puzzle[3, 3] = (208, 3)  # Assign piece 208 with a 270° rotation to row 3, column 3
 ```
 
 Note that assigning and obtaining the piece values by indexing `Eternity2Puzzle` directly is
 not optimized for performance, i.e. it is not recommended to be used in a hot loop.
 """
 struct Eternity2Puzzle
-    board::Matrix{UInt16}  # nrows × ncols
-    pieces::Matrix{UInt8}  # npieces × 4
-end
-
-function Eternity2Puzzle(; starter_piece::Bool = true, hint_pieces::Bool = false)
-    # The Eternity2Puzzle constructor without positional arguments returns the regular
-    # Eternity II board with 16 rows and 16 columns, and with the mandatory starter-piece
-    # pre-placed. The pieces definitions are loaded from cache if they are compatible with
-    # the board dimensions, and otherwise it uses the pieces from the META 2010 benchmark
-    # problem.
-    board = zeros(UInt16, 16, 16)
-    if starter_piece
-        board[9, 8] = 139 << 2 | 2    # I8
-    end
-    if hint_pieces
-        board[14, 3] = 181 << 2 | 3   # N3  (Clue Puzzle 1)
-        board[3, 14] = 255 << 2 | 3   # C14 (Clue Puzzle 2)
-        board[14, 14] = 249 << 2 | 0  # N14 (Clue Puzzle 3)
-        board[3, 3] = 208 << 2 | 3    # C3  (Clue Puzzle 4)
-    end
-    cache_file = joinpath(@get_scratch!("eternity2"), "pieces.txt")
-    if !isfile(cache_file)
-        @warn "Puzzle pieces are undefined - using predefined pieces instead"
-        pieces = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16.txt"), UInt8)
-        return Eternity2Puzzle(board, pieces)
-    end
-    pieces = DelimitedFiles.readdlm(cache_file, UInt8)
-    if size(pieces, 1) != 256
-        @warn "Cached puzzle pieces are incompatible with the board dimensions - using predefined pieces instead"
-        pieces = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16.txt"), UInt8)
-        return Eternity2Puzzle(board, pieces)
-    end
-    return Eternity2Puzzle(board, pieces)
+    board::Matrix{UInt16}  # nrows x ncols
+    pieces::Matrix{UInt8}  # npieces x 4
 end
 
 function Eternity2Puzzle(
     nrows::Integer,
-    ncols::Integer;
-    pieces::Union{AbstractMatrix{<:Integer}, AbstractString, Symbol} = :cached,
-    starter_piece::Bool = true
+    ncols::Integer,
+    pieces::Union{Symbol, AbstractString, AbstractMatrix{<:Integer}} = :cached;
+    starter_piece::Bool = true,
+    hint_pieces::Bool = false,
+    board::AbstractString = ""
 )
-    _pieces = _get_pieces(pieces)
+    _pieces, _, _ = _get_pieces(pieces)
     npieces = size(_pieces, 1)
-    npieces >= nrows * ncols || error("The number of pieces ($npieces) is incompatible with the board dimensions $nrows x $ncols - call initialize_pieces first")
-    board = zeros(UInt16, nrows, ncols)
-    if starter_piece && nrows == ncols == 16
-        board[9, 8] = STARTER_PIECE << 2 | 2  # I8
+    @assert npieces >= nrows * ncols "Not enough pieces for given board size"
+    _board = isempty(board) ? zeros(UInt16, nrows, ncols) : _load(board)
+    @assert size(_board) == (nrows, ncols) "Input file incompatible with given board size"
+    @assert maximum(_board .>> 2) <= npieces "Board contains invalid piece number"
+    if isempty(board) && nrows == ncols == 16
+        if starter_piece
+            _board[9, 8] = 139 << 2 | 2    # I8
+        end
+        if hint_pieces
+            _board[14, 3] = 181 << 2 | 3   # N3  (Clue Puzzle 1)
+            _board[3, 14] = 255 << 2 | 3   # C14 (Clue Puzzle 2)
+            _board[14, 14] = 249 << 2 | 0  # N14 (Clue Puzzle 3)
+            _board[3, 3] = 208 << 2 | 3    # C3  (Clue Puzzle 4)
+        end
     end
-    return Eternity2Puzzle(board, _pieces)
+    return Eternity2Puzzle(_board, _pieces)
 end
 
 function Eternity2Puzzle(
-    filename::AbstractString;
-    pieces::Union{AbstractMatrix{<:Integer}, AbstractString, Symbol} = :cached
+    pieces::Union{Symbol, AbstractString, AbstractMatrix{<:Integer}} = :cached;
+    starter_piece::Bool = true,
+    hint_pieces::Bool = false,
+    board::AbstractString = ""
 )
-    board = _load(filename)
-    nrows, ncols = size(board)
-    _pieces = _get_pieces(pieces)
+    _pieces, nrows, ncols = _get_pieces(pieces)
     npieces = size(_pieces, 1)
-    npieces >= nrows * ncols || error("The number of pieces ($npieces) is incompatible with the board dimensions $nrows x $ncols - call initialize_pieces first")
-    return Eternity2Puzzle(board, _pieces)
-end
-
-function Eternity2Puzzle(pieces::Symbol)
-    board = if pieces == :meta_16x16
-        zeros(UInt16, 16, 16)
-    elseif pieces == :meta_14x14
-        zeros(UInt16, 14, 14)
-    elseif pieces == :meta_12x12
-        zeros(UInt16, 12, 12)
-    elseif pieces == :meta_10x10
-        zeros(UInt16, 10, 10)
-    elseif pieces == :clue1
-        zeros(UInt16, 6, 6)
-    elseif pieces == :clue2
-        zeros(UInt16, 6, 12)
-    elseif pieces == :clue4
-        zeros(UInt16, 6, 12)
+    if isempty(board)
+        @assert nrows > 0 && ncols > 0 "Board size undefined"
+        _board = zeros(UInt16, nrows, ncols)
     else
-        error("Unknown option :$pieces")
+        _board = _load(board)
     end
-    _pieces = _get_pieces(pieces)
-    return Eternity2Puzzle(board, _pieces)
+    @assert size(_pieces, 1) >= prod(size(_board)) "Not enough pieces for given board size"
+    @assert maximum(_board .>> 2) <= npieces "Board contains invalid piece number"
+    if isempty(board) && nrows == ncols == 16
+        if starter_piece
+            _board[9, 8] = 139 << 2 | 2    # I8
+        end
+        if hint_pieces
+            _board[14, 3] = 181 << 2 | 3   # N3  (Clue Puzzle 1)
+            _board[3, 14] = 255 << 2 | 3   # C14 (Clue Puzzle 2)
+            _board[14, 14] = 249 << 2 | 0  # N14 (Clue Puzzle 3)
+            _board[3, 3] = 208 << 2 | 3    # C3  (Clue Puzzle 4)
+        end
+    end
+    return Eternity2Puzzle(_board, _pieces)
 end
 
 
@@ -146,7 +137,7 @@ function Base.show(io::IO, ::MIME"text/plain", puzzle::Eternity2Puzzle)
     else
         "$nrows×$ncols Eternity2Puzzle with $placed_pieces $(placed_pieces == 1 ? "piece" : "pieces"):"
     end
-    grid = join([join([val != 0x0000 ? "$(lpad(val >> 2, 4))/$(val & 3)" : " ---/-" for val in row]) for row in eachrow(puzzle.board)], "\n")
+    grid = join([join([iszero(val) ? " ---/-" : "$(lpad(val >> 2, 4))/$(val & 3)" for val in row]) for row in eachrow(puzzle.board)], "\n")
     println(io, header * "\n" * grid)
 end
 
@@ -167,11 +158,11 @@ function Base.show(io::IO, ::MIME"image/png", puzzle::Eternity2Puzzle)
             img[:, 49 * col + 1] .= white
         end
     end
-    if count(@. 0 < puzzle.board >> 2 <= nrows * ncols) > 0
+    if !iszero(puzzle.board)
         dark_gray = colorant"#323135"
         for col = 1:ncols, row = 1:nrows
             value = puzzle.board[row, col]
-            value >> 2 == 0x0000 && continue
+            iszero(value) && continue
             piece = value >> 2
             rotation = value & 3
             x = 49 * col - 47
@@ -200,7 +191,7 @@ end
 
 function Base.getindex(puzzle::Eternity2Puzzle, inds...)
     value = puzzle.board[inds...]
-    return (Int(value >> 2), value & 3)
+    return Int(value >> 2), value & 3
 end
 
 function Base.setindex!(puzzle::Eternity2Puzzle, value::UInt16, inds...)
@@ -235,44 +226,57 @@ end
 
 
 function find(puzzle::Eternity2Puzzle, piece::Integer)
-    piece in puzzle || return (0, 0)
     nrows, ncols = size(puzzle)
     for col = 1:ncols, row = 1:nrows
         if puzzle.board[row, col] >> 2 == piece
-            return (row, col)
+            return row, col
         end
     end
+    return 0, 0
 end
 
-
-_get_pieces(pieces::AbstractString) = parse_pieces(pieces)
-_get_pieces(pieces::AbstractMatrix{<:Integer}) = pieces
 
 function _get_pieces(pieces::Symbol)
     if pieces == :cached
         cache_file = joinpath(@get_scratch!("eternity2"), "pieces.txt")
         if isfile(cache_file)
-            return DelimitedFiles.readdlm(cache_file, UInt8)
+            return DelimitedFiles.readdlm(cache_file, UInt8), 16, 16
         end
         @warn "Puzzle pieces are undefined - using predefined pieces instead"
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
+        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16.txt"), UInt8), 16, 16
     elseif pieces == :meta_16x16
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16.txt"), UInt8)
+        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16.txt"), UInt8), 16, 16
     elseif pieces == :meta_14x14
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_14x14.txt"), UInt8)
+        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_14x14.txt"), UInt8), 14, 14
     elseif pieces == :meta_12x12
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_12x12.txt"), UInt8)
+        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_12x12.txt"), UInt8), 12, 12
     elseif pieces == :meta_10x10
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_10x10.txt"), UInt8)
+        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_10x10.txt"), UInt8), 10, 10
     elseif pieces == :clue1
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "clue1.txt"), UInt8)
+        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "clue1.txt"), UInt8), 6, 6
     elseif pieces == :clue2
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "clue2.txt"), UInt8)
+        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "clue2.txt"), UInt8), 6, 12
     elseif pieces == :clue4
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "clue4.txt"), UInt8)
+        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "clue4.txt"), UInt8), 6, 12
     end
     error("Unknown option :$pieces")
 end
+
+function _get_pieces(filename::AbstractString)
+    path = abspath(filename)
+    isfile(path) || throw(ArgumentError("No such file $path"))
+    endswith(filename, ".txt") || throw(ArgumentError("Unsupported file format"))
+    pieces_nrows_ncols = try
+        (DelimitedFiles.readdlm(path, UInt8), 0, 0)
+    catch  # The file probably contains a header line
+        nrows, ncols = [parse(Int, n) for n in split(readline(path))]  # Header line
+        (DelimitedFiles.readdlm(path, UInt8, skipstart=1), nrows, ncols)
+    end
+    @assert size(pieces_nrows_ncols[1], 2) == 4 "Unexpected number of columns in file $filename"
+    return pieces_nrows_ncols
+end
+
+_get_pieces(pieces::AbstractMatrix{<:Integer}) = (pieces, 0, 0)
 
 
 function _load(filename::AbstractString)
@@ -316,7 +320,7 @@ See also [`save`](@ref).
 """
 function load!(puzzle::Eternity2Puzzle, filename::AbstractString)
     board = _load(filename)
-    size(puzzle) == size(board) || throw(ArgumentError("Incompatible board dimensions"))
+    @assert size(puzzle) == size(board) "Incompatible board dimensions"
     puzzle.board[:, :] = board
     nothing
 end
@@ -344,7 +348,8 @@ Load the puzzle pieces from an input file, which must be in plain text (.txt) fo
 contain rows with the four colors for each piece. See the package README file for details.
 """
 function initialize_pieces(filename::AbstractString)
-    DelimitedFiles.writedlm(joinpath(@get_scratch!("eternity2"), "pieces.txt"), parse_pieces(filename))
+    pieces, _, _ = _get_pieces(filename)
+    DelimitedFiles.writedlm(joinpath(@get_scratch!("eternity2"), "pieces.txt"), pieces)
     nothing
 end
 
@@ -435,20 +440,6 @@ function score(puzzle::Eternity2Puzzle)
 end
 
 
-function parse_pieces(filename::AbstractString)
-    path = abspath(filename)
-    isfile(path) || throw(ArgumentError("No such file $path"))
-    endswith(filename, ".txt") || throw(ArgumentError("Unsupported file format"))
-    pieces = try
-        DelimitedFiles.readdlm(path, UInt8)
-    catch  # The file probably contains a header row
-        DelimitedFiles.readdlm(path, UInt8, skipstart=1)
-    end
-    size(pieces, 2) == 4 || error("Unexpected number of rows")
-    return pieces
-end
-
-
 """
     remap_piece_colors(puzzle::Eternity2Puzzle)
 
@@ -499,7 +490,7 @@ function remap_piece_colors(puzzle::Eternity2Puzzle)
     frame_colors_range = 1:frame_colors_count
     inner_colors_count = length(inner_colors)
     inner_colors_range = frame_colors_count+1:frame_colors_count+inner_colors_count
-    return (remapped_pieces, frame_colors_range, inner_colors_range)
+    return remapped_pieces, frame_colors_range, inner_colors_range
 end
 
 
@@ -662,7 +653,7 @@ function _count_pieces(board::Matrix{<:Real})
     corner_pieces = count(isnonzero, [board[1, 1], board[end, 1], board[1, end], board[end, end]])
     edge_pieces = count(isnonzero, Iterators.flatten([board[1, 2:end-1], board[end, 2:end-1], board[2:end-1, 1], board[2:end-1, end]]))
     inner_pieces = count(isnonzero, board[2:end-1, 2:end-1])
-    return (corner_pieces, edge_pieces, inner_pieces)
+    return corner_pieces, edge_pieces, inner_pieces
 end
 
 
@@ -696,7 +687,7 @@ function _count_joins(board::Matrix{<:Real})
             end
         end
     end
-    return (frame_joins, inner_joins)
+    return frame_joins, inner_joins
 end
 
 
@@ -704,7 +695,7 @@ end
     get_color_constraints(puzzle::Eternity2Puzzle, row::Integer, col::Integer)
 
 For a given board position return the color constraints of all 4 edges in the order
-[top, right, bottom, left] or `nothing` if there is no adjacent piece in that direction.
+top, right, bottom, left or `nothing` if there is no adjacent piece in that direction.
 """
 function get_color_constraints(puzzle::Eternity2Puzzle, row::Integer, col::Integer)
     nrows, ncols = size(puzzle.board)
@@ -739,7 +730,7 @@ function get_color_constraints(puzzle::Eternity2Puzzle, row::Integer, col::Integ
         val = puzzle.board[row, col + 1]
         right = iszero(val) ? nothing : puzzle.pieces[val >> 2, mod1(4 - val & 3, 4)]
     end
-    return [top, right, bottom, left]
+    return top, right, bottom, left
 end
 
 
