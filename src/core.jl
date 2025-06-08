@@ -730,7 +730,7 @@ function get_color_constraints(puzzle::Eternity2Puzzle, row::Integer, col::Integ
         val = puzzle.board[row, col + 1]
         right = iszero(val) ? nothing : puzzle.pieces[val >> 2, mod1(4 - val & 3, 4)]
     end
-    return top, right, bottom, left
+    return [top, right, bottom, left]
 end
 
 
