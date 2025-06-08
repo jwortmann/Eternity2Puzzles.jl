@@ -18,7 +18,7 @@ SimpleDirectMediaLayer = "98e33af6-2ee5-5afd-9e75-cbc738b767c4"
 
 [compat]
 Colors = "0.12, 0.13"
-DelimitedFiles = "1.10"
+DelimitedFiles = "1.9, 1.10"
 FixedSizeArrays = "1"
 GameZero = "0.3"
 NativeFileDialog = "0.2"
