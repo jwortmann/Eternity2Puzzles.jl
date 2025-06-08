@@ -86,7 +86,7 @@ function solve!(
         seed = floor(Int, 1000 * t0)
         alg = if size(puzzle) == (16, 16) && puzzle[9, 8] == (STARTER_PIECE, 2)
             HeuristicBacktrackingSearch(target_score=460, seed=seed)
-        elseif all(isequal(EMPTY), puzzle.board)
+        elseif iszero(puzzle.board)
             SimpleBacktrackingSearch(seed)
         else
             RecursiveBacktrackingSearch(seed)

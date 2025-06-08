@@ -41,7 +41,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
 
     # Create a lookup table for the colors of the top and right sides for all pieces and
     # rotations.
-    colors = Matrix{UInt8}(undef, size(pieces, 1) << 2 | 3, 2)
+    colors = FixedSizeMatrix{UInt8}(undef, size(pieces, 1) << 2 | 3, 2)
     colors[0x0001, :] .= ncolors + 1  # Special value for the edge pieces
     colors[0x0002, :] .= virtual_border_color  # Special value for the corner pieces
     for (piece, piece_colors) in enumerate(eachrow(pieces)), rotation = 0:3, side = 1:2

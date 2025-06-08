@@ -335,7 +335,7 @@ See also [`load!`](@ref).
 """
 function save(puzzle::Eternity2Puzzle, filename::AbstractString)
     open(filename, "w") do file
-        write(file, join([join([val == 0x0000 ? " ---/-" : "$(lpad(val >> 2, 4))/$(val & 3)" for val in row]) for row in eachrow(puzzle.board)], "\n"))
+        write(file, join([join([iszero(val) ? " ---/-" : "$(lpad(val >> 2, 4))/$(val & 3)" for val in row]) for row in eachrow(puzzle.board)], "\n"))
     end
     nothing
 end
@@ -597,7 +597,7 @@ function estimate_solutions(puzzle::Eternity2Puzzle; verbose=false)
         end
     end
 
-    estimated_solutions = 1.0
+    estimated_solutions::Float128 = 1.0
 
     if verbose  # Estimate the number of partial solutions after each placed piece
         fixed_squares = [(row, col) for row = 1:nrows for col = 1:ncols if !iszero(puzzle.board[row, col])]
@@ -650,8 +650,8 @@ end
 
 function _count_pieces(board::Matrix{<:Real})
     isnonzero = x -> !iszero(x)
-    corner_pieces = count(isnonzero, [board[1, 1], board[end, 1], board[1, end], board[end, end]])
-    edge_pieces = count(isnonzero, Iterators.flatten([board[1, 2:end-1], board[end, 2:end-1], board[2:end-1, 1], board[2:end-1, end]]))
+    corner_pieces = count(isnonzero, board[[1, end], [1, end]])
+    edge_pieces = count(isnonzero, board[2:end-1, [1, end]]) + count(isnonzero, board[[1, end], 2:end-1])
     inner_pieces = count(isnonzero, board[2:end-1, 2:end-1])
     return corner_pieces, edge_pieces, inner_pieces
 end
