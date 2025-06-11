@@ -83,7 +83,7 @@ function Eternity2Puzzle(
     _board = isempty(board) ? zeros(UInt16, nrows, ncols) : _load(board)
     @assert size(_board) == (nrows, ncols) "Input file incompatible with given board size"
     @assert maximum(_board .>> 2) <= npieces "Board contains invalid piece number"
-    if isempty(board) && nrows == ncols == 16
+    if isempty(board) && nrows == ncols == 16 && pieces == :cached
         if starter_piece
             _board[9, 8] = 139 << 2 | 2    # I8
         end
@@ -113,7 +113,7 @@ function Eternity2Puzzle(
     end
     @assert size(_pieces, 1) >= prod(size(_board)) "Not enough pieces for given board size"
     @assert maximum(_board .>> 2) <= npieces "Board contains invalid piece number"
-    if isempty(board) && nrows == ncols == 16
+    if isempty(board) && nrows == ncols == 16 && pieces == :cached
         if starter_piece
             _board[9, 8] = 139 << 2 | 2    # I8
         end
@@ -521,7 +521,7 @@ Return the number of solutions as a Float128.
 
 https://groups.io/g/eternity2/message/5209
 """
-function estimate_solutions(puzzle::Eternity2Puzzle; verbose=false)
+function estimate_solutions(puzzle::Eternity2Puzzle, max_errors::Int = 0; verbose=false)
     nrows, ncols = size(puzzle)
 
     # Number of corner, edge and inner squares on the board
@@ -545,6 +545,11 @@ function estimate_solutions(puzzle::Eternity2Puzzle; verbose=false)
     # Number of pre-placed corner, edge and inner pieces
     fixed_corner_pieces, fixed_edge_pieces, fixed_inner_pieces = _count_pieces(puzzle.board)
 
+    # Number of available (i.e. not pre-placed) corner, edge and inner pieces
+    Cp = corner_pieces - fixed_corner_pieces
+    Ep = edge_pieces - fixed_edge_pieces
+    Ip = inner_pieces - fixed_inner_pieces
+
     pieces, frame_colors_range, inner_colors_range = remap_piece_colors(puzzle)
 
     # Number of different frame and inner color types
@@ -555,12 +560,16 @@ function estimate_solutions(puzzle::Eternity2Puzzle; verbose=false)
     frame_joins = Int[count(isequal(color), pieces)/2 for color in frame_colors_range]
     inner_joins = Int[count(isequal(color), pieces)/2 for color in inner_colors_range]
 
+    # Total number of frame joins and inner joins in the given set of pieces
+    Tb = sum(frame_joins)
+    Tm = sum(inner_joins)
+
     # Number of frame joins and inner joins on the board
     total_frame_joins = 2 * (nrows - 1) + 2 * (ncols - 1)
     total_inner_joins = (nrows - 1) * (ncols - 2) + (nrows - 2) * (ncols - 1)
 
-    @assert sum(frame_joins) >= total_frame_joins
-    @assert sum(inner_joins) >= total_inner_joins
+    @assert Tb >= total_frame_joins
+    @assert Tm >= total_inner_joins
 
     # Precomputed table with number of k-permutations of n
     nmax = max(maximum(frame_joins), 2*maximum(inner_joins))
@@ -597,57 +606,74 @@ function estimate_solutions(puzzle::Eternity2Puzzle; verbose=false)
         end
     end
 
-    estimated_solutions::Float128 = 1.0
-
     if verbose  # Estimate the number of partial solutions after each placed piece
         fixed_squares = [(row, col) for row = 1:nrows for col = 1:ncols if !iszero(puzzle.board[row, col])]
         empty_squares = [(row, col) for row = nrows:-1:1 for col = 1:ncols if iszero(puzzle.board[row, col])]  # rowscan
         search_path = vcat(fixed_squares, empty_squares)
         board = zeros(Int, nrows, ncols)
-
+        estimated_solutions::Float128 = 1.0
         for placed_pieces = 1:nrows*ncols
             row, col = search_path[placed_pieces]
             board[row, col] = placed_pieces
             if placed_pieces > fixed_corner_pieces + fixed_edge_pieces + fixed_inner_pieces
-                # Numbers of pieces on the board
                 placed_corner_pieces, placed_edge_pieces, placed_inner_pieces = _count_pieces(board)
-                # Numbers of joins between pieces on the board
-                completed_frame_joins, completed_inner_joins = _count_joins(board)
-                # Number of corner piece configurations
-                corner_conf = perm(corner_pieces - fixed_corner_pieces, placed_corner_pieces - fixed_corner_pieces)
-                # Number of edge piece configurations
-                edge_conf = perm(edge_pieces - fixed_edge_pieces, placed_edge_pieces - fixed_edge_pieces)
-                # Number of inner piece configurations
-                inner_conf = perm(inner_pieces - fixed_inner_pieces, placed_inner_pieces - fixed_inner_pieces) * 4.0^(placed_inner_pieces - fixed_inner_pieces)
-                # Number of piece configurations
-                total_configurations = corner_conf * edge_conf * inner_conf
-                # Probability of valid frame joins
-                pb = Vb[frame_colors, completed_frame_joins] / perm(sum(frame_joins), completed_frame_joins)^2
-                # Probability of valid inner joins
-                pm = Vm[inner_colors, completed_inner_joins] / perm(2*sum(inner_joins), 2*completed_inner_joins)
-                estimated_solutions = total_configurations * pb * pm
+                c = placed_corner_pieces - fixed_corner_pieces
+                e = placed_edge_pieces - fixed_edge_pieces
+                i = placed_inner_pieces - fixed_inner_pieces
+                b, m = _count_joins(board)
+                Vb_ = Vb[frame_colors, b]
+                Vm_ = Vm[inner_colors, m]
+                estimated_solutions = _partial_solutions(Cp, c, Ep, e, Ip, i, Vb_, Tb, b, Vm_, Tm, m)
             end
             println("$placed_pieces   $estimated_solutions")
         end
+        return estimated_solutions
     else  # Only calculate the number of solutions for the full board
-        # Number of corner piece configurations
-        corner_conf = perm(corner_pieces - fixed_corner_pieces, corner_squares - fixed_corner_pieces)
-        # Number of edge piece configurations
-        edge_conf = perm(edge_pieces - fixed_edge_pieces, edge_squares - fixed_edge_pieces)
-        # Number of inner piece configurations
-        inner_conf = perm(inner_pieces - fixed_inner_pieces, inner_squares - fixed_inner_pieces) * 4.0^(inner_squares - fixed_inner_pieces)
-        # Number of piece configurations
-        total_configurations = corner_conf * edge_conf * inner_conf
-        # Probability for all frame joins are valid
-        pb = Vb[frame_colors, total_frame_joins] / perm(sum(frame_joins), total_frame_joins)^2
-        # Probability for all inner joins are valid
-        pm = Vm[inner_colors, total_inner_joins] / perm(2*sum(inner_joins), 2*total_inner_joins)
-        estimated_solutions = total_configurations * pb * pm
+        c = corner_squares - fixed_corner_pieces
+        e = edge_squares - fixed_edge_pieces
+        i = inner_squares - fixed_inner_pieces
+        b, m = total_frame_joins, total_inner_joins
+        Vb_ = Vb[frame_colors, b]
+        Vm_ = Vm[inner_colors, m]
+        return _partial_solutions(Cp, c, Ep, e, Ip, i, Vb_, Tb, b, Vm_, Tm, m)
     end
-    return estimated_solutions
 end
 
 
+"""
+    The estimated number of solutions for a specific partially filled board.
+
+    Arguments:
+
+    C  - Number of available corner pieces, i.e. the total number of corner pieces minus the number of pre-placed corner pieces
+    c  - Number of selected corner pieces, i.e. the number of corner pieces on the board minus the number of pre-placed corner pieces
+    E  - Number of available edge pieces, i.e. the total number of edge pieces minus the number of pre-placed edge pieces
+    e  - Number of selected edge pieces, i.e. the number of edge pieces on the board minus the number of pre-placed edge pieces
+    I  - Number of available inner pieces, i.e. the total number of inner pieces minus the number of pre-placed inner pieces
+    i  - Number of selected inner pieces, i.e. the number of inner pieces on the board minus the number of pre-placed inner pieces
+    Vb - Number of valid configurations of b frame joins can be made using 2b frame edges
+    Tb - Total number of frame joins in the given set of pieces
+    b  - Number of completed frame joins between pieces on the board
+    Vm - Number of valid configurations of m inner joins can be made using 2m inner edges
+    Tm - Total number of inner joins in the given set of pieces
+    m  - Number of completed inner joins between pieces on the board
+"""
+function _partial_solutions(C::Int, c::Int, E::Int, e::Int, I::Int, i::Int, Vb::Float128, Tb::Int, b::Int, Vm::Float128, Tm::Int, m::Int)
+    # Number of corner piece configurations
+    corner_configurations = perm(C, c)
+    # Number of edge piece configurations
+    edge_configurations = perm(E, e)
+    # Number of inner piece configurations including 4 orientations for each piece
+    inner_configurations = perm(I, i) * 4.0^i
+    # Probability of all frame joins on the partially filled board are valid
+    pb = Vb / perm(Tb, b)^2
+    # Probability of all inner joins on the partially filled board are valid
+    pm = Vm / perm(2Tm, 2m)
+    # Estimated number of solutions for the partially filled board
+    return corner_configurations * edge_configurations * inner_configurations * pb * pm
+end
+
+# Numbers of corner, edge and inner pieces on the board
 function _count_pieces(board::Matrix{<:Real})
     isnonzero = x -> !iszero(x)
     corner_pieces = count(isnonzero, board[[1, end], [1, end]])
@@ -656,7 +682,7 @@ function _count_pieces(board::Matrix{<:Real})
     return corner_pieces, edge_pieces, inner_pieces
 end
 
-
+# Numbers of completed frame and inner joins between pieces on the board
 function _count_joins(board::Matrix{<:Real})
     nrows, ncols = size(board)
     frame_joins = 0

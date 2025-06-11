@@ -4,7 +4,7 @@ using Test
 
 @testset "Eternity2Puzzle constructors" begin
     nrows, ncols = 6, 12
-    puzzle1 = Eternity2Puzzle(nrows, ncols, pieces=fill(0x00, nrows*ncols, 4))
+    puzzle1 = Eternity2Puzzle(nrows, ncols, fill(0x00, nrows*ncols, 4))
     @test size(puzzle1) == (nrows, ncols)
 
     # Generic 16x16 puzzle should have pre-placed starter-piece on square I8
@@ -19,7 +19,7 @@ end
 
 @testset "Eternity2Puzzle basic operations" begin
     n = 3
-    puzzle = Eternity2Puzzle(n, n, pieces=fill(0x00, n*n, 4))
+    puzzle = Eternity2Puzzle(n, n, fill(0x00, n*n, 4))
     piece = 1; rotation = 1
     @test !in(piece, puzzle)
     puzzle[1, 1] = (piece, rotation)
