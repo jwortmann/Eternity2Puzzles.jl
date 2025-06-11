@@ -7,6 +7,7 @@ import GameZero
 import NativeFileDialog
 import OffsetArrays
 import PNGFiles
+using Printf
 using Quadmath: Float128
 import Random
 using Scratch: @get_scratch!

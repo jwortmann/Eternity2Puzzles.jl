@@ -611,9 +611,17 @@ function estimate_solutions(puzzle::Eternity2Puzzle, max_errors::Int = 0; verbos
         empty_squares = [(row, col) for row = nrows:-1:1 for col = 1:ncols if iszero(puzzle.board[row, col])]  # rowscan
         search_path = vcat(fixed_squares, empty_squares)
         board = zeros(Int, nrows, ncols)
+
         estimated_solutions::Float128 = 1.0
+
+        # The cumulative sum of solutions for each placed piece represents the total number
+        # of valid board configurations with the given search path, i.e. the number of nodes
+        # in the search tree.
+        cumulative_sum::Float128 = 0.0
+
         for placed_pieces = 1:nrows*ncols
             row, col = search_path[placed_pieces]
+            grid_pos = ('@' + row) * string(col)
             board[row, col] = placed_pieces
             if placed_pieces > fixed_corner_pieces + fixed_edge_pieces + fixed_inner_pieces
                 placed_corner_pieces, placed_edge_pieces, placed_inner_pieces = _count_pieces(board)
@@ -625,7 +633,8 @@ function estimate_solutions(puzzle::Eternity2Puzzle, max_errors::Int = 0; verbos
                 Vm_ = Vm[inner_colors, m]
                 estimated_solutions = _partial_solutions(Cp, c, Ep, e, Ip, i, Vb_, Tb, b, Vm_, Tm, m)
             end
-            println("$placed_pieces   $estimated_solutions")
+            cumulative_sum += estimated_solutions
+            @printf "%3i  %-3s  %.5e  %.5e\n" placed_pieces grid_pos estimated_solutions cumulative_sum
         end
         return estimated_solutions
     else  # Only calculate the number of solutions for the full board
