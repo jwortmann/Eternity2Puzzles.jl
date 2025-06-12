@@ -285,9 +285,6 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
 end
 
 
-_parse_position(pos::String) = pos[1] - 'A' + 1, parse(Int, pos[2:end])
-
-
 # Precompute a lookup table to quickly obtain the piece candidates which satisfy given color
 # constraints for the right side (first index) and bottom side (second index). Note that
 # mismatched colors between the frame pieces (color numbers 1 to 5) are not allowed, because

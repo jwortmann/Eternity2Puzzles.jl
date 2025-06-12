@@ -503,7 +503,7 @@ comb(n, k) = prod((n+1-i)/i for i = 1:min(k, n-k); init=1.0)
 
 """
     estimate_solutions(puzzle::Eternity2Puzzle)
-    estimate_solutions(puzzle::Eternity2Puzzle; verbose=true)
+    estimate_solutions(puzzle::Eternity2Puzzle, max_errors::Int = 0, path::Symbol = :rowscan; verbose = true)
 
 Estimate the total number of valid solutions for a given [`Eternity2Puzzle`](@ref), based on
 a probability model for edge matching puzzles developed by Brendan Owen.
@@ -511,17 +511,58 @@ a probability model for edge matching puzzles developed by Brendan Owen.
 Pre-placed pieces on the board are considered to be additional constraints that must be
 satisfied in a solution.
 
-If the `verbose` keyword argument is enabled, the estimated number of partial solutions gets
-printed after each placed piece (assuming a rowscan search order starting at the bottom left
-corner).
+If `max_errors` is given and greater than zero, a piece configuration is considered to be a
+valid solution if at most `max_errors` of the inner joins don't match (all of the joins
+between neighboring frame pieces are still considered to match).
+
+If the `verbose` keyword argument is enabled, pieces are placed one after each other onto
+the board, and the cumulative sum of partial solutions is printed after each step. The order
+in which pieces are placed can be controlled with the `path` positional argument.
+Currently implemented options are:
+ - :rowscan   (fill row by row, starting from the bottom left corner)
+ - :colscan   (fill column by column, starting from the bottom left corner)
+ - :spiral_in (counter-clockwise starting from the bottom right corner)
+Alternatively, `path` can be given as a `Vector{String}`, specifying all board positions
+explicitly; for example `path = ["I8", "A1", "A2", "B1", ...]`. Hereby it is necessary that
+each board position is visited exactly once, and that the positions of all pre-placed pieces
+are at the start of the list.
+The cumulative sum of estimated partial solutions represents the number of nodes in a search
+tree that a backtracking algorithm has to visit to explore the entire tree.
+The ratio between the number of full solutions and the cumulative sum of partial solutions
+can be used as a measure for the difficulty of the puzzle.
 
 Return the number of solutions as a Float128.
+
+# Examples
+
+Estimated number of valid solutions for the Eternity II puzzle:
+```julia
+julia> puzzle = Eternity2Puzzle()
+16×16 Eternity2Puzzle with 1 piece:
+...
+
+julia> floor(Int, estimate_solutions(puzzle))
+14702
+```
+
+Estimated number of solutions if at most 2 non-matching inner joins (score >= 478) are
+allowed:
+```
+julia> floor(Int, estimate_solutions(puzzle, 2))
+2440885684
+```
 
 # References
 
 https://groups.io/g/eternity2/message/5209
+https://groups.io/g/eternity2/message/6408
 """
-function estimate_solutions(puzzle::Eternity2Puzzle, max_errors::Int = 0; verbose=false)
+function estimate_solutions(
+    puzzle::Eternity2Puzzle,
+    max_errors::Int = 0,
+    path::Union{Symbol, Vector{String}} = :rowscan;
+    verbose=false
+)
     nrows, ncols = size(puzzle)
 
     # Number of corner, edge and inner squares on the board
@@ -606,35 +647,45 @@ function estimate_solutions(puzzle::Eternity2Puzzle, max_errors::Int = 0; verbos
         end
     end
 
+    # pm(m, v) = Probability the first v inner joins are valid and the rest are not using 2m edges
+    pm = OffsetArrays.Origin(0)(zeros(Float128, total_inner_joins+1, total_inner_joins+1))
+    for m = 0:total_inner_joins
+        pm[m, m] = Vm[inner_colors, m] / perm(2Tm, 2m)
+        for v = m-1:-1:0
+            pm[m, v] = pm[m-1, v] - pm[m, v+1]
+        end
+    end
+
     if verbose  # Estimate the number of partial solutions after each placed piece
-        fixed_squares = [(row, col) for row = 1:nrows for col = 1:ncols if !iszero(puzzle.board[row, col])]
-        empty_squares = [(row, col) for row = nrows:-1:1 for col = 1:ncols if iszero(puzzle.board[row, col])]  # rowscan
-        search_path = vcat(fixed_squares, empty_squares)
+        search_path = _create_search_path(puzzle, path)
         board = zeros(Int, nrows, ncols)
 
         estimated_solutions::Float128 = 1.0
 
-        # The cumulative sum of solutions for each placed piece represents the total number
-        # of valid board configurations with the given search path, i.e. the number of nodes
-        # in the search tree.
+        # The cumulative sum of partial solutions after each placed piece represents the
+        # total number of valid board configurations for the given search path, i.e. the
+        # number of nodes in the search tree for a backtracking algorithm.
         cumulative_sum::Float128 = 0.0
 
         for placed_pieces = 1:nrows*ncols
-            row, col = search_path[placed_pieces]
-            grid_pos = ('@' + row) * string(col)
+            square = search_path[placed_pieces]
+            row, col = _parse_position(square)
             board[row, col] = placed_pieces
             if placed_pieces > fixed_corner_pieces + fixed_edge_pieces + fixed_inner_pieces
                 placed_corner_pieces, placed_edge_pieces, placed_inner_pieces = _count_pieces(board)
-                c = placed_corner_pieces - fixed_corner_pieces
-                e = placed_edge_pieces - fixed_edge_pieces
-                i = placed_inner_pieces - fixed_inner_pieces
+                c = placed_corner_pieces - fixed_corner_pieces  # Number of selected corner pieces
+                e = placed_edge_pieces - fixed_edge_pieces      # Number of selected edge pieces
+                i = placed_inner_pieces - fixed_inner_pieces    # Number of selected inner pieces
+                # Numbers of completed frame and inner joins between pieces on the board
                 b, m = _count_joins(board)
-                Vb_ = Vb[frame_colors, b]
-                Vm_ = Vm[inner_colors, m]
-                estimated_solutions = _partial_solutions(Cp, c, Ep, e, Ip, i, Vb_, Tb, b, Vm_, Tm, m)
+                # Number of piece configurations including 4 orientations for the inner pieces
+                piece_configurations = perm(Cp, c) * perm(Ep, e) * perm(Ip, i) * 4.0^i
+                # Probability of all frame joins are valid
+                pb = Vb[frame_colors, b] / perm(Tb, b)^2
+                estimated_solutions = piece_configurations * pb * sum(pm[m, v] * C[m, v] for v = max(m-max_errors, 0):m)
             end
             cumulative_sum += estimated_solutions
-            @printf "%3i  %-3s  %.5e  %.5e\n" placed_pieces grid_pos estimated_solutions cumulative_sum
+            @printf "%3i  %-3s  %.5e  %.5e\n" placed_pieces square estimated_solutions cumulative_sum
         end
         return estimated_solutions
     else  # Only calculate the number of solutions for the full board
@@ -642,44 +693,10 @@ function estimate_solutions(puzzle::Eternity2Puzzle, max_errors::Int = 0; verbos
         e = edge_squares - fixed_edge_pieces
         i = inner_squares - fixed_inner_pieces
         b, m = total_frame_joins, total_inner_joins
-        Vb_ = Vb[frame_colors, b]
-        Vm_ = Vm[inner_colors, m]
-        return _partial_solutions(Cp, c, Ep, e, Ip, i, Vb_, Tb, b, Vm_, Tm, m)
+        piece_configurations = perm(Cp, c) * perm(Ep, e) * perm(Ip, i) * 4.0^i
+        pb = Vb[frame_colors, b] / perm(Tb, b)^2
+        return piece_configurations * pb * sum(pm[m, v] * C[m, v] for v = m-max_errors:m)
     end
-end
-
-
-"""
-    The estimated number of solutions for a specific partially filled board.
-
-    Arguments:
-
-    C  - Number of available corner pieces, i.e. the total number of corner pieces minus the number of pre-placed corner pieces
-    c  - Number of selected corner pieces, i.e. the number of corner pieces on the board minus the number of pre-placed corner pieces
-    E  - Number of available edge pieces, i.e. the total number of edge pieces minus the number of pre-placed edge pieces
-    e  - Number of selected edge pieces, i.e. the number of edge pieces on the board minus the number of pre-placed edge pieces
-    I  - Number of available inner pieces, i.e. the total number of inner pieces minus the number of pre-placed inner pieces
-    i  - Number of selected inner pieces, i.e. the number of inner pieces on the board minus the number of pre-placed inner pieces
-    Vb - Number of valid configurations of b frame joins can be made using 2b frame edges
-    Tb - Total number of frame joins in the given set of pieces
-    b  - Number of completed frame joins between pieces on the board
-    Vm - Number of valid configurations of m inner joins can be made using 2m inner edges
-    Tm - Total number of inner joins in the given set of pieces
-    m  - Number of completed inner joins between pieces on the board
-"""
-function _partial_solutions(C::Int, c::Int, E::Int, e::Int, I::Int, i::Int, Vb::Float128, Tb::Int, b::Int, Vm::Float128, Tm::Int, m::Int)
-    # Number of corner piece configurations
-    corner_configurations = perm(C, c)
-    # Number of edge piece configurations
-    edge_configurations = perm(E, e)
-    # Number of inner piece configurations including 4 orientations for each piece
-    inner_configurations = perm(I, i) * 4.0^i
-    # Probability of all frame joins on the partially filled board are valid
-    pb = Vb / perm(Tb, b)^2
-    # Probability of all inner joins on the partially filled board are valid
-    pm = Vm / perm(2Tm, 2m)
-    # Estimated number of solutions for the partially filled board
-    return corner_configurations * edge_configurations * inner_configurations * pb * pm
 end
 
 # Numbers of corner, edge and inner pieces on the board
@@ -724,6 +741,50 @@ function _count_joins(board::Matrix{<:Real})
     end
     return frame_joins, inner_joins
 end
+
+_board_square(row::Int, col::Int) = ('@' + row) * string(col)            # (2, 6) -> "B6"
+_parse_position(pos::String) = pos[1] - 'A' + 1, parse(Int, pos[2:end])  # "B6" -> (2, 6)
+
+function _create_search_path(puzzle::Eternity2Puzzle, strategy::Symbol = :rowscan)
+    nrows, ncols = size(puzzle)
+    preplaced_pieces = [_board_square(Tuple(idx)...) for idx in eachindex(IndexCartesian(), puzzle.board) if !iszero(puzzle.board[idx])]
+    if strategy == :rowscan
+        path = [_board_square(row, col) for row = nrows:-1:1 for col = 1:ncols if iszero(puzzle.board[row, col])]
+        return vcat(preplaced_pieces, path)
+    elseif strategy == :colscan
+        path = [_board_square(row, col) for col = 1:ncols for row = nrows:-1:1 if iszero(puzzle.board[row, col])]
+    elseif strategy == :spiral_in
+        path = String[]
+        row, col = nrows, ncols  # start at bottom right corner
+        vsteps, hsteps = nrows - 1, ncols - 1  # initial steps in vertical and horizontal direction
+        while vsteps > 0 && hsteps > 0
+            for _ = 1:vsteps  # go up
+                iszero(puzzle.board[row, col]) && push!(path, _board_square(row, col))
+                row -= 1
+            end
+            for _ = 1:hsteps  # go left
+                iszero(puzzle.board[row, col]) && push!(path, _board_square(row, col))
+                col -= 1
+            end
+            for _ = 1:vsteps  # go down
+                iszero(puzzle.board[row, col]) && push!(path, _board_square(row, col))
+                row += 1
+            end
+            for _ = 1:hsteps  # go right
+                iszero(puzzle.board[row, col]) && push!(path, _board_square(row, col))
+                col += 1
+            end
+            vsteps -= 2
+            hsteps -= 2
+            row -= 1
+            col -= 1
+        end
+        return vcat(preplaced_pieces, path)
+    else
+        error("Unknown option :$strategy")
+    end
+end
+_create_search_path(puzzle::Eternity2Puzzle, path::Vector{String}) = path
 
 
 """
