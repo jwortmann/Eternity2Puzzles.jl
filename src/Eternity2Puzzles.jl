@@ -16,7 +16,6 @@ export Eternity2Puzzle
 export Eternity2Solver
 export SimpleBacktrackingSearch
 export HeuristicBacktrackingSearch
-export RecursiveBacktrackingSearch
 export initialize_pieces
 export estimate_solutions
 export generate_pieces
@@ -30,7 +29,6 @@ export save
 
 include("core.jl")
 include("solvers/simple_backtracking.jl")
-include("solvers/recursive_backtracking.jl")
 include("solvers/heuristic_backtracking.jl")
 
 
@@ -87,10 +85,8 @@ function solve!(
         seed = floor(Int, 1000 * t0)
         alg = if size(puzzle) == (16, 16) && puzzle[9, 8] == (STARTER_PIECE, 2)
             HeuristicBacktrackingSearch(target_score=460, seed=seed)
-        elseif iszero(puzzle.board)
-            SimpleBacktrackingSearch(seed)
         else
-            RecursiveBacktrackingSearch(seed)
+            SimpleBacktrackingSearch(seed)
         end
     end
 

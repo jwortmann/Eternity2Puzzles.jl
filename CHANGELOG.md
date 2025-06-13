@@ -4,7 +4,7 @@ Eternity2Puzzles.jl Changelog
 v0.2.0 (2025-??-??)
 -------------------
 
-  Breaking:
+  Breaking changes:
 
   * The required minimum Julia version is now 1.10.
 
@@ -15,7 +15,7 @@ v0.2.0 (2025-??-??)
     examples.
 
   * Renamed the included solvers `BacktrackingSearch` to `HeuristicBacktrackingSearch`
-    and `BacktrackingSearchRecursive` to `RecursiveBacktrackingSearch`.
+    and `BacktrackingSearchRecursive` to `SimpleBacktrackingSearch`.
 
 
   New features and improvements:
