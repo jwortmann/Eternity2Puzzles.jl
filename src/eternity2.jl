@@ -3,6 +3,7 @@ import DelimitedFiles
 using GameZero
 import NativeFileDialog
 import PNGFiles
+using Printf
 using Scratch: @get_scratch!, get_scratch!
 import SimpleDirectMediaLayer
 
@@ -439,7 +440,7 @@ end
 function update_highlighted_pieces(row::Integer, col::Integer)
     if isnothing(ui.matching_pieces_cache[row, col])
         ui.matching_pieces_cache[row, col] = Int[]
-        edge_colors = get_color_constraints(puzzle, row, col)
+        edge_colors = _get_color_constraints(puzzle, row, col)
         constraints_filter = .!isnothing.(edge_colors)
         any(constraints_filter) || return
         constraints = edge_colors[constraints_filter]

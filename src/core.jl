@@ -787,13 +787,10 @@ end
 _create_search_path(puzzle::Eternity2Puzzle, path::Vector{String}) = path
 
 
-"""
-    get_color_constraints(puzzle::Eternity2Puzzle, row::Integer, col::Integer)
-
-For a given board position return the color constraints of all 4 edges in the order
-top, right, bottom, left or `nothing` if there is no adjacent piece in that direction.
-"""
-function get_color_constraints(puzzle::Eternity2Puzzle, row::Integer, col::Integer)
+# For a given board position return the color constraints of all 4 edges as a vector
+# [top, right, bottom, left] with UInt8 entries for the color constraints or `nothing` if
+# there is no adjacent piece in that direction.
+function _get_color_constraints(puzzle::Eternity2Puzzle, row::Int, col::Int)
     nrows, ncols = size(puzzle.board)
     if nrows == ncols == 16 && (row, col) == (9, 8)
         return puzzle.pieces[STARTER_PIECE, 2:-1:1]  # starter-piece has 180° rotation
