@@ -12,6 +12,8 @@ You can either play the puzzle as an interactive game, or attempt to find a solu
 
 ## Installation
 
+This package is registered in the General Julia package registry and can be installed using the built-in package manager from the Julia REPL:
+
 ```
 julia> ]
 
@@ -31,32 +33,20 @@ Piece number 139 is a mandatory starter-piece with a fixed position on the board
 
 ### Puzzle pieces
 
-It is unclear to me whether the original pieces of the Eternity II puzzle are allowed to be published, so for now this package doesn't contain the edge color definitions of those pieces.
-It is recommended to specify the pieces in form of an input file, provided that you own the real version of the Eternity II puzzle.
-Alternatively, if the pieces definition is not given, they are automatically generated with colors from a published benchmark problem from the META 2010 contest.
-
-A pieces definition file must be in plain text format (*.txt*) and contain 256 rows with four color numbers on each row, separated by spaces; for example
+The package includes the color definitions for the pieces of the original Eternity II puzzle, the smaller clue puzzles 1, 2 and 4 with board sizes $6\times 6$ and $6\times 12$, as well as benchmark problems with four different board sizes from the META 2010 contest.
+Alternatively, the puzzle pieces can be provided in form of an input file in plain text format (*.txt*), containing rows with four color numbers on each row, separated by spaces; for example
 
 ```
 1 2 0 0
-... (255 more rows)
+1 3 0 0
+...
 ```
 
+The file can optionally contain a header line with only two numbers, declaring the numbers of rows and columns of the board.
 The color numbers must be ordered in clockwise direction, starting with the top side (i.e. top, right, bottom, left).
-To reproduce the original pieces from the Eternity II puzzle, use the following numbers:
+For the visualization of the pieces on the board with the patterns from the original Eternity II puzzle, use the following color numbers:
 
 ![Color numbers](svg/colors_preview.svg)
-
-After creating the file, call the `initialize_pieces` function with the file path:
-
-```julia
-julia> using Eternity2Puzzles
-
-julia> initialize_pieces("path/to/e2pieces.txt")
-```
-
-It is sufficient to do this only a single time after installing the package; the given pieces are saved to a persistent cache on disk.
-Subsequent calls of `initialize_pieces` override the cache.
 
 ### Usage
 
@@ -70,10 +60,12 @@ julia> play()
 
 Puzzle pieces can be moved with the left mouse button and rotated with a right click.
 
+For the smaller clue puzzles 1 and 2, which can be solved by hand, use `play(:clue1)` or `play(:clue2)`.
+
 If you prefer to let the computer do the work, generate an empty puzzle board and call the `solve!` function to start the default search algorithm:
 
 ```julia
-julia> puzzle = Eternity2Puzzle(16, 16)
+julia> puzzle = Eternity2Puzzle()
 16×16 Eternity2Puzzle with 1 piece:
 ...
 
@@ -83,6 +75,7 @@ julia> solve!(puzzle)
 Press and hold <kbd>Ctrl</kbd> + <kbd>C</kbd> in the REPL to stop the search.
 
 To show an image of the puzzle board, you can use
+
 ```julia
 julia> preview(puzzle)
 ```
@@ -102,14 +95,26 @@ function solve!(puzzle::Eternity2Puzzle, solver::MySolver)
 end
 ```
 
-Then you can use an instance of the solver via the `alg` keyword argument:
+Then you can select an instance of the solver with the `alg` keyword argument:
+
 ```julia
-julia> puzzle = Eternity2Puzzle(16, 16)
+julia> puzzle = Eternity2Puzzle()
 
 julia> solve!(puzzle; alg=MySolver())
 ```
 
 In case a solution is found, `solve!` is expected to update the `puzzle.board` array which contains the placements and rotations of all puzzle pieces on the board; see the docstring of `Eternity2Puzzle` for details.
+
+The number of solutions for any given puzzle can be estimated without solving, by using the `estimate_solutions` function:
+
+```julia
+julia> puzzle = Eternity2Puzzle()
+
+julia> trunc(Int, estimate_solutions(puzzle))
+14702
+```
+
+The result is returned as a 128-bit floating point number and the value depends on the board size, the number of different frame and inner color types, the distribution of the colors on the pieces, as well as the number of pre-placed pieces on the board.
 
 
 ## Preview

@@ -3,7 +3,7 @@ import DelimitedFiles
 using GameZero
 import NativeFileDialog
 import PNGFiles
-using Printf
+using Printf: @printf
 using Scratch: @get_scratch!, get_scratch!
 import SimpleDirectMediaLayer
 
@@ -36,17 +36,7 @@ const NPIECES = NROWS * NCOLS
 const MAXIMUM_SCORE = 2 * NROWS * NCOLS - NROWS - NCOLS
 
 const BACKGROUND, BOARD_BOUNDING_BOX, puzzle = if (NROWS, NCOLS) == (16, 16)
-    pieces_file = joinpath(cache_dir, "pieces.txt")
-    _pieces = if isfile(pieces_file)
-        DelimitedFiles.readdlm(pieces_file, UInt8)
-    else
-        DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
-    end
-    if size(_pieces, 1) != 256
-        @warn "Cached pieces incompatible with 16 x 16 board - using predefined pieces instead"
-        _pieces = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16_rotated.txt"), UInt8)
-    end
-    ("background.png", BoundingBox(61, 61, 844, 844), Eternity2Puzzle(board, _pieces))
+    ("background.png", BoundingBox(61, 61, 844, 844), Eternity2Puzzle(board, _get_pieces(:eternity2)[1]))
 elseif (NROWS, NCOLS) == (6, 6)
     ("background_6x6.png", BoundingBox(306, 306, 598, 598), Eternity2Puzzle(board, _get_pieces(:clue1)[1]))
 elseif (NROWS, NCOLS) == (6, 12)

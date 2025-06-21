@@ -1,8 +1,8 @@
 const STARTER_PIECE = 139
 const EMPTY = 0x0000
 
-const board_img = PNGFiles.load(joinpath(@__DIR__, "images", "board.png"))
-const colors_img = PNGFiles.load(joinpath(@__DIR__, "images", "colors.png"))
+const BOARD_BACKGROUND_IMG = PNGFiles.load(joinpath(@__DIR__, "images", "board.png"))
+const COLOR_PATTERNS_IMG = PNGFiles.load(joinpath(@__DIR__, "images", "colors.png"))
 
 abstract type Eternity2Solver end
 
@@ -10,59 +10,77 @@ abstract type Eternity2Solver end
 """
     Eternity2Puzzle()
     Eternity2Puzzle(; starter_piece::Bool = true, hint_pieces::Bool = false)
-    Eternity2Puzzle(pieces::Symbol)
-    Eternity2Puzzle(pieces::String)
-    Eternity2Puzzle(nrows::Int, ncols::Int)
-    Eternity2Puzzle(nrows::Int, ncols::Int, pieces::Union{Symbol, String, Matrix{Int}}; board::String)
-
+    Eternity2Puzzle(pieces::Union{Symbol, String}[, nrows::Int, ncols::Int])
+    Eternity2Puzzle(nrows::Int, ncols::Int, seed::Int = 1; frame_colors::Int, inner_colors::Int)
 
 The `Eternity2Puzzle` type represents a puzzle instance consisting of the piece definitions
-and the pieces configuration on the board.
+and the piece configuration on the board.
 
 The constructor can be called in different ways:
 
 The default constructor without arguments creates a puzzle with 16 rows and 16 columns and
-with the original Eternity II pieces. The keyword arguments `starter_piece` and
-`hint_pieces` control whether the mandatory starter-piece and the four hint pieces from the
-clue puzzles 1-4 should be pre-placed on the board. A solution or a partially filled board
-can be loaded with the `board` keyword argument, which should be the filepath to a file in
-`.et2` format. If a `board` is provided, the `starter_piece` and `hint_pieces` arguments are
-ignored.
+with the original Eternity II pieces. Keyword arguments `starter_piece` and `hint_pieces`
+control whether the mandatory starter-piece and the four hint pieces from the clue puzzles
+1-4 are pre-placed on the board.
 
-The board size can be adjusted by passing two integer arguments `nrows` and `ncols`.
-A different set of pieces with corresponding board size can be used by passing
- - one of the predefined symbols `:meta_16x16`, `:meta_14x14`, `:meta_12x12`, `:meta_10x10`,
-   `:clue1`, `:clue2`, `:clue4`
- - the filepath to a file containing the edge color numbers for the pieces as outlined in
-   the README
- - or a `Matrix{Int}` in the same format (in this case `nrows` and `ncols` must also be
-   given as input arguments)
+A different set of pieces with the corresponding board size can be used by passing either
+one of the predefined symbols `:eternity2`, `:meta_16x16`, `:meta_14x14`, `:meta_12x12`,
+`:meta_10x10`, `:clue1`, `:clue2`, `:clue4`, or a path to a file containing the edge color
+numbers for the pieces in the format as described in the README of this package. In the
+latter case, the input file is expected to contain an additional header line with the
+numbers of rows and columns of the board. If the header line is missing, the numbers of rows
+and columns must be declared explicitly by passing two integers in addition to the filepath.
+If provided, those numbers override the derived size of the board. This can also be used,
+for example, to solve a smaller sized board using only a subset of the specified pieces.
+
+If only two or three integer arguments are passed without the `pieces` argument, a puzzle
+for the specified board size will be created with randomly generated pieces. Optional
+keyword arguments `frame_colors` and `inner_colors` can be used to adjust the numbers of
+frame and inner color types.
+
+To load the piece configuration on the board from a file in `.et2` format, use the
+[`load!`](@ref) function.
 
 The `Eternity2Puzzle` type has two fields; `board` and `pieces`. `board` contains the piece
-numbers and rotations for each row/column position of the board in form of a
-`Matrix{UInt16}`, where the first 14 bits in each entry represent the piece number and the
-last 2 bits are used for the rotation in clockwise direction. By convention the value `0` is
-used for empty positions on the board. `pieces` is a `Matrix{UInt8}` with rows containing
-the four color numbers for all of the pieces.
+numbers and rotations for each row/column position as a `Matrix{UInt16}`, where the first 14
+bits of each entry represent the piece number and the last 2 bits are used for the rotation
+in clockwise direction. By convention a value of `0` is used if no piece is placed on a
+particular position of the board. `pieces` is a `Matrix{UInt8}` with rows containing the
+four color numbers for each of the pieces.
 
-The piece number and rotation at a given row and column on the board can also be obtained as
-a tuple of two integers by indexing the `Eternity2Puzzle` type directly. For example, the
-number and rotation of the pre-placed starter-piece on square I8 (row 9, column 8) of the
-original Eternity II puzzle are:
+The `Eternity2Puzzle` type supports a few basic operations, such as getting or setting a
+piece on the board by indexing with the row and column numbers directly. The corresponding
+value is returned or must be provided as a tuple of two integers, representing the piece
+number and the rotation in clockwise direction. An example how to obtain the number and
+rotation of the pre-placed starter-piece on square I8 (row 9, column 8) of the original
+Eternity II puzzle is given below.
 
 # Examples
 
-```julia
-julia> puzzle = Eternity2Puzzle()
+```julia-repl
+julia> puzzle = Eternity2Puzzle()  # The original Eternity II puzzle
 16×16 Eternity2Puzzle with 1 piece:
 ...
 
 julia> puzzle[9, 8]  # Get number and rotation of the piece on square I8 (row 9, column 8)
 (139, 2)
-```
 
-Note that assigning and obtaining the piece values by indexing `Eternity2Puzzle` directly is
-not optimized for performance, i.e. it is not recommended to be used in a hot loop.
+julia> load!(puzzle, "path/to/saved_board.et2")  # Load pieces on the board from a file
+
+julia> puzzle = Eternity2Puzzle(:clue1)  # Clue puzzle 1
+6×6 Eternity2Puzzle with 0 pieces:
+...
+
+julia> puzzle = Eternity2Puzzle(8, 8)  # A puzzle with randomly generated pieces
+8×8 Eternity2Puzzle with 64 pieces, 112 matching edges and 0 errors:
+...
+
+julia> reset!(puzzle)  # Clear the entire board
+
+julia> puzzle = Eternity2Puzzle(:eternity2, 12, 12)  # Eternity II pieces, but smaller board
+12×12 Eternity2Puzzle with 0 pieces:
+...
+```
 """
 struct Eternity2Puzzle
     board::Matrix{UInt16}  # nrows x ncols
@@ -70,103 +88,105 @@ struct Eternity2Puzzle
 end
 
 function Eternity2Puzzle(
-    nrows::Integer,
-    ncols::Integer,
-    pieces::Union{Symbol, AbstractString, AbstractMatrix{<:Integer}} = :cached;
+    pieces::Union{Symbol, AbstractString} = :eternity2;
     starter_piece::Bool = true,
-    hint_pieces::Bool = false,
-    board::AbstractString = ""
+    hint_pieces::Bool = false
 )
-    _pieces, _, _ = _get_pieces(pieces)
-    npieces = size(_pieces, 1)
-    @assert npieces >= nrows * ncols "Not enough pieces for given board size"
-    _board = isempty(board) ? zeros(UInt16, nrows, ncols) : _load(board)
-    @assert size(_board) == (nrows, ncols) "Input file incompatible with given board size"
-    @assert maximum(_board .>> 2) <= npieces "Board contains invalid piece number"
-    if isempty(board) && nrows == ncols == 16 && pieces == :cached
+    _pieces, nrows, ncols = _get_pieces(pieces)
+    @assert nrows > 0 && ncols > 0 "Board size undefined"
+    board = zeros(UInt16, nrows, ncols)
+    if pieces == :eternity2
         if starter_piece
-            _board[9, 8] = 139 << 2 | 2    # I8
+            board[9, 8] = 139 << 2 | 2    # I8
         end
         if hint_pieces
-            _board[14, 3] = 181 << 2 | 3   # N3  (Clue Puzzle 1)
-            _board[3, 14] = 255 << 2 | 3   # C14 (Clue Puzzle 2)
-            _board[14, 14] = 249 << 2 | 0  # N14 (Clue Puzzle 3)
-            _board[3, 3] = 208 << 2 | 3    # C3  (Clue Puzzle 4)
+            board[14, 3] = 181 << 2 | 3   # N3  (Clue Puzzle 1)
+            board[3, 14] = 255 << 2 | 3   # C14 (Clue Puzzle 2)
+            board[14, 14] = 249 << 2 | 0  # N14 (Clue Puzzle 3)
+            board[3, 3] = 208 << 2 | 3    # C3  (Clue Puzzle 4)
         end
     end
-    return Eternity2Puzzle(_board, _pieces)
+    return Eternity2Puzzle(board, _pieces)
 end
 
 function Eternity2Puzzle(
-    pieces::Union{Symbol, AbstractString, AbstractMatrix{<:Integer}} = :cached;
-    starter_piece::Bool = true,
-    hint_pieces::Bool = false,
-    board::AbstractString = ""
+    pieces::Union{Symbol, AbstractString},
+    nrows::Integer,
+    ncols::Integer
 )
-    _pieces, nrows, ncols = _get_pieces(pieces)
-    npieces = size(_pieces, 1)
-    if isempty(board)
-        @assert nrows > 0 && ncols > 0 "Board size undefined"
-        _board = zeros(UInt16, nrows, ncols)
-    else
-        _board = _load(board)
+    pieces_, _, _ = _get_pieces(pieces)
+    npieces = size(pieces_, 1)
+    @assert npieces >= nrows * ncols "Not enough pieces for given board size"
+    board = zeros(UInt16, nrows, ncols)
+    return Eternity2Puzzle(board, pieces_)
+end
+
+function Eternity2Puzzle(
+    nrows::Integer,
+    ncols::Integer,
+    seed::Integer = 1;
+    frame_colors::Integer = 0,
+    inner_colors::Integer = 0
+)
+    @assert 3 <= nrows <= 20 "Number of rows must be between 3 and 20"
+    @assert 3 <= ncols <= 20 "Number of columns must be between 3 and 20"
+    frame_colors_, inner_colors_ = _get_number_of_colors(nrows, ncols)
+    if frame_colors > 0
+        frame_colors_ = frame_colors
     end
-    @assert size(_pieces, 1) >= prod(size(_board)) "Not enough pieces for given board size"
-    @assert maximum(_board .>> 2) <= npieces "Board contains invalid piece number"
-    if isempty(board) && nrows == ncols == 16 && pieces == :cached
-        if starter_piece
-            _board[9, 8] = 139 << 2 | 2    # I8
-        end
-        if hint_pieces
-            _board[14, 3] = 181 << 2 | 3   # N3  (Clue Puzzle 1)
-            _board[3, 14] = 255 << 2 | 3   # C14 (Clue Puzzle 2)
-            _board[14, 14] = 249 << 2 | 0  # N14 (Clue Puzzle 3)
-            _board[3, 3] = 208 << 2 | 3    # C3  (Clue Puzzle 4)
-        end
+    if inner_colors > 0
+        inner_colors_ = inner_colors
     end
-    return Eternity2Puzzle(_board, _pieces)
+    board, pieces = _generate_pieces(nrows, ncols, frame_colors_, inner_colors_, seed)
+    return Eternity2Puzzle(board, pieces)
 end
 
 
 function Base.show(io::IO, ::MIME"text/plain", puzzle::Eternity2Puzzle)
     nrows, ncols = size(puzzle.board)
     placed_pieces = count(!=(0x0000), puzzle.board)
-    _score, errors = score(puzzle)
-    header = if _score > 0
-        "$nrows×$ncols Eternity2Puzzle with $placed_pieces $(placed_pieces == 1 ? "piece" : "pieces"), $_score matching edges and $errors errors:"
-    else
-        "$nrows×$ncols Eternity2Puzzle with $placed_pieces $(placed_pieces == 1 ? "piece" : "pieces"):"
-    end
+    score_, errors = score(puzzle)
+    header_score = score_ > 0 ? ", $score_ matching edges and $errors errors" : ""
+    header = "$nrows×$ncols Eternity2Puzzle with $placed_pieces $(placed_pieces == 1 ? "piece" : "pieces")$header_score:"
     grid = join([join([iszero(val) ? " ---/-" : "$(lpad(val >> 2, 4))/$(val & 3)" for val in row]) for row in eachrow(puzzle.board)], "\n")
     println(io, header * "\n" * grid)
 end
 
 function Base.show(io::IO, ::MIME"image/png", puzzle::Eternity2Puzzle)
     nrows, ncols = size(puzzle.board)
-    if nrows == ncols == 16
-        img = copy(board_img)
+    ncolors = maximum(puzzle.pieces)
+    img = if nrows == ncols == 16
+        copy(BOARD_BACKGROUND_IMG)
     else
         height = 49 * nrows + 1
         width = 49 * ncols + 1
         light_gray = colorant"#615e66"
         white = colorant"#a09ea3"
-        img = fill(light_gray, height, width)
-        for row = 0:nrows
-            img[49 * row + 1, :] .= white
-        end
-        for col = 0:ncols
-            img[:, 49 * col + 1] .= white
-        end
+        background = fill(light_gray, height, width)
+        background[[49*row+1 for row = 0:nrows], :] .= white
+        background[:, [49*col+1 for col = 0:ncols]] .= white
+        background
     end
     if !iszero(puzzle.board)
         dark_gray = colorant"#323135"
+        colors_img = if ncolors <= 22
+            COLOR_PATTERNS_IMG
+        else
+            pixels = fill(colorant"transparent", 48, 48*(ncolors+1))
+            for y = 1:24, x = y:49-y
+                pixels[y, x] = colorant"#5a818a"
+            end
+            colors = distinguishable_colors(ncolors)  # TODO test different color palettes
+            for c = 1:ncolors, y = 1:24, x = 48c+y:48c+49-y
+                pixels[y, x] = colors[c]
+            end
+            pixels
+        end
         for col = 1:ncols, row = 1:nrows
             value = puzzle.board[row, col]
             iszero(value) && continue
             piece = value >> 2
             rotation = value & 3
-            x = 49 * col - 47
-            y = 49 * row - 47
             c1, c2, c3, c4 = puzzle.pieces[piece, :]
             piece_img = colors_img[:, 48c1+1:48c1+48] + rotr90(colors_img[:, 48c2+1:48c2+48]) +
                 rot180(colors_img[:, 48c3+1:48c3+48]) + rotl90(colors_img[:, 48c4+1:48c4+48])
@@ -174,6 +194,8 @@ function Base.show(io::IO, ::MIME"image/png", puzzle::Eternity2Puzzle)
                 piece_img[i, i] = dark_gray
                 piece_img[i, 49-i] = dark_gray
             end
+            x = 49 * col - 47
+            y = 49 * row - 47
             img[y:y+47, x:x+47] = if rotation == 1
                 rotr90(piece_img)
             elseif rotation == 2
@@ -214,7 +236,6 @@ Base.in(piece::Integer, puzzle::Eternity2Puzzle) = piece in puzzle.board .>> 2
 Open a preview image of the puzzle board.
 """
 function preview(puzzle::Eternity2Puzzle)
-    maximum(puzzle.pieces) <= 22 || error("Cannot preview puzzle with given color patterns. Highest color number must not exceed 22.")
     filepath = joinpath(@get_scratch!("eternity2"), "preview.png")
     open(filepath, "w") do file
         show(file, "image/png", puzzle)
@@ -236,47 +257,88 @@ function find(puzzle::Eternity2Puzzle, piece::Integer)
 end
 
 
+# Return the number of frame colors and inner colors for the highest difficulty of a puzzle
+# with the given size. It is assumed that two disjoint sets are used for the colors of the
+# frame and inner edges, the colors have a flat distribution, and that there are no
+# duplicate or symmetric pieces.
+# Reference: https://groups.io/g/eternity2/topic/47707608
+function _get_number_of_colors(nrows::Integer, ncols::Integer)
+    @assert 3 <= nrows <= 20
+    @assert 3 <= ncols <= 20
+
+    frame_colors = OffsetArrays.Origin(3)([
+        2  2  2  2  3  3  3  3  4  4  4  4  5  5  5  5  6  6
+        2  2  2  3  3  3  3  3  4  4  4  4  4  4  5  5  5  5
+        2  2  3  3  3  3  3  3  3  4  4  4  4  4  5  5  5  5
+        2  3  3  3  3  3  3  3  3  4  4  4  4  4  4  5  5  5
+        3  3  3  3  3  3  3  3  4  4  4  4  4  4  4  5  5  5
+        3  3  3  3  3  3  3  4  4  4  4  4  4  4  4  5  5  5
+        3  3  3  3  3  3  4  4  4  4  4  4  4  4  4  5  5  5
+        3  3  3  3  3  4  4  4  4  4  4  4  4  4  5  5  5  5
+        4  4  3  3  4  4  4  4  4  4  4  4  4  5  5  5  5  5
+        4  4  4  4  4  4  4  4  4  4  4  4  5  5  5  5  5  5
+        4  4  4  4  4  4  4  4  4  4  4  5  5  5  5  5  5  5
+        4  4  4  4  4  4  4  4  4  4  5  5  5  5  5  5  5  5
+        5  4  4  4  4  4  4  4  4  5  5  5  5  5  5  5  5  5
+        5  4  4  4  4  4  4  4  5  5  5  5  5  5  5  5  5  5
+        5  5  5  4  4  4  4  5  5  5  5  5  5  5  5  5  5  5
+        5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5
+        6  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  6
+        6  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  6  6
+    ])
+
+    inner_colors = OffsetArrays.Origin(3)([
+        2  2  3  3  3  3  4  4  4  4  4  5  5  5  5  5  5  5
+        2  3  3  4  4  5  5  5  5  6  6  6  6  7  7  7  7  8
+        3  3  4  5  5  5  6  6  7  7  7  8  8  8  8  9  9  9
+        3  4  5  5  6  6  7  7  8  8  8  9  9  9 10 10 10 11
+        3  4  5  6  6  7  7  8  8  9  9 10 10 10 11 11 11 12
+        3  5  5  6  7  8  8  9  9 10 10 11 11 11 12 12 12 13
+        4  5  6  7  7  8  9  9 10 10 11 11 12 12 13 13 13 14
+        4  5  6  7  8  9  9 10 11 11 12 12 13 13 13 14 14 15
+        4  5  7  8  8  9 10 11 11 12 12 13 13 14 14 15 15 16
+        4  6  7  8  9 10 10 11 12 12 13 13 14 15 15 16 16 16
+        4  6  7  8  9 10 11 12 12 13 14 14 15 15 16 16 17 17
+        5  6  8  9 10 11 11 12 13 13 14 15 15 16 16 17 17 18
+        5  6  8  9 10 11 12 13 13 14 15 15 16 17 17 18 18 19
+        5  7  8  9 10 11 12 13 14 15 15 16 17 17 18 18 19 19
+        5  7  8 10 11 12 13 13 14 15 16 16 17 18 18 19 20 20
+        5  7  9 10 11 12 13 14 15 16 16 17 18 18 19 20 20 21
+        5  7  9 10 11 12 13 14 15 16 17 17 18 19 20 20 21 21
+        5  8  9 11 12 13 14 15 16 16 17 18 19 19 20 21 21 22
+    ])
+
+    return frame_colors[nrows, ncols], inner_colors[nrows, ncols]
+end
+
+
 function _get_pieces(pieces::Symbol)
-    if pieces == :cached
-        cache_file = joinpath(@get_scratch!("eternity2"), "pieces.txt")
-        if isfile(cache_file)
-            return DelimitedFiles.readdlm(cache_file, UInt8), 16, 16
-        end
-        @warn "Puzzle pieces are undefined - using predefined pieces instead"
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16.txt"), UInt8), 16, 16
-    elseif pieces == :meta_16x16
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_16x16.txt"), UInt8), 16, 16
-    elseif pieces == :meta_14x14
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_14x14.txt"), UInt8), 14, 14
-    elseif pieces == :meta_12x12
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_12x12.txt"), UInt8), 12, 12
-    elseif pieces == :meta_10x10
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "meta_10x10.txt"), UInt8), 10, 10
-    elseif pieces == :clue1
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "clue1.txt"), UInt8), 6, 6
-    elseif pieces == :clue2
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "clue2.txt"), UInt8), 6, 12
-    elseif pieces == :clue4
-        return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", "clue4.txt"), UInt8), 6, 12
-    end
-    error("Unknown option :$pieces")
+    puzzle_specs = Dict{Symbol, Tuple{String, Int, Int}}(
+        :eternity2 => ("e2pieces.txt", 16, 16),
+        :meta_16x16 => ("meta_16x16.txt", 16, 16),
+        :meta_14x14 => ("meta_14x14.txt", 14, 14),
+        :meta_12x12 => ("meta_12x12.txt", 12, 12),
+        :meta_10x10 => ("meta_10x10.txt", 10, 10),
+        :clue1 => ("clue1.txt", 6, 6),
+        :clue2 => ("clue2.txt", 6, 12),
+        :clue4 => ("clue4.txt", 6, 12)
+    )
+    pieces in keys(puzzle_specs) || throw(ArgumentError("Unknown option :$pieces"))
+    file, nrows, ncols = puzzle_specs[pieces]
+    return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", file), UInt8), nrows, ncols
 end
 
 function _get_pieces(filename::AbstractString)
+    endswith(filename, ".txt") || throw(ArgumentError("Unsupported file format"))
     path = abspath(filename)
     isfile(path) || throw(ArgumentError("No such file $path"))
-    endswith(filename, ".txt") || throw(ArgumentError("Unsupported file format"))
-    pieces_nrows_ncols = try
-        (DelimitedFiles.readdlm(path, UInt8), 0, 0)
-    catch  # The file probably contains a header line
-        nrows, ncols = [parse(Int, n) for n in split(readline(path))]  # Header line
-        (DelimitedFiles.readdlm(path, UInt8, skipstart=1), nrows, ncols)
+    try
+        return DelimitedFiles.readdlm(path, UInt8), 0, 0
+    catch  # The file probably contains a header line with the number of rows and columns
+        nrows, ncols = [parse(Int, n) for n in split(readline(path))]
+        return DelimitedFiles.readdlm(path, UInt8, skipstart=1), nrows, ncols
     end
-    @assert size(pieces_nrows_ncols[1], 2) == 4 "Unexpected number of columns in file $filename"
-    return pieces_nrows_ncols
 end
-
-_get_pieces(pieces::AbstractMatrix{<:Integer}) = (pieces, 0, 0)
 
 
 function _load(filename::AbstractString)
@@ -301,9 +363,6 @@ function _load(filename::AbstractString)
         push!(pieces, piece)
         board[row, col] = piece << 2 | rotation
     end
-    if nrows == ncols == 16 && board[9, 8] != STARTER_PIECE << 2 | 2
-        @warn "Starter-piece not correctly placed"
-    end
     return board
 end
 
@@ -313,8 +372,8 @@ end
 
 Load the pieces on the board from a file in `.et2` format.
 
-Note that the board dimensions of the given `Eternity2Puzzle` must be compatible with the
-amount of rows and columns in the input file.
+The board dimensions of the given `Eternity2Puzzle` must be compatible with the numbers of
+rows and columns in the input file.
 
 See also [`save`](@ref).
 """
@@ -337,19 +396,6 @@ function save(puzzle::Eternity2Puzzle, filename::AbstractString)
     open(filename, "w") do file
         write(file, join([join([iszero(val) ? " ---/-" : "$(lpad(val >> 2, 4))/$(val & 3)" for val in row]) for row in eachrow(puzzle.board)], "\n"))
     end
-    nothing
-end
-
-
-"""
-    initialize_pieces(filename::AbstractString)
-
-Load the puzzle pieces from an input file, which must be in plain text (.txt) format and
-contain rows with the four colors for each piece. See the package README file for details.
-"""
-function initialize_pieces(filename::AbstractString)
-    pieces, _, _ = _get_pieces(filename)
-    DelimitedFiles.writedlm(joinpath(@get_scratch!("eternity2"), "pieces.txt"), pieces)
     nothing
 end
 
@@ -536,19 +582,19 @@ Return the number of solutions as a Float128.
 # Examples
 
 Estimated number of valid solutions for the Eternity II puzzle:
-```julia
+```julia-repl
 julia> puzzle = Eternity2Puzzle()
 16×16 Eternity2Puzzle with 1 piece:
 ...
 
-julia> floor(Int, estimate_solutions(puzzle))
+julia> trunc(Int, estimate_solutions(puzzle))
 14702
 ```
 
 Estimated number of solutions if at most 2 non-matching inner joins (score >= 478) are
 allowed:
-```
-julia> floor(Int, estimate_solutions(puzzle, 2))
+```julia-repl
+julia> trunc(Int, estimate_solutions(puzzle, 2))
 2440885684
 ```
 
@@ -657,7 +703,7 @@ function estimate_solutions(
     end
 
     if verbose  # Estimate the number of partial solutions after each placed piece
-        search_path = _create_search_path(puzzle, path)
+        search_path = _search_path(puzzle, path)
         board = zeros(Int, nrows, ncols)
 
         estimated_solutions::Float128 = 1.0
@@ -745,7 +791,8 @@ end
 _board_square(row::Int, col::Int) = ('@' + row) * string(col)            # (2, 6) -> "B6"
 _parse_position(pos::String) = pos[1] - 'A' + 1, parse(Int, pos[2:end])  # "B6" -> (2, 6)
 
-function _create_search_path(puzzle::Eternity2Puzzle, strategy::Symbol = :rowscan)
+_search_path(puzzle::Eternity2Puzzle, path::Vector{String}) = path
+function _search_path(puzzle::Eternity2Puzzle, strategy::Symbol = :rowscan)
     nrows, ncols = size(puzzle)
     preplaced_pieces = [_board_square(Tuple(idx)...) for idx in eachindex(IndexCartesian(), puzzle.board) if !iszero(puzzle.board[idx])]
     if strategy == :rowscan
@@ -784,7 +831,6 @@ function _create_search_path(puzzle::Eternity2Puzzle, strategy::Symbol = :rowsca
         error("Unknown option :$strategy")
     end
 end
-_create_search_path(puzzle::Eternity2Puzzle, path::Vector{String}) = path
 
 
 # For a given board position return the color constraints of all 4 edges as a vector
@@ -828,10 +874,10 @@ end
 
 
 """
-    generate_pieces(nrows::Integer, ncols::Integer; frame_colors::Integer, inner_colors::Integer, seed::Integer)
+    generate_pieces(nrows::Int, ncols::Int, frame_colors::Int, inner_colors::Int, seed::Int=1)
 
 Generate random pieces for an `nrows`×`ncols` Eternity II style puzzle with `frame_colors`
-unique frame colors and `inner_colors` unique inner colors.
+frame colors and `inner_colors` inner colors.
 
 Note that the amount of frame colors and inner colors have a significant influence on the
 difficulty of the puzzle. For example if there are many different colors, there might only
@@ -840,45 +886,44 @@ different ways. Similarly, if there are only a few different colors, the number 
 becomes large and it will be easy to find one of them.
 
 # Examples
-
-```julia
-julia> generate_pieces(6, 6, frame_colors=3, inner_colors=6, seed=1234)
-36×4 Matrix{UInt8}:
+```julia-repl
+julia> generate_pieces(16, 16, 5, 17)
+256×4 Matrix{UInt8}:
 ...
 ```
 """
-function generate_pieces(
+function _generate_pieces(
     nrows::Integer,
-    ncols::Integer;
-    frame_colors::Integer = 5,
-    inner_colors::Integer = 17,
-    seed::Integer = 1
+    ncols::Integer,
+    frame_colors::Integer,
+    inner_colors::Integer,
+    seed::Integer
 )
-    nrows > 2 && ncols > 2 || error("The puzzle board must have at least 3 rows and columns")
-    2 <= frame_colors <= 5 || error("The number of frame colors must be between 2 and 5")
-    2 <= inner_colors <= 17 || error("The number of inner colors must be between 2 and 17")
+    @assert 3 <= nrows <= 20
+    @assert 3 <= ncols <= 20
+
+    board = zeros(UInt16, nrows, ncols)
     npieces = nrows * ncols
 
     corner_pieces_range = 1:4
     edge_pieces_range = 5:2*nrows+2*ncols-4
-    inner_pieces_range = edge_pieces_range[end]+1:npieces
+    inner_pieces_range = last(edge_pieces_range)+1:npieces
 
-    frame_edges_count = 2 * (nrows + ncols) - 4
-    inner_edges_count = 2 * nrows * ncols - 3 * (nrows + ncols) + 4
+    frame_joins_count = 2 * (nrows - 1) + 2 * (ncols - 1)
+    inner_joins_count = (nrows - 1) * (ncols - 2) + (nrows - 2) * (ncols - 1)
 
     pieces = Matrix{UInt8}(undef, npieces, 4)
     rotations = zeros(Int, npieces)
 
-    he = Matrix{UInt8}(undef, nrows, ncols - 1)  # grid of horizontal edges (right/left)
-    ve = Matrix{UInt8}(undef, nrows - 1, ncols)  # grid of vertical edges (top/bottom)
+    hj = Matrix{UInt8}(undef, nrows, ncols-1)  # Grid of horizontal joins
+    vj = Matrix{UInt8}(undef, nrows-1, ncols)  # Grid of vertical joins
 
-    frame_color_numbers = [1, 2, 3, 4, 5]  # 12 pairs of each color
-    inner_color_numbers = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
-    #                      |------------- 25 pairs each ------------|  |--- 24 pairs ---|
+    frame_color_numbers = 1:frame_colors
+    inner_color_numbers = frame_colors+1:frame_colors+inner_colors
 
     # Generate uniform distributions of frame edge colors and inner edge colors.
-    frame_edges = [frame_color_numbers[mod1(i, frame_colors)] for i = 1:frame_edges_count]
-    inner_edges = [inner_color_numbers[mod1(i, inner_colors)] for i = 1:inner_edges_count]
+    frame_joins = [frame_color_numbers[mod1(i, frame_colors)] for i = 1:frame_joins_count]
+    inner_joins = [inner_color_numbers[mod1(i, inner_colors)] for i = 1:inner_joins_count]
 
     function validate(pieces)
         _pieces = repeat(pieces, 1, 2)
@@ -903,17 +948,17 @@ function generate_pieces(
     maxiters = 1000
 
     for _ in 1:maxiters
-        Random.shuffle!(frame_edges)
-        Random.shuffle!(inner_edges)
+        Random.shuffle!(frame_joins)
+        Random.shuffle!(inner_joins)
         # Randomly assign the frame colors to adjacent edges of the frame pieces
-        he[1, :] = frame_edges[1:ncols-1]
-        he[end, :] = frame_edges[ncols:2ncols-2]
-        ve[:, 1] = frame_edges[2ncols-1:2ncols+nrows-3]
-        ve[:, end] = frame_edges[2ncols+nrows-2:2ncols+2nrows-4]
+        hj[1, :] = frame_joins[1:ncols-1]
+        hj[end, :] = frame_joins[ncols:2ncols-2]
+        vj[:, 1] = frame_joins[2ncols-1:2ncols+nrows-3]
+        vj[:, end] = frame_joins[2ncols+nrows-2:2ncols+2nrows-4]
         # Randomly assign the inner colors to adjacent edges of the inner pieces
         horizontal_inner_edges_count = (nrows - 2) * (ncols - 1)
-        he[2:end-1, :] = reshape(inner_edges[1:horizontal_inner_edges_count], nrows-2, ncols-1)
-        ve[:, 2:end-1] = reshape(inner_edges[horizontal_inner_edges_count+1:end], nrows-1, ncols-2)
+        hj[2:end-1, :] = reshape(inner_joins[1:horizontal_inner_edges_count], nrows-2, ncols-1)
+        vj[:, 2:end-1] = reshape(inner_joins[horizontal_inner_edges_count+1:end], nrows-1, ncols-2)
 
         # Generate the pieces using the grids of horizontal and vertical edge colors. Color
         # numbers are assigned in the order [top, right, bottom, left], with color 0 being
@@ -922,38 +967,38 @@ function generate_pieces(
         # are the edge pieces, eventually followed by the numbers for the inner pieces.
 
         # Corner pieces (rotate such that the border edges are at the bottom and left sides)
-        pieces[1, :] = [he[1, 1], ve[1, 1], 0, 0]          # top-left corner
-        pieces[2, :] = [ve[1, end], he[1, end], 0, 0]      # top-right corner
-        pieces[3, :] = [ve[end, 1], he[end, 1], 0, 0]      # bottom-left corner
-        pieces[4, :] = [he[end, end], ve[end, end], 0, 0]  # bottom-right corner
+        pieces[1, :] = [hj[1, 1], vj[1, 1], 0, 0]          # top-left corner
+        pieces[2, :] = [vj[1, end], hj[1, end], 0, 0]      # top-right corner
+        pieces[3, :] = [vj[end, 1], hj[end, 1], 0, 0]      # bottom-left corner
+        pieces[4, :] = [hj[end, end], vj[end, end], 0, 0]  # bottom-right corner
         rotations[1:4] = [1, 2, 0, 3]
 
         # Edge pieces in clockwise direction, starting from the top-left corner (rotate
         # such that the border edge is at the bottom side)
         idx = 5
         for col = 2:ncols-1
-            pieces[idx, :] = [ve[1, col], he[1, col-1], 0, he[1, col]]
+            pieces[idx, :] = [vj[1, col], hj[1, col-1], 0, hj[1, col]]
             rotations[idx] = 2
             idx += 1
         end
         for row = 2:nrows-1
-            pieces[idx, :] = [he[row, end], ve[row-1, end], 0, ve[row, end]]
+            pieces[idx, :] = [hj[row, end], vj[row-1, end], 0, vj[row, end]]
             rotations[idx] = 3
             idx += 1
         end
         for col = ncols-1:-1:2
-            pieces[idx, :] = [ve[end, col], he[end, col], 0, he[end, col-1]]
+            pieces[idx, :] = [vj[end, col], hj[end, col], 0, hj[end, col-1]]
             idx += 1
         end
         for row = nrows-1:-1:2
-            pieces[idx, :] = [he[row, 1], ve[row, 1], 0, ve[row-1, 1]]
+            pieces[idx, :] = [hj[row, 1], vj[row, 1], 0, vj[row-1, 1]]
             rotations[idx] = 1
             idx += 1
         end
 
         # Inner pieces row by row from left to right
         for row = 2:nrows-1, col = 2:ncols-1
-            pieces[idx, :] = [ve[row-1, col], he[row, col], ve[row, col], he[row, col-1]]
+            pieces[idx, :] = [vj[row-1, col], hj[row, col], vj[row, col], hj[row, col-1]]
             idx += 1
         end
 
@@ -972,38 +1017,35 @@ function generate_pieces(
                 pieces[idx, :] = [pieces[idx, 2:4]..., pieces[idx, 1]]
             end
 
-            puzzle = Eternity2Puzzle(nrows, ncols; pieces)
-            puzzle[1, 1] = (findfirst(isequal(1), corner_pieces_idx), 1)
-            puzzle[1, ncols] = (findfirst(isequal(2), corner_pieces_idx), 2)
-            puzzle[nrows, 1] = (findfirst(isequal(3), corner_pieces_idx), 0)
-            puzzle[nrows, ncols] = (findfirst(isequal(4), corner_pieces_idx), 3)
+            board[1, 1] = findfirst(isequal(1), corner_pieces_idx) << 2 | 1
+            board[1, ncols] = findfirst(isequal(2), corner_pieces_idx) << 2 | 2
+            board[nrows, 1] = findfirst(isequal(3), corner_pieces_idx) << 2 | 0
+            board[nrows, ncols] = findfirst(isequal(4), corner_pieces_idx) << 2 | 3
             idx = 5
             for col = 2:ncols-1
-                puzzle[1, col] = (findfirst(isequal(idx), edge_pieces_idx) + 4, 2)
+                board[1, col] = (findfirst(isequal(idx), edge_pieces_idx) + 4) << 2 | 2
                 idx += 1
             end
             for row = 2:nrows-1
-                puzzle[row, ncols] = (findfirst(isequal(idx), edge_pieces_idx) + 4, 3)
+                board[row, ncols] = (findfirst(isequal(idx), edge_pieces_idx) + 4) << 2 | 3
                 idx += 1
             end
             for col = ncols-1:-1:2
-                puzzle[nrows, col] = (findfirst(isequal(idx), edge_pieces_idx) + 4, 0)
+                board[nrows, col] = (findfirst(isequal(idx), edge_pieces_idx) + 4) << 2 | 0
                 idx += 1
             end
             for row = nrows-1:-1:2
-                puzzle[row, 1] = (findfirst(isequal(idx), edge_pieces_idx) + 4, 1)
+                board[row, 1] = (findfirst(isequal(idx), edge_pieces_idx) + 4) << 2 | 1
                 idx += 1
             end
             offset = 2*nrows+2*ncols-4
             for row = 2:nrows-1, col = 2:ncols-1
                 piece = findfirst(isequal(idx), inner_pieces_idx) + offset
-                puzzle[row, col] = (piece, rotations[piece])
+                board[row, col] = piece << 2 | rotations[piece]
                 idx += 1
             end
 
-            @info "Random pieces generated with solution" puzzle
-
-            return pieces
+            return board, pieces
         end
     end
 

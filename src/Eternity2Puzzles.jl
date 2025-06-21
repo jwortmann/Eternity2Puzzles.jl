@@ -7,7 +7,7 @@ import GameZero
 import NativeFileDialog
 import OffsetArrays
 import PNGFiles
-using Printf
+using Printf: @printf
 using Quadmath: Float128
 import Random
 using Scratch: @get_scratch!
@@ -16,9 +16,7 @@ export Eternity2Puzzle
 export Eternity2Solver
 export SimpleBacktrackingSearch
 export HeuristicBacktrackingSearch
-export initialize_pieces
 export estimate_solutions
-export generate_pieces
 export play
 export preview
 export solve!
@@ -39,7 +37,7 @@ include("solvers/heuristic_backtracking.jl")
 
 Start the interactive game.
 """
-function play(puzzle::Eternity2Puzzle = Eternity2Puzzle(16, 16))
+function play(puzzle::Eternity2Puzzle = Eternity2Puzzle())
     save(puzzle, joinpath(@get_scratch!("eternity2"), "board.et2"))
     _project = Base.active_project()
     Base.set_active_project(abspath(@__DIR__, "..", "Project.toml"))
@@ -69,8 +67,8 @@ Start to search for a solution of the given [`Eternity2Puzzle`](@ref).
 
 # Examples
 
-```julia
-julia> puzzle = Eternity2Puzzle(16, 16)
+```julia-repl
+julia> puzzle = Eternity2Puzzle()
 
 julia> solve!(puzzle)
 ```

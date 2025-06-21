@@ -10,7 +10,7 @@ when a solution is found, or if the entire search space is exhausted.
 
 # Examples
 
-```julia
+```julia-repl
 julia> puzzle = Eternity2Puzzle(:clue1)
 6×6 Eternity2Puzzle with 0 pieces:
 ...

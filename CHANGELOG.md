@@ -4,34 +4,50 @@ Eternity2Puzzles.jl Changelog
 v0.2.0 (2025-??-??)
 -------------------
 
-  Breaking changes:
+Breaking changes:
 
-  * The required minimum Julia version is now 1.10.
+* The required minimum Julia version is now 1.10.
 
-  * Changed some of the arguments of the `Eternity2Puzzle` type constructor; the
-    argument to specify the piece definitions has become a positional argument,
-    while the argument used to load a puzzle board from a file is now a keyword
-    argument `board`. See the docstring of `Eternity2Puzzle` for details and
-    examples.
+* Changed some of the arguments of the `Eternity2Puzzle` type constructor;
+  the argument to specify the piece definitions is now a positional argument
+  and to load a puzzle board from a file, the `load!` function must be used.
+  See the docstring of `Eternity2Puzzle` for more details and examples.
 
-  * Renamed the included solvers `BacktrackingSearch` to `HeuristicBacktrackingSearch`
-    and `BacktrackingSearchRecursive` to `SimpleBacktrackingSearch`.
+* The `initialize_pieces` function has been removed. You can now use the
+  `Eternity2Puzzle` constructor without arguments to create a puzzle with the
+  original Eternity II pieces.
+
+* The `generate_pieces` function has been removed. Instead, the `Eternity2Puzzle`
+  constructor can be used directly to create a puzzle instance with randomly
+  generated pieces for a given board size. The number of frame and inner colors
+  can be adjusted with the `frame_colors` and `inner_colors` keyword arguments.
+  The puzzle board is automatically filled with a valid piece configuration for
+  a full solution and you can use the `reset!` function to clear the board.
+
+* Renamed the included solvers `BacktrackingSearch` to `HeuristicBacktrackingSearch`
+  and `BacktrackingSearchRecursive` to `SimpleBacktrackingSearch` (using a loop
+  instead of recursive function calls now).
 
 
-  New features and improvements:
+New features and improvements:
 
-  * Added the ability to play the smaller 6x6 Clue Puzzle 1 via `play(:clue1)`
-    and the 6x12 Clue Puzzle 2 via `play(:clue2)`.
+* Added the ability to play the smaller 6x6 Clue Puzzle 1 with `play(:clue1)`
+  and the 6x12 Clue Puzzle 2 with `play(:clue2)`. These puzzles can be solved
+  by hand.
 
-  * Added a new `estimate_solutions` function to predict the number of valid
-    solutions for a given `Eternity2Puzzle`.
+* Added a new `estimate_solutions` function to predict the number of valid
+  solutions for any given `Eternity2Puzzle`.
 
-  * An `Eternity2Puzzle` can now be created with more puzzle pieces than are
-    necessary to fill the entire board. This allows, for example, to solve a
-    smaller sized board using only a subset of the original Eternity II pieces.
+* An `Eternity2Puzzle` can now be created with more puzzle pieces than are
+  necessary to fill the entire board. This allows, for example, to solve a
+  smaller sized board using only a subset of the original Eternity II pieces.
+
+* Added support for the `preview` function to render puzzles that use more
+  than the 22 standard color patterns. In this case the patterns are replaced
+  by plain colors.
 
 
 v0.1.0 (2024-07-20)
 -------------------
 
-  * Initial release.
+* Initial release.
