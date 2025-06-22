@@ -176,7 +176,16 @@ function Base.show(io::IO, ::MIME"image/png", puzzle::Eternity2Puzzle)
             for y = 1:24, x = y:49-y
                 pixels[y, x] = colorant"#5a818a"
             end
-            colors = distinguishable_colors(ncolors)  # TODO test different color palettes
+            frame_color_numbers, inner_color_numbers = _get_colors(puzzle)
+            frame_colors = distinguishable_colors(length(frame_color_numbers); lchoices=[70], cchoices=[25])
+            inner_colors = distinguishable_colors(length(inner_color_numbers); lchoices=[50, 60, 70], cchoices=[40, 60, 80])
+            colors = fill(colorant"black", ncolors)
+            for (i, c) in enumerate(frame_color_numbers)
+                colors[c] = frame_colors[i]
+            end
+            for (i, c) in enumerate(inner_color_numbers)
+                colors[c] = inner_colors[i]
+            end
             for c = 1:ncolors, y = 1:24, x = 48c+y:48c+49-y
                 pixels[y, x] = colors[c]
             end
@@ -309,6 +318,29 @@ function _get_number_of_colors(nrows::Integer, ncols::Integer)
     ])
 
     return frame_colors[nrows, ncols], inner_colors[nrows, ncols]
+end
+
+
+# Return a the frame color numbers and the inner color numbers
+function _get_colors(puzzle::Eternity2Puzzle)
+    frame_colors = Set{UInt8}()
+    inner_colors = Set{UInt8}()
+    for piece_colors in eachrow(puzzle.pieces)
+        border_edges = count(iszero, piece_colors)
+        if border_edges == 0
+            # Extract the inner color numbers from the inner pieces
+            for side in eachindex(piece_colors)
+                push!(inner_colors, piece_colors[side])
+            end
+        elseif border_edges == 1
+            # Extract the frame color numbers from the edge pieces, i.e. the sides which are
+            # adjacent to the border side
+            border_edge_index = findfirst(iszero, piece_colors)
+            push!(frame_colors, piece_colors[mod1(border_edge_index + 1, 4)])
+            push!(frame_colors, piece_colors[mod1(border_edge_index - 1, 4)])
+        end
+    end
+    return sort(collect(frame_colors)), sort(collect(inner_colors))
 end
 
 
@@ -502,23 +534,9 @@ Return a new matrix for the piece definitions using the remapped color numbers, 
 `UnitRange`s for the numbers of the remapped frame colors and inner colors.
 """
 function remap_piece_colors(puzzle::Eternity2Puzzle)
-    frame_colors = Set{UInt8}()
-    # Find the edge pieces and extract the frame colors, i.e. the sides which are adjacent
-    # to the border.
-    for piece_colors in eachrow(puzzle.pieces)
-        if count(iszero, piece_colors) == 1
-            border_edge_index = findfirst(iszero, piece_colors)
-            push!(frame_colors, piece_colors[mod1(border_edge_index + 1, 4)])
-            push!(frame_colors, piece_colors[mod1(border_edge_index - 1, 4)])
-        end
-    end
-    frame_colors = sort(collect(frame_colors))
-    unique_colors = sort(unique(puzzle.pieces))
-    @assert unique_colors[1] == 0 "Border color must be 0"
-    popfirst!(unique_colors)
-    inner_colors = setdiff(unique_colors, frame_colors)
-    remapped_colors = [frame_colors; inner_colors]
-    push!(remapped_colors, 0)
+    @assert minimum(puzzle.pieces) == 0 "Border color must be 0"
+    frame_colors, inner_colors = _get_colors(puzzle)
+    remapped_colors = [frame_colors; inner_colors; 0x00]
     ncolors = length(remapped_colors)
     border_color = UInt8(ncolors)
     virtual_border_color = UInt8(ncolors + 1)
