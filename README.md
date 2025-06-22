@@ -60,7 +60,7 @@ julia> play()
 
 Puzzle pieces can be moved with the left mouse button and rotated with a right click.
 
-For the smaller clue puzzles 1 and 2, which can be solved by hand, use `play(:clue1)` or `play(:clue2)`.
+For the smaller clue puzzles 1, 2 and 4, which can be solved by hand, use `play(:clue1)`, `play(:clue2)` or `play(:clue4)`.
 
 If you prefer to let the computer do the work, generate an empty puzzle board and call the `solve!` function to start the default search algorithm:
 

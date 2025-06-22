@@ -29,6 +29,7 @@ Base.in(pos::Tuple{Integer, Integer}, bb::BoundingBox) = bb.xmin <= pos[1] <= bb
 
 const cache_dir = get_scratch!(Base.UUID("7b8a590e-5f29-49cd-9d3d-d6aab43f7c56"), "eternity2")
 const board = _load(joinpath(cache_dir, "board.et2"))
+const _pieces = DelimitedFiles.readdlm(joinpath(cache_dir, "pieces.txt"), UInt8)
 
 const NROWS, NCOLS = size(board)
 const NPIECES = NROWS * NCOLS
@@ -36,13 +37,13 @@ const NPIECES = NROWS * NCOLS
 const MAXIMUM_SCORE = 2 * NROWS * NCOLS - NROWS - NCOLS
 
 const BACKGROUND, BOARD_BOUNDING_BOX, puzzle = if (NROWS, NCOLS) == (16, 16)
-    ("background.png", BoundingBox(61, 61, 844, 844), Eternity2Puzzle(board, _get_pieces(:eternity2)[1]))
+    ("background.png", BoundingBox(61, 61, 844, 844), Eternity2Puzzle(board, _pieces))
 elseif (NROWS, NCOLS) == (6, 6)
-    ("background_6x6.png", BoundingBox(306, 306, 598, 598), Eternity2Puzzle(board, _get_pieces(:clue1)[1]))
+    ("background_6x6.png", BoundingBox(306, 306, 598, 598), Eternity2Puzzle(board, _pieces))
 elseif (NROWS, NCOLS) == (6, 12)
-    ("background_6x12.png", BoundingBox(159, 306, 745, 598), Eternity2Puzzle(board, _get_pieces(:clue2)[1]))
+    ("background_6x12.png", BoundingBox(159, 306, 745, 598), Eternity2Puzzle(board, _pieces))
 else
-    error("Unsupported board dimensions")
+    error("Unsupported board size")
 end
 
 const initial_position_xmin = 898

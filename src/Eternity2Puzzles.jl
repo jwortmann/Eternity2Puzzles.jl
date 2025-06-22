@@ -34,11 +34,16 @@ include("solvers/heuristic_backtracking.jl")
     play()
     play(:clue1)
     play(:clue2)
+    play(:clue4)
 
 Start the interactive game.
 """
 function play(puzzle::Eternity2Puzzle = Eternity2Puzzle())
-    save(puzzle, joinpath(@get_scratch!("eternity2"), "board.et2"))
+    cache_path = @get_scratch!("eternity2")
+    save(puzzle, joinpath(cache_path, "board.et2"))
+    open(joinpath(cache_path, "pieces.txt"), "w") do file
+        write(file, join([join([col for col in row], " ") for row in eachrow(puzzle.pieces)], "\n") * "\n")
+    end
     _project = Base.active_project()
     Base.set_active_project(abspath(@__DIR__, "..", "Project.toml"))
     GameZero.rungame(joinpath(@__DIR__, "eternity2.jl"))
@@ -52,7 +57,7 @@ function play(puzzle::Symbol)
     elseif puzzle == :clue2
         play(Eternity2Puzzle(:clue2))
     elseif puzzle == :clue4
-        error("Clue puzzle 4 not yet supported")
+        play(Eternity2Puzzle(:clue4))
     else
         error("Unknown option :$puzzle")
     end

@@ -32,8 +32,10 @@ Breaking changes:
 New features and improvements:
 
 * Added the ability to play the smaller 6x6 Clue Puzzle 1 with `play(:clue1)`
-  and the 6x12 Clue Puzzle 2 with `play(:clue2)`. These puzzles can be solved
-  by hand.
+  and the 6x12 Clue Puzzles 2 and 4 with `play(:clue2)` or `play(:clue4)`.
+  These puzzles can be solved by hand. More general, you can now play any
+  given puzzle with a board size of either 16x16, 6x6, or 6x12 via
+  `play(puzzle::Eternity2Puzzle)`.
 
 * Added a new `estimate_solutions` function to predict the number of valid
   solutions for any given `Eternity2Puzzle`.
