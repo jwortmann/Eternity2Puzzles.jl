@@ -142,14 +142,17 @@ function Eternity2Puzzle(
 end
 
 
-function Base.show(io::IO, ::MIME"text/plain", puzzle::Eternity2Puzzle)
+function Base.summary(io::IO, puzzle::Eternity2Puzzle)
     nrows, ncols = size(puzzle.board)
     placed_pieces = count(!=(0x0000), puzzle.board)
     score_, errors = score(puzzle)
     header_score = score_ > 0 ? ", $score_ matching edges and $errors errors" : ""
-    header = "$nrows×$ncols Eternity2Puzzle with $placed_pieces $(placed_pieces == 1 ? "piece" : "pieces")$header_score:"
+    print(io, "$nrows×$ncols Eternity2Puzzle with $placed_pieces $(placed_pieces == 1 ? "piece" : "pieces")$header_score")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", puzzle::Eternity2Puzzle)
     grid = join([join([iszero(val) ? " ---/-" : "$(lpad(val >> 2, 4))/$(val & 3)" for val in row]) for row in eachrow(puzzle.board)], "\n")
-    println(io, header * "\n" * grid)
+    println(io, summary(puzzle), ":\n", grid)
 end
 
 function Base.show(io::IO, ::MIME"image/png", puzzle::Eternity2Puzzle)
