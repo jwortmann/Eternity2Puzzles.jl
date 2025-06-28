@@ -48,6 +48,13 @@ New features and improvements:
   than the 22 standard color patterns. In this case the patterns are replaced
   by plain colors.
 
+* Added the ability to display an `Eternity2Puzzle` in form of an image directly
+  in the REPL. This only works for terminals with Sixel graphics support. To
+  enable this feature, install the ImageInTerminal.jl package and load it in
+  your REPL session via `using ImageInTerminal`. You can toggle between text
+  output and image rendering with the `ImageInTerminal.disable_encoding()` and
+  `ImageInTerminal.enable_encoding()` functions.
+
 
 v0.1.0 (2024-07-20)
 -------------------

@@ -17,11 +17,18 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Scratch = "6c6a2e73-6563-6170-7368-637461726353"
 SimpleDirectMediaLayer = "98e33af6-2ee5-5afd-9e75-cbc738b767c4"
 
+[weakdeps]
+ImageInTerminal = "d8c32880-2388-543b-8c61-d9f865259254"
+
+[extensions]
+ImageInTerminalExt = "ImageInTerminal"
+
 [compat]
 Colors = "0.12, 0.13"
 DelimitedFiles = "1.9"
 FixedSizeArrays = "1"
 GameZero = "0.3"
+ImageInTerminal = "0.5"
 NativeFileDialog = "0.2"
 OffsetArrays = "1"
 PNGFiles = "0.4"

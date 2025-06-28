@@ -81,7 +81,9 @@ julia> preview(puzzle)
 ```
 
 > [!TIP]
-> If the code is run within a [Pluto.jl](https://juliahub.com/ui/Packages/General/Pluto) notebook, the board with the puzzle pieces is rendered directly inside the notebook.
+> If your terminal emulator supports the Sixel graphics format, you can alternatively display the board with the puzzle pieces in form of an image directly inside the REPL by loading the [ImageInTerminal.jl](https://juliahub.com/ui/Packages/General/ImageInTerminal) package.
+> It is possible to toggle between text output and image rendering via `ImageInTerminal.disable_encoding()` and `ImageInTerminal.enable_encoding()`.
+> Similarly, if the code is run within a [Pluto.jl](https://juliahub.com/ui/Packages/General/Pluto) notebook, the board is automatically rendered as an image inside the notebook.
 
 The `solve!` function accepts an optional keyword argument `alg`, which should be a subtype of `Eternity2Solver` and selects the algorithm that is used to search for a solution of the given `puzzle`.
 
