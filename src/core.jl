@@ -144,14 +144,14 @@ end
 
 function Base.summary(io::IO, puzzle::Eternity2Puzzle)
     nrows, ncols = size(puzzle.board)
-    placed_pieces = count(!=(0x0000), puzzle.board)
+    placed_pieces = count(value -> !iszero(value), puzzle.board)
     score_, errors = score(puzzle)
     header_score = score_ > 0 ? ", $score_ matching edges and $errors errors" : ""
     print(io, "$nrows×$ncols Eternity2Puzzle with $placed_pieces $(placed_pieces == 1 ? "piece" : "pieces")$header_score")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", puzzle::Eternity2Puzzle)
-    grid = join([join([iszero(val) ? " ---/-" : "$(lpad(val >> 2, 4))/$(val & 3)" for val in row]) for row in eachrow(puzzle.board)], "\n")
+    grid = join([join(row) for row in eachrow(map(value -> iszero(value) ? " ---/-" : lpad("$(value >> 2)/$(value & 3)", 6), puzzle.board))], "\n")
     println(io, summary(puzzle), ":\n", grid)
 end
 
@@ -348,7 +348,7 @@ end
 
 
 function _get_pieces(pieces::Symbol)
-    puzzle_specs = Dict{Symbol, Tuple{String, Int, Int}}(
+    puzzles = Dict{Symbol, Tuple{String, Int, Int}}(
         :eternity2 => ("e2pieces.txt", 16, 16),
         :meta_16x16 => ("meta_16x16.txt", 16, 16),
         :meta_14x14 => ("meta_14x14.txt", 14, 14),
@@ -358,9 +358,9 @@ function _get_pieces(pieces::Symbol)
         :clue2 => ("clue2.txt", 6, 12),
         :clue4 => ("clue4.txt", 6, 12)
     )
-    pieces in keys(puzzle_specs) || throw(ArgumentError("Unknown option :$pieces"))
-    file, nrows, ncols = puzzle_specs[pieces]
-    return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", file), UInt8), nrows, ncols
+    puzzle = get(puzzles, pieces, nothing)
+    isnothing(puzzle) && throw(ArgumentError("Unknown option :$pieces"))
+    return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", puzzle[1]), UInt8), puzzle[2], puzzle[3]
 end
 
 function _get_pieces(filename::AbstractString)
@@ -642,9 +642,9 @@ function estimate_solutions(
     for (piece, piece_colors) in enumerate(eachrow(puzzle.pieces))
         border_edges = count(iszero, piece_colors)
         @assert border_edges <= 2 "Piece $piece has too many border edges"
-        pieces_per_type[3 - border_edges] += 1
+        pieces_per_type[border_edges+1] += 1
     end
-    corner_pieces, edge_pieces, inner_pieces = pieces_per_type
+    inner_pieces, edge_pieces, corner_pieces = pieces_per_type
 
     @assert corner_pieces >= corner_squares "Not enough corner pieces"
     @assert edge_pieces >= edge_squares "Not enough edge pieces"
@@ -816,30 +816,30 @@ _search_path(puzzle::Eternity2Puzzle, path::Vector{String}) = path
 function _search_path(puzzle::Eternity2Puzzle, strategy::Symbol = :rowscan)
     nrows, ncols = size(puzzle)
     preplaced_pieces = [_board_square(Tuple(idx)...) for idx in eachindex(IndexCartesian(), puzzle.board) if !iszero(puzzle.board[idx])]
-    if strategy == :rowscan
-        path = [_board_square(row, col) for row = nrows:-1:1 for col = 1:ncols if iszero(puzzle.board[row, col])]
-        return vcat(preplaced_pieces, path)
+    path = if strategy == :rowscan
+        [_board_square(row, col) for row = nrows:-1:1 for col = 1:ncols if iszero(puzzle.board[row, col])]
     elseif strategy == :colscan
-        path = [_board_square(row, col) for col = 1:ncols for row = nrows:-1:1 if iszero(puzzle.board[row, col])]
+        [_board_square(row, col) for col = 1:ncols for row = nrows:-1:1 if iszero(puzzle.board[row, col])]
     elseif strategy == :spiral_in
-        path = String[]
+        _path = String[]
+        sizehint!(_path, nrows*ncols)
         row, col = nrows, ncols  # start at bottom right corner
         vsteps, hsteps = nrows - 1, ncols - 1  # initial steps in vertical and horizontal direction
         while vsteps > 0 && hsteps > 0
             for _ = 1:vsteps  # go up
-                iszero(puzzle.board[row, col]) && push!(path, _board_square(row, col))
+                iszero(puzzle.board[row, col]) && push!(_path, _board_square(row, col))
                 row -= 1
             end
             for _ = 1:hsteps  # go left
-                iszero(puzzle.board[row, col]) && push!(path, _board_square(row, col))
+                iszero(puzzle.board[row, col]) && push!(_path, _board_square(row, col))
                 col -= 1
             end
             for _ = 1:vsteps  # go down
-                iszero(puzzle.board[row, col]) && push!(path, _board_square(row, col))
+                iszero(puzzle.board[row, col]) && push!(_path, _board_square(row, col))
                 row += 1
             end
             for _ = 1:hsteps  # go right
-                iszero(puzzle.board[row, col]) && push!(path, _board_square(row, col))
+                iszero(puzzle.board[row, col]) && push!(_path, _board_square(row, col))
                 col += 1
             end
             vsteps -= 2
@@ -847,10 +847,30 @@ function _search_path(puzzle::Eternity2Puzzle, strategy::Symbol = :rowscan)
             row -= 1
             col -= 1
         end
-        return vcat(preplaced_pieces, path)
+        _path
+    # elseif strategy == :frame_colscan
+    #     _path = String[]
+    #     sizehint!(_path, nrows*ncols)
+    #     for col = 1:ncols
+    #         iszero(puzzle.board[nrows, col]) && push!(_path, _board_square(nrows, col))
+    #     end
+    #     for row = nrows-1:-1:1
+    #         iszero(puzzle.board[row, 1]) && push!(_path, _board_square(row, 1))
+    #     end
+    #     for row = nrows-1:-1:1
+    #         iszero(puzzle.board[row, nrows]) && push!(_path, _board_square(row, ncols))
+    #     end
+    #     for col = ncols-1:-1:2
+    #         iszero(puzzle.board[1, col]) && push!(_path, _board_square(1, col))
+    #     end
+    #     for col = 2:ncols-1, row = nrows-1:-1:2
+    #         iszero(puzzle.board[row, col]) && push!(_path, _board_square(row, col))
+    #     end
+    #     _path
     else
         error("Unknown option :$strategy")
     end
+    return vcat(preplaced_pieces, path)
 end
 
 
