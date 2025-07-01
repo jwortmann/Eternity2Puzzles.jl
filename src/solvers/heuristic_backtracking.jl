@@ -60,7 +60,6 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
     prioritized_colors::Vector{Int} = [c1, c2, c3]
     # prioritized_colors = [5, 15, 19]  # 94 pieces, 122 sides total
     # prioritized_colors = [5, 20, 21]  # 94 pieces, 120 sides total, 3 sides already part of the starter-piece
-    @info prioritized_colors
 
     # Parameters for the amount of allowed errors dependent on the number of placed pieces
     K = maximum_score - solver.target_score; B = 0.24; M = 224; nu = 3.8
@@ -138,7 +137,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
     end
 
     allowed_error_depths = findall(>(0), diff(last.(board_position[phase2_depth+1:maxdepth]))) .+ (phase2_depth + 1)
-    @info allowed_error_depths
+    @info "Heuristics" prioritized_colors=repr(prioritized_colors) allowed_error_depths=repr(allowed_error_depths)
 
     _display_board(puzzle, clear=false)
 
@@ -388,9 +387,16 @@ function _display_board(
     restarts::Int = 0;
     clear::Bool = true
 )
-    if clear && !displayable("image/png")
-        print("\e[19F\e[0J")
+    if displayable("image/png")
+        if clear
+            print("\e[1F\e[0J")
+        end
+    else
+        if clear
+            print("\e[19F\e[0J")
+        end
+        display(puzzle)
     end
-    display(puzzle)
-    println("Iterations: $(round(iters/1_000_000_000, digits=2)) B    Restarts: $restarts")
+    pieces = count(!=(0), puzzle.board)
+    println("Pieces: $pieces/256   Iterations: $(round(iters/1_000_000_000, digits=2)) B   Restarts: $restarts")
 end
