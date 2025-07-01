@@ -1092,3 +1092,25 @@ function _generate_pieces(
 
     error("No valid edge colors configuration found after $maxiters iterations")
 end
+
+
+function _print_progress(
+    puzzle::Eternity2Puzzle,
+    iters::Int = 0,
+    restarts::Int = 0;
+    clear::Bool = true
+)
+    nrows, ncols = size(puzzle.board)
+    show_board = !displayable("image/png")
+    if clear
+        clear_lines = ifelse(show_board, nrows+3, 1)
+        print("\e[$(clear_lines)F\e[0J")
+    end
+    if show_board
+        display(puzzle)
+    end
+    pieces_str = "Pieces: $(count(!=(0), puzzle.board))/$(nrows*ncols)"
+    iterations_str = "   Iterations: $(round(iters/1_000_000_000, digits=2)) B"
+    restarts_str = iszero(restarts) ? "" : "   Restarts: $restarts"
+    println(pieces_str, iterations_str, restarts_str)
+end

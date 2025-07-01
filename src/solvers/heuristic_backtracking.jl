@@ -139,7 +139,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
     allowed_error_depths = findall(>(0), diff(last.(board_position[phase2_depth+1:maxdepth]))) .+ (phase2_depth + 1)
     @info "Heuristics" prioritized_colors=repr(prioritized_colors) allowed_error_depths=repr(allowed_error_depths)
 
-    _display_board(puzzle, clear=false)
+    _print_progress(puzzle; clear=false)
 
     while best_score - 32 < solver.target_score
 
@@ -258,7 +258,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
                 elseif 2 * depth > best_score + errors
                     best_score = 2 * depth - errors  # The actual score is 32 lower, but we can ignore the constant
                     puzzle.board[:, :] = board[1:nrows, 2:ncols+1]
-                    _display_board(puzzle, iters, restarts)
+                    _print_progress(puzzle, iters, restarts)
                     depth == maxdepth && return
                 end
                 depth += 1
@@ -277,7 +277,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
             start_index, end_index1, end_index2, errors = state[depth]
         end
         restarts += 1
-        _display_board(puzzle, iters, restarts)
+        _print_progress(puzzle, iters, restarts)
     end
 
     nothing
@@ -378,25 +378,4 @@ function _prepare_candidates_table(
     end
 
     return candidates, index_table
-end
-
-
-function _display_board(
-    puzzle::Eternity2Puzzle,
-    iters::Int = 0,
-    restarts::Int = 0;
-    clear::Bool = true
-)
-    if displayable("image/png")
-        if clear
-            print("\e[1F\e[0J")
-        end
-    else
-        if clear
-            print("\e[19F\e[0J")
-        end
-        display(puzzle)
-    end
-    pieces = count(!=(0), puzzle.board)
-    println("Pieces: $pieces/256   Iterations: $(round(iters/1_000_000_000, digits=2)) B   Restarts: $restarts")
 end

@@ -138,10 +138,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
 
     iters = 0
 
-    if !displayable("image/png")
-        display(puzzle)
-    end
-    println("Pieces: $fixed_pieces/$maxdepth   Iterations: 0.00 B")
+    _print_progress(puzzle; clear=false)
 
     @inbounds while true
         @label next
@@ -153,13 +150,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
             if depth > best_depth
                 best_depth = depth
                 puzzle.board[:, :] = board[1:end-1, 2:end]
-                if displayable("image/png")
-                    print("\e[1F\e[0J")
-                else
-                    print("\e[$(nrows + 3)F\e[0J")
-                    display(puzzle)
-                end
-                println("Pieces: $depth/$maxdepth   Iterations: $(round(iters/1_000_000_000, digits=2)) B")
+                _print_progress(puzzle, iters)
                 if depth == maxdepth
                     @info "Solution found after $iters iterations"
                     return
