@@ -51,11 +51,11 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
 
     @info "Properties" frame_colors inner_colors fixed_pieces
 
-    colors = FixedSizeMatrix{UInt8}(undef, npieces << 2 | 3, 4)
+    colors = FixedSizeMatrix{UInt8}(undef, npieces << 2 | 3, 2)
     colors[0x0001, :] .= border_color
     colors[0x0002, :] .= border_color + 1
 
-    for (piece, piece_colors) in enumerate(eachrow(pieces)), rotation = 0:3, side = 1:4
+    for (piece, piece_colors) in enumerate(eachrow(pieces)), rotation = 0:3, side = 1:2
         colors[piece << 2 | rotation, side] = piece_colors[mod1(side - rotation, 4)]
     end
 
@@ -65,28 +65,28 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
         available[piece] = false
     end
 
-    constraints = NTuple{2, Int}[(0, 0)]
+    constraints = NTuple{2, UInt8}[(0x00, 0x00)]
     rowcol = FixedSizeVector{NTuple{3, Int}}(undef, maxdepth)
     depth = fixed_pieces + 1
     for row = nrows:-1:1, col = 1:ncols
         iszero(puzzle.board[row, col]) || continue
-        right = 0
-        top = 0
-        if col < ncols
-            right_neighbor = puzzle.board[row, col+1]
-            if !iszero(right_neighbor)
-                right = colors[right_neighbor, 4]
-            end
-        end
+        top = 0x00
+        right = 0x00
         if row > 1
-            top_neighbor = puzzle.board[row-1, col]
-            if !iszero(top_neighbor)
-                top = colors[top_neighbor, 3]
+            piece, rotation = puzzle[row-1, col]
+            if !iszero(piece)
+                top = pieces[piece, mod1(3 - rotation, 4)]
             end
         end
-        constraint = findfirst(isequal((right, top)), constraints)
+        if col < ncols
+            piece, rotation = puzzle[row, col+1]
+            if !iszero(piece)
+                right = pieces[piece, 4 - rotation]
+            end
+        end
+        constraint = findfirst(isequal((top, right)), constraints)
         if isnothing(constraint)
-            push!(constraints, (right, top))
+            push!(constraints, (top, right))
             constraint = length(constraints)
         end
         rowcol[depth] = (row, col+1, constraint)
@@ -97,9 +97,9 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
     _candidates = [UInt16[] for _ in 1:ncolors+1, _ in 1:ncolors+1, _ in 1:nconstraints]
     for (piece, piece_colors) in enumerate(eachrow(pieces)), rotation = 0:3
         top, right, bottom, left = circshift(piece_colors, rotation)
-        for (constraint, (r, t)) in enumerate(constraints)
-            if (r == 0 || r == right) && (t == 0 || t == top)
-                push!(_candidates[left, bottom, constraint], piece << 2 | rotation)
+        for (constraint, (t, r)) in enumerate(constraints)
+            if (t == 0 || t == top) && (r == 0 || r == right)
+                push!(_candidates[bottom, left, constraint], piece << 2 | rotation)
             end
         end
     end
@@ -113,12 +113,12 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
     idx = 1
     for constraint = 1:nconstraints, left = 1:ncolors+1, bottom = 1:ncolors+1
         start_idx = idx
-        for candidate in _candidates[left, bottom, constraint]
+        for candidate in _candidates[bottom, left, constraint]
             candidates[idx] = candidate
             idx += 1
         end
         end_idx = idx - 1
-        index_table[left, bottom, constraint] = start_idx:end_idx
+        index_table[bottom, left, constraint] = start_idx:end_idx
     end
 
     board = FixedSizeMatrix{UInt16}(undef, nrows+1, ncols+1)
@@ -132,9 +132,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
     depth = fixed_pieces + 1
     best_depth = fixed_pieces
     row, col, constraint = rowcol[depth]
-    left = colors[board[row, col-1], 2]
-    bottom = colors[board[row+1, col], 1]
-    _idx_range = index_table[left, bottom, constraint]
+    _idx_range = index_table[colors[board[row+1, col], 1], colors[board[row, col-1], 2], constraint]
 
     iters = 0
 
@@ -160,9 +158,9 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
             idx_range[depth] = idx+1:_idx_range.stop
             depth += 1
             row, col, constraint = rowcol[depth]
-            left = colors[board[row, col-1], 2]
             bottom = colors[board[row+1, col], 1]
-            _idx_range = index_table[left, bottom, constraint]
+            left = colors[board[row, col-1], 2]
+            _idx_range = index_table[bottom, left, constraint]
             @goto next
         end
         depth -= 1
