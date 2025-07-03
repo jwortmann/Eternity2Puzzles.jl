@@ -874,6 +874,52 @@ function _search_path(puzzle::Eternity2Puzzle, strategy::Symbol = :rowscan)
 end
 
 
+"""
+    symmetry_factor(puzzle::Eternity2Puzzle)
+
+Return the number of symmetries in the puzzle as a one-based factor, i.e. if there aren't
+any symmetries, the return value is `1`. Symmetries can happen due to rotationally symmetric
+individual pieces, (rotationally identical) duplicate pieces, and possible rotations of the
+board if there aren't any fixed pieces on the board. The total number of puzzle solutions is
+divisible by this factor. When using a backtracking algorithm to enumerate all solutions of
+a given puzzle, it can be advantageous to first eliminate all the symmetries, for example by
+fixing one of the corner pieces and by restricting the rotations of the rotationally
+symmetric pieces, and then to multiply the number of found solutions by the corresponding
+factor.
+"""
+function symmetry_factor(puzzle::Eternity2Puzzle)
+    symmetries = 1
+    nrows, ncols = size(puzzle.board)
+    npieces = size(puzzle.pieces, 1)
+    fixed_pieces = Int.(filter(!=(0), puzzle.board .>> 2))
+    for (piece, piece_colors) in enumerate(eachrow(puzzle.pieces))
+        if piece in fixed_pieces
+            continue
+        end
+        # Symmetries due to rotationally symmetric individual pieces
+        if piece_colors[1] == piece_colors[3] && piece_colors[2] == piece_colors[4]
+            symmetries *= ifelse(piece_colors[1] == piece_colors[2], 4, 2)
+        end
+        # Symmetries due to rotationally identical duplicate pieces
+        identical_pieces = 1
+        for piece2 = piece+1:npieces
+            for rotation = 0:3
+                if piece_colors == circshift(puzzle.pieces[piece2, :], rotation)
+                    identical_pieces += 1
+                    break
+                end
+            end
+        end
+        symmetries *= identical_pieces
+    end
+    # Symmetries due to board rotations
+    if isempty(fixed_pieces)
+        symmetries *= ifelse(nrows == ncols, 4, 2)
+    end
+    return symmetries
+end
+
+
 # For a given board position return the color constraints of all 4 edges as a vector
 # [top, right, bottom, left] with UInt8 entries for the color constraints or `nothing` if
 # there is no adjacent piece in that direction.

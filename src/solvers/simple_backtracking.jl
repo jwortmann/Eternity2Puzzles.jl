@@ -39,7 +39,6 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
     nrows, ncols = size(puzzle)
     npieces = size(puzzle.pieces, 1)
     ncolors = border_color = length(unique(puzzle.pieces))
-    fixed_pieces = count(>(0), puzzle.board)
     maxdepth = nrows * ncols
 
     @assert npieces >= nrows * ncols "Number of pieces is incompatible with the board dimensions"
@@ -49,7 +48,10 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
     frame_colors = length(frame_colors_range)
     inner_colors = length(inner_colors_range)
 
-    @info "Properties" frame_colors inner_colors fixed_pieces
+    fixed_pieces = count(>(0), puzzle.board)
+    symmetries = symmetry_factor(puzzle)
+
+    @info "Properties" frame_colors inner_colors fixed_pieces symmetries
 
     colors = FixedSizeMatrix{UInt8}(undef, npieces << 2 | 3, 2)
     colors[0x0001, :] .= border_color
