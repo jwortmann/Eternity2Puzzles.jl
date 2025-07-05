@@ -564,41 +564,42 @@ end
 # Number of k-permutations of n (as Float128); perm(n, k) = n!/(n-k)!
 perm(n, k) = prod(n-k+1:n; init=Float128(1.0))
 
-# Number of k-combinations of n; comb(n, k) = n!/((n-k)!k!)
+# Number of k-combinations of n; comb(n, k) = n!/(k!(n-k)!)
 comb(n, k) = prod((n+1-i)/i for i = 1:min(k, n-k); init=1.0)
 
 
 """
     estimate_solutions(puzzle::Eternity2Puzzle)
-    estimate_solutions(puzzle::Eternity2Puzzle, max_errors::Int = 0, path::Symbol = :rowscan; verbose = true)
+    estimate_solutions(puzzle::Eternity2Puzzle, max_errors::Int=0, path::Symbol=:rowscan; verbose=true)
 
-Estimate the total number of valid solutions for a given [`Eternity2Puzzle`](@ref), based on
-a probability model for edge matching puzzles developed by Brendan Owen.
+Estimate the number of valid solutions for a given [`Eternity2Puzzle`](@ref) and the total
+number of nodes in the search tree for a backtracking algorithm, based on a probability
+model for edge matching puzzles developed by Brendan Owen.
 
 Pre-placed pieces on the board are considered to be additional constraints that must be
 satisfied in a solution.
 
 If `max_errors` is given and greater than zero, a piece configuration is considered to be a
-valid solution if at most `max_errors` of the inner joins don't match (all of the joins
-between neighboring frame pieces are still considered to match).
+valid solution if at most `max_errors` of the inner joins don't match. All of the joins
+between neighboring frame pieces are still required to match.
 
-If the `verbose` keyword argument is enabled, pieces are placed one after each other onto
-the board, and the cumulative sum of partial solutions is printed after each step. The order
-in which pieces are placed can be controlled with the `path` positional argument.
-Currently implemented options are:
- - :rowscan   (fill row by row, starting from the bottom left corner)
- - :colscan   (fill column by column, starting from the bottom left corner)
- - :spiral_in (counter-clockwise starting from the bottom right corner)
-Alternatively, `path` can be given as a `Vector{String}`, specifying all board positions
-explicitly; for example `path = ["I8", "A1", "A2", "B1", ...]`. Hereby it is necessary that
-each board position is visited exactly once, and that the positions of all pre-placed pieces
-are at the start of the list.
-The cumulative sum of estimated partial solutions represents the number of nodes in a search
-tree that a backtracking algorithm has to visit to explore the entire tree.
-The ratio between the number of full solutions and the cumulative sum of partial solutions
-can be used as a measure for the difficulty of the puzzle.
+If the `verbose` keyword argument is enabled, the cumulative sum of estimated partial
+solutions is printed to the console for each depth in the search tree of a backtracking
+search. This cumulative sum represents the number of nodes that the backtracking algorithm
+has to visit in order to explore the entire search tree. The ratio between the number of
+full solutions and cumulative sum of partial solutions is a measure for the difficulty of
+the puzzle. The number of partial solutions depends on the particular order in which pieces
+are placed onto the board. This path can be controlled with the `path` positional argument.
+Currently implemented options are `:rowscan` (fill row by row, starting from the bottom left
+corner), `:colscan` (fill column by column, starting from the bottom left corner) and
+`:spiral_in` (counter-clockwise starting from the bottom right corner). Alternatively,
+`path` can be given as a `Vector{String}`, containing all board positions explicitly; for
+example `path = ["I8", "A1", "A2", "B1", ...]`. Hereby it is required that each board
+position is visited exactly once, and that the positions of pre-placed pieces are at the
+start of the list.
 
-Return the number of solutions as a Float128.
+Return the number of solutions and the total number of nodes in the search tree as a tuple
+of Float128 values.
 
 # Examples
 
@@ -608,15 +609,25 @@ julia> puzzle = Eternity2Puzzle()
 16×16 Eternity2Puzzle with 1 piece:
 ...
 
-julia> trunc(Int, estimate_solutions(puzzle))
+julia> trunc(Int, estimate_solutions(puzzle)[1])
 14702
 ```
 
 Estimated number of solutions if at most 2 non-matching inner joins (score >= 478) are
 allowed:
 ```julia-repl
-julia> trunc(Int, estimate_solutions(puzzle, 2))
+julia> trunc(Int, estimate_solutions(puzzle, 2)[1])
 2440885684
+```
+
+Estimated average number of nodes that a backtracking algorithm has to visit in order to
+find a full solution, using a row-by-row search path starting at the bottom left corner:
+```julia-repl
+julia> solutions, nodes = estimate_solutions(puzzle)
+(1.47022707008833883330697753984548010e+04, 1.36503111141314695383322954302475741e+47)
+
+julia> nodes/solutions
+9.28449175766522131075433166693434524e+42
 ```
 
 # References
@@ -630,7 +641,7 @@ function estimate_solutions(
     path::Union{Symbol, Vector{String}} = :rowscan;
     verbose=false
 )
-    nrows, ncols = size(puzzle)
+    nrows, ncols = size(puzzle.board)
 
     # Number of corner, edge and inner squares on the board
     corner_squares = 4
@@ -723,47 +734,35 @@ function estimate_solutions(
         end
     end
 
-    if verbose  # Estimate the number of partial solutions after each placed piece
-        search_path = _search_path(puzzle, path)
-        board = zeros(Int, nrows, ncols)
+    search_path = _search_path(puzzle, path)
+    board = zeros(Int, nrows, ncols)
 
-        estimated_solutions::Float128 = 1.0
+    estimated_solutions::Float128 = 1.0
+    cumulative_sum::Float128 = 0.0
 
-        # The cumulative sum of partial solutions after each placed piece represents the
-        # total number of valid board configurations for the given search path, i.e. the
-        # number of nodes in the search tree for a backtracking algorithm.
-        cumulative_sum::Float128 = 0.0
-
-        for placed_pieces = 1:nrows*ncols
-            square = search_path[placed_pieces]
-            row, col = _parse_position(square)
-            board[row, col] = placed_pieces
-            if placed_pieces > fixed_corner_pieces + fixed_edge_pieces + fixed_inner_pieces
-                placed_corner_pieces, placed_edge_pieces, placed_inner_pieces = _count_pieces(board)
-                c = placed_corner_pieces - fixed_corner_pieces  # Number of selected corner pieces
-                e = placed_edge_pieces - fixed_edge_pieces      # Number of selected edge pieces
-                i = placed_inner_pieces - fixed_inner_pieces    # Number of selected inner pieces
-                # Numbers of completed frame and inner joins between pieces on the board
-                b, m = _count_joins(board)
-                # Number of piece configurations including 4 orientations for the inner pieces
-                piece_configurations = perm(Cp, c) * perm(Ep, e) * perm(Ip, i) * 4.0^i
-                # Probability of all frame joins are valid
-                pb = Vb[frame_colors, b] / perm(Tb, b)^2
-                estimated_solutions = piece_configurations * pb * sum(pm[m, v] * C[m, v] for v = max(m-max_errors, 0):m)
-            end
-            cumulative_sum += estimated_solutions
+    for placed_pieces = 1:nrows*ncols
+        square = search_path[placed_pieces]
+        row, col = _parse_position(square)
+        board[row, col] = placed_pieces
+        if placed_pieces > fixed_corner_pieces + fixed_edge_pieces + fixed_inner_pieces
+            placed_corner_pieces, placed_edge_pieces, placed_inner_pieces = _count_pieces(board)
+            c = placed_corner_pieces - fixed_corner_pieces  # Number of selected corner pieces
+            e = placed_edge_pieces - fixed_edge_pieces      # Number of selected edge pieces
+            i = placed_inner_pieces - fixed_inner_pieces    # Number of selected inner pieces
+            # Numbers of completed frame and inner joins between pieces on the board
+            b, m = _count_joins(board)
+            # Number of piece configurations including 4 orientations for the inner pieces
+            piece_configurations = perm(Cp, c) * perm(Ep, e) * perm(Ip, i) * 4.0^i
+            # Probability of all frame joins are valid
+            pb = Vb[frame_colors, b] / perm(Tb, b)^2
+            estimated_solutions = piece_configurations * pb * sum(pm[m, v] * C[m, v] for v = max(m-max_errors, 0):m)
+        end
+        cumulative_sum += estimated_solutions
+        if verbose
             @printf "%3i  %-3s  %.5e  %.5e\n" placed_pieces square estimated_solutions cumulative_sum
         end
-        return estimated_solutions
-    else  # Only calculate the number of solutions for the full board
-        c = corner_squares - fixed_corner_pieces
-        e = edge_squares - fixed_edge_pieces
-        i = inner_squares - fixed_inner_pieces
-        b, m = total_frame_joins, total_inner_joins
-        piece_configurations = perm(Cp, c) * perm(Ep, e) * perm(Ip, i) * 4.0^i
-        pb = Vb[frame_colors, b] / perm(Tb, b)^2
-        return piece_configurations * pb * sum(pm[m, v] * C[m, v] for v = m-max_errors:m)
     end
+    return estimated_solutions, cumulative_sum
 end
 
 # Numbers of corner, edge and inner pieces on the board
