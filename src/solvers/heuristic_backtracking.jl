@@ -16,12 +16,15 @@ end
 function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
     nrows, ncols = size(puzzle.board)
     npieces = size(puzzle.pieces, 1)
-    maximum_score = 2 * nrows * ncols - nrows - ncols
-    @assert solver.target_score <= maximum_score "Target score incompatible with board size"
-    @assert solver.target_score >= 0.9 * maximum_score "Target score too small"
 
-    maxdepth = count(isequal(EMPTY), puzzle.board)
-    phase2_depth = count(isequal(EMPTY), puzzle.board[9:nrows, 1:ncols]) + 1
+    @assert nrows == ncols == 16 "Incompatible board size"
+    @assert npieces == 256 "Wrong number of pieces"
+    @assert puzzle[9, 8] == (139, 2) "Mandatory starter-piece not on square I8"
+    @assert 450 <= solver.target_score <= 478 "Target score must be between 450 and 478"
+
+    maximum_score = 2 * nrows * ncols - nrows - ncols
+    maxdepth = count(iszero, puzzle.board)
+    phase2_depth = count(iszero, puzzle.board[9:nrows, 1:ncols]) + 1
 
     @info "Parameters" solver.target_score solver.seed
     Random.seed!(solver.seed)
@@ -41,7 +44,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
 
     # Create a lookup table for the colors of the top and right sides for all pieces and
     # rotations.
-    colors = FixedSizeMatrix{UInt8}(undef, size(pieces, 1) << 2 | 3, 2)
+    colors = FixedSizeMatrix{UInt8}(undef, npieces << 2 | 3, 2)
     colors[0x0001, :] .= ncolors + 1  # Special value for the edge pieces
     colors[0x0002, :] .= virtual_border_color  # Special value for the corner pieces
     for (piece, piece_colors) in enumerate(eachrow(pieces)), rotation = 0:3, side = 1:2
@@ -51,13 +54,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
     STARTER_PIECE_BOTTOM_COLOR = puzzle.pieces[STARTER_PIECE, 1]
     STARTER_PIECE_LEFT_COLOR = puzzle.pieces[STARTER_PIECE, 2]
 
-    # Colors which should be eliminated early during the search; pick one of the frame
-    # colors 1..5 which is least often used in the corner pieces, and two inner colors 6..22
-    # which result in the smallest amount of pieces containing these three colors.
-    corner_frame_colors = filter(color -> !isequal(color, virtual_border_color), collect(Iterators.flatten(piece_colors for piece_colors in eachrow(pieces) if count(isequal(virtual_border_color), piece_colors) == 2)))
-    c1 = argmin(color -> count(isequal(color), corner_frame_colors), frame_colors)
-    _, c2, c3 = findmin(collect((count(any(color in (c1, c2, c3) for color in piece_colors) for piece_colors in eachrow(pieces)), c2, c3) for c2 in inner_colors[1:end-1] for c3 = c2+1:22))[1]  # TODO make generic
-    prioritized_colors::Vector{Int} = [c1, c2, c3]
+    prioritized_colors = _prioritized_colors(puzzle)
     # prioritized_colors = [5, 15, 19]  # 94 pieces, 122 sides total
     # prioritized_colors = [5, 20, 21]  # 94 pieces, 120 sides total, 3 sides already part of the starter-piece
 
@@ -97,8 +94,9 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
 
     @assert length(search_order) == length(unique(search_order)) == maxdepth
 
-    prioritized_sides = [count(color in prioritized_colors for color in piece_colors) for piece_colors in eachrow(puzzle.pieces)]
-    initially_placed_prioritized_sides = count(in(prioritized_colors), Iterators.flatten(puzzle.pieces[piece, :] for piece in puzzle.board .>> 2 if piece != 0))
+    prioritized_sides = vec(count(in(prioritized_colors), puzzle.pieces; dims=2))
+    fixed_pieces = filter(>(0), puzzle.board .>> 2)
+    preplaced_prioritized_sides = count(in(prioritized_colors), puzzle.pieces[fixed_pieces, :])
     required_prioritized_sides = sum(prioritized_sides) + div(solver.target_score, 10) - 53
 
     # Add one more row/column at the bottom and the right edge of the board, filled with
@@ -137,7 +135,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
     end
 
     allowed_error_depths = findall(>(0), diff(last.(board_position[phase2_depth+1:maxdepth]))) .+ (phase2_depth + 1)
-    @info "Heuristics" prioritized_colors=repr(prioritized_colors) allowed_error_depths=repr(allowed_error_depths)
+    @info "Heuristics" prioritized_colors=Tuple(prioritized_colors) allowed_error_depths=Tuple(allowed_error_depths)
 
     _print_progress(puzzle; clear=false)
 
@@ -156,12 +154,12 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
 
         @label restart
 
-        board[1:nrows, 2:ncols+1] .= EMPTY
+        board[1:nrows, 2:ncols+1] .= 0x0000
         board[9, 9] = STARTER_PIECE << 2 | 2
         fill!(available, true)
         available[STARTER_PIECE] = false
 
-        placed_sides = initially_placed_prioritized_sides
+        placed_sides = preplaced_prioritized_sides
         candidates, index_table = _prepare_candidates_table(pieces, inner_colors, ncolors, available; prioritized_colors)
 
         depth = 1
@@ -224,10 +222,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
         # of placed pieces.
 
         fill!(available, true)
-        board[1:8, 2:ncols+1] .= EMPTY
-        for col = 2:ncols+1, row = 9:16
-            available[board[row, col] >> 2] = false
-        end
+        board[1:8, 2:ncols+1] .= 0x0000
+        available[filter(>(0), board .>> 2)] .= false
 
         # Note that for this phase the order of the candidates doesn't matter, because all
         # of them are tried exhaustively before the search is restarted.
@@ -284,6 +280,21 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
 end
 
 
+# Edge colors which should be eliminated early during the search. Returns a vector of three
+# colors, with one of the frame colors 1..5 that occurs least often on the corner pieces
+# (to prevent that some of the corner pieces are never used in the last side of the frame),
+# and two inner colors 6..22 that result in the smallest number of pieces containing these
+# three colors (so that the colors can be eliminated by using fewer pieces).
+function _prioritized_colors(puzzle::Eternity2Puzzle)
+    frame_colors, inner_colors = _get_colors(puzzle)
+    corner_pieces = findall(isequal(2), vec(count(iszero, puzzle.pieces; dims=2)))
+    c1 = argmin(color -> count(isequal(color), puzzle.pieces[corner_pieces, :]), frame_colors)
+    domain = [(c2, c3) for (idx, c2) in enumerate(inner_colors[1:end-1]) for c3 = inner_colors[idx+1:end]]
+    c2, c3 = argmin(c -> count(any(in((c1, c[1], c[2])), puzzle.pieces; dims=2)), domain)
+    return Int[c1, c2, c3]
+end
+
+
 # Precompute a lookup table to quickly obtain the piece candidates which satisfy given color
 # constraints for the right side (first index) and bottom side (second index). Note that
 # mismatched colors between the frame pieces (color numbers 1 to 5) are not allowed, because
@@ -294,7 +305,7 @@ function _prepare_candidates_table(
     inner_colors::UnitRange{Int},
     ncolors::Int,
     available::AbstractVector{Bool};
-    prioritized_colors::AbstractVector{Int} = Int[],
+    prioritized_colors::Vector{Int} = Int[],
     shuffle::Bool = true,
     allow_errors::Bool = false
 )

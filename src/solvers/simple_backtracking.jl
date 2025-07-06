@@ -63,9 +63,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
 
     available = FixedSizeVector{Bool}(undef, npieces)
     fill!(available, true)
-    for piece in filter(>(0), puzzle.board .>> 2)
-        available[piece] = false
-    end
+    available[filter(>(0), puzzle.board .>> 2)] .= false
 
     constraints = NTuple{2, UInt8}[(0x00, 0x00)]
     rowcol = FixedSizeVector{NTuple{3, Int}}(undef, maxdepth)
