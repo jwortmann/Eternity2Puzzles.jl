@@ -1142,7 +1142,8 @@ end
 function _print_progress(
     puzzle::Eternity2Puzzle,
     iters::Int = 0,
-    restarts::Int = 0;
+    restarts::Int = 0,
+    solutions::Int = 0;
     clear::Bool = true
 )
     nrows, ncols = size(puzzle.board)
@@ -1157,5 +1158,6 @@ function _print_progress(
     pieces_str = "Pieces: $(count(!=(0), puzzle.board))/$(nrows*ncols)"
     iterations_str = "   Iterations: $(round(iters/1_000_000_000, digits=2)) B"
     restarts_str = iszero(restarts) ? "" : "   Restarts: $restarts"
-    println(pieces_str, iterations_str, restarts_str)
+    solutions_str = iszero(solutions) ? "" : "   Solutions: $solutions"
+    println(pieces_str, iterations_str, restarts_str, solutions_str)
 end

@@ -89,7 +89,7 @@ function solve!(
         alg = if size(puzzle) == (16, 16) && puzzle[9, 8] == (STARTER_PIECE, 2)
             HeuristicBacktrackingSearch(target_score=460, seed=seed)
         else
-            SimpleBacktrackingSearch(seed)
+            SimpleBacktrackingSearch(seed=seed)
         end
     end
 

@@ -1,6 +1,6 @@
 """
     SimpleBacktrackingSearch()
-    SimpleBacktrackingSearch(seed::Int)
+    SimpleBacktrackingSearch(; seed::Int=1, exhaustive_search::Bool=false)
 
 A simple backtracking search that can be used with arbitrary board sizes. Pre-placed pieces
 on the board are considered to be additional constraints for a valid solution. This search
@@ -29,6 +29,7 @@ julia> preview(puzzle)
 """
 @kwdef struct SimpleBacktrackingSearch <: Eternity2Solver
     seed::Int = 1
+    exhaustive_search::Bool = false
 end
 
 
@@ -135,6 +136,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
     _idx_range = index_table[colors[board[row+1, col], 1], colors[board[row, col-1], 2], constraint]
 
     iters = 0
+    solutions = 0
 
     _print_progress(puzzle; clear=false)
 
@@ -150,8 +152,15 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
                 puzzle.board[:, :] = board[1:end-1, 2:end]
                 _print_progress(puzzle, iters)
                 if depth == maxdepth
-                    @info "Solution found after $iters iterations"
-                    return
+                    if solver.exhaustive_search
+                        best_depth -= 1
+                        solutions += 1
+                        _print_progress(puzzle, iters, 0, solutions; clear=false)
+                        continue
+                    else
+                        @info "Solution found after $iters iterations"
+                        return
+                    end
                 end
             end
             available[candidate >> 2] = false
@@ -165,7 +174,11 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
         end
         depth -= 1
         if depth == fixed_pieces
-            @warn "Search finished with no valid solution found"
+            if solver.exhaustive_search
+                @info "Search finished after $iters iterations with $solutions solutions"
+            else
+                @warn "Search finished after $iters iterations with no valid solution found"
+            end
             return
         end
         row, col = rowcol[depth]
