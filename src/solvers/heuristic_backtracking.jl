@@ -197,14 +197,17 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
                 break
             end
             if !piece_found
-                # Usually it should take less than a second to fill the first half of the
-                # board, but sometimes this phase gets "stuck" while searching for a valid
-                # arrangement containing the pieces with the prioritized colors. To avoid
-                # this case, restart if the loop iterations exceed 2*2e8.
+                # Usually it shouldn't take very long to fill the first half of the board,
+                # but sometimes this phase can get stuck for a long time while searching
+                # for a valid arrangement with the prioritized colors. In that case it is
+                # better to restart this phase, which is done here if the number of visited
+                # nodes exceed 1e10.
                 depth -= 1
                 if depth == 1
                     error("Could not fill bottom half with prioritized colors")
-                elseif iters - last_restart > 200_000_000
+                elseif iters - last_restart > 10_000_000_000
+                    restarts += 1
+                    _print_progress(puzzle, iters, restarts)
                     @goto restart
                 end
                 row, col, min_placed_sides = board_position[depth]
