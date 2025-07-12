@@ -228,6 +228,8 @@ function Base.getindex(puzzle::Eternity2Puzzle, inds...)
     return Int(value >> 2), value & 3
 end
 
+Base.getindex(puzzle::Eternity2Puzzle, index::String) = puzzle[_parse_position(index)...]
+
 function Base.setindex!(puzzle::Eternity2Puzzle, value::UInt16, inds...)
     puzzle.board[inds...] = value
 end
@@ -235,6 +237,9 @@ end
 function Base.setindex!(puzzle::Eternity2Puzzle, value::Tuple{Integer, Integer}, inds...)
     puzzle.board[inds...] = value[1] << 2 | value[2]
 end
+
+Base.setindex!(puzzle::Eternity2Puzzle, value::UInt16, index::String) = setindex!(puzzle, value, _parse_position(index)...)
+Base.setindex!(puzzle::Eternity2Puzzle, value::Tuple{Integer, Integer}, index::String) = setindex!(puzzle, value, _parse_position(index)...)
 
 Base.size(puzzle::Eternity2Puzzle) = size(puzzle.board)
 Base.size(puzzle::Eternity2Puzzle, dim::Integer) = size(puzzle.board, dim)
