@@ -95,7 +95,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
     @assert length(search_order) == length(unique(search_order)) == maxdepth
 
     prioritized_sides = vec(count(in(prioritized_colors), puzzle.pieces; dims=2))
-    fixed_pieces = filter(>(0), puzzle.board .>> 2)
+    fixed_pieces = filter(!iszero, puzzle.board) .>> 2
     preplaced_prioritized_sides = count(in(prioritized_colors), puzzle.pieces[fixed_pieces, :])
     required_prioritized_sides = sum(prioritized_sides) + div(solver.target_score, 10) - 53
 
@@ -160,7 +160,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
         available[STARTER_PIECE] = false
 
         placed_sides = preplaced_prioritized_sides
-        candidates, index_table = _prepare_candidates_table(pieces, inner_colors, ncolors, available; prioritized_colors)
+        candidates, index_table = _prepare_candidates_table(pieces, inner_colors, ncolors, available; prioritized_sides)
 
         depth = 1
         last_restart = iters
@@ -226,7 +226,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
 
         fill!(available, true)
         board[1:8, 2:ncols+1] .= 0x0000
-        available[filter(>(0), board .>> 2)] .= false
+        available[filter(!iszero, board .>> 2)] .= false
 
         # Note that for this phase the order of the candidates doesn't matter, because all
         # of them are tried exhaustively before the search is restarted.
@@ -308,7 +308,7 @@ function _prepare_candidates_table(
     inner_colors::UnitRange{Int},
     ncolors::Int,
     available::AbstractVector{Bool};
-    prioritized_colors::Vector{Int} = Int[],
+    prioritized_sides::Vector{Int} = Int[],
     shuffle::Bool = true,
     allow_errors::Bool = false
 )
@@ -346,19 +346,16 @@ function _prepare_candidates_table(
         end
     end
 
-    reorder_prioritized = length(prioritized_colors) > 0
-    prioritized_pieces = reorder_prioritized ? [piece for (piece, colors) in enumerate(pieces) if any(in(prioritized_colors), colors)] : Int[]
+    prioritized_pieces = findall(!iszero, prioritized_sides)
+    has_prioritized_pieces = !isempty(prioritized_pieces)
 
-    total_candidates = 0
     for idx in eachindex(candidates_table)
         len = length(candidates_table[idx])
-        total_candidates += len
         len > 1 || continue
         if shuffle
             Random.shuffle!(candidates_table[idx])
         end
-        if reorder_prioritized
-            # TODO is there a better way to move the prioritized pieces to the start?
+        if has_prioritized_pieces
             for i = 2:len
                 if candidates_table[idx][i] >> 2 in prioritized_pieces
                     pushfirst!(candidates_table[idx], popat!(candidates_table[idx], i))
@@ -373,7 +370,7 @@ function _prepare_candidates_table(
     # matches to improve memory locality. The tuple values of the index table are the start
     # index, the end index for the exactly matching pieces, and the end index for the partly
     # matching pieces.
-    candidates = FixedSizeVector{UInt16}(undef, total_candidates)
+    candidates = FixedSizeVector{UInt16}(undef, mapreduce(length, +, candidates_table))
     index_table = FixedSizeMatrix{NTuple{3, Int}}(undef, ncolors+2, bottom_colors)
     idx = 1
     for left = 1:ncolors+2, bottom = 1:bottom_colors

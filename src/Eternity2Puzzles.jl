@@ -38,7 +38,10 @@ include("solvers/heuristic_backtracking.jl")
 
 Start the interactive game.
 """
-function play(puzzle::Eternity2Puzzle = Eternity2Puzzle())
+function play(puzzle::Eternity2Puzzle)
+    nrows, ncols = size(puzzle.board)
+    @assert (nrows, ncols) in ((16, 16), (6, 12), (6, 6)) "Incompatible board size"
+    @assert size(puzzle.pieces, 1) == nrows * ncols "Wrong number of pieces"
     cache_path = @get_scratch!("eternity2")
     save(puzzle, joinpath(cache_path, "board.et2"))
     open(joinpath(cache_path, "pieces.txt"), "w") do file
@@ -51,17 +54,8 @@ function play(puzzle::Eternity2Puzzle = Eternity2Puzzle())
     nothing
 end
 
-function play(puzzle::Symbol)
-    if puzzle == :clue1
-        play(Eternity2Puzzle(:clue1))
-    elseif puzzle == :clue2
-        play(Eternity2Puzzle(:clue2))
-    elseif puzzle == :clue4
-        play(Eternity2Puzzle(:clue4))
-    else
-        error("Unknown option :$puzzle")
-    end
-end
+play() = play(Eternity2Puzzle())
+play(puzzle::Symbol) = play(Eternity2Puzzle(puzzle))
 
 
 """

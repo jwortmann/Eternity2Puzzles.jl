@@ -890,7 +890,7 @@ function symmetry_factor(puzzle::Eternity2Puzzle)
     symmetries = 1
     nrows, ncols = size(puzzle.board)
     npieces = size(puzzle.pieces, 1)
-    fixed_pieces = Int.(filter(!=(0), puzzle.board .>> 2))
+    fixed_pieces = Int.(filter(!iszero, puzzle.board) .>> 2)
     for (piece, piece_colors) in enumerate(eachrow(puzzle.pieces))
         if piece in fixed_pieces
             continue
@@ -1155,7 +1155,7 @@ function _print_progress(
     if show_board
         display(puzzle)
     end
-    pieces_str = "Pieces: $(count(!=(0), puzzle.board))/$(nrows*ncols)"
+    pieces_str = "Pieces: $(count(!iszero, puzzle.board))/$(nrows*ncols)"
     iterations_str = "   Iterations: $(round(iters/1_000_000_000, digits=2)) B"
     restarts_str = iszero(restarts) ? "" : "   Restarts: $restarts"
     solutions_str = iszero(solutions) ? "" : "   Solutions: $solutions"

@@ -49,7 +49,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
     frame_colors = length(frame_colors_range)
     inner_colors = length(inner_colors_range)
 
-    fixed_pieces = count(>(0), puzzle.board)
+    fixed_pieces = count(!iszero, puzzle.board)
     symmetries = symmetry_factor(puzzle)
 
     @info "Properties" frame_colors inner_colors fixed_pieces symmetries
@@ -64,7 +64,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
 
     available = FixedSizeVector{Bool}(undef, npieces)
     fill!(available, true)
-    available[filter(>(0), puzzle.board .>> 2)] .= false
+    available[filter(!iszero, puzzle.board .>> 2)] .= false
 
     constraints = NTuple{2, UInt8}[(0x00, 0x00)]
     rowcol = FixedSizeVector{NTuple{3, Int}}(undef, maxdepth)

@@ -10,7 +10,7 @@ using Test
 
     # Eternity II puzzle with starter-piece and four additional hint pieces
     puzzle2 = Eternity2Puzzle(; hint_pieces=true)
-    @test count(>(0), puzzle2.board) == 5
+    @test count(!iszero, puzzle2.board) == 5
 
     # The 16x16 META2010 puzzle does not have the starter-piece
     puzzle3 = Eternity2Puzzle(:meta_16x16)
