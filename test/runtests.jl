@@ -2,7 +2,7 @@ using Eternity2Puzzles
 using Test
 
 
-@testset "Eternity2Puzzle constructors" begin
+@testset "Constructors" begin
     # The original Eternity II puzzle should have starter-piece pre-placed on square I8
     puzzle = Eternity2Puzzle()
     @test size(puzzle.board) == (16, 16)
@@ -32,7 +32,7 @@ using Test
 end
 
 
-@testset "Eternity2Puzzle basic operations" begin
+@testset "Basic operations" begin
     puzzle = Eternity2Puzzle()
     @test size(puzzle) == (16, 16)  # Eternity2Puzzle type supports `size` function directly
     @test puzzle[9, 8] == (139, 2)  # Indexing using row/col numbers
@@ -43,7 +43,7 @@ end
 end
 
 
-@testset "Eternity2Puzzle advanced functions" begin
+@testset "Advanced functions" begin
     puzzle = Eternity2Puzzle()
 
     # Number of symmetries

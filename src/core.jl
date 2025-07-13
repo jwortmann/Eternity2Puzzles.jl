@@ -1,5 +1,4 @@
 const STARTER_PIECE = 139
-const EMPTY = 0x0000
 
 const BOARD_BACKGROUND_IMG = PNGFiles.load(joinpath(@__DIR__, "images", "board.png"))
 const COLOR_PATTERNS_IMG = PNGFiles.load(joinpath(@__DIR__, "images", "colors.png"))
@@ -72,7 +71,7 @@ julia> puzzle = Eternity2Puzzle(:clue1)  # Clue puzzle 1
 ...
 
 julia> puzzle = Eternity2Puzzle(8, 8)  # A puzzle with randomly generated pieces
-8×8 Eternity2Puzzle with 64 pieces, 112 matching edges and 0 errors:
+8×8 Eternity2Puzzle with 64 pieces, 112 matching edge pairs and 0 errors:
 ...
 
 julia> reset!(puzzle)  # Clear the entire board
@@ -145,8 +144,8 @@ end
 function Base.summary(io::IO, puzzle::Eternity2Puzzle)
     nrows, ncols = size(puzzle.board)
     placed_pieces = count(value -> !iszero(value), puzzle.board)
-    score_, errors = score(puzzle)
-    header_score = score_ > 0 ? ", $score_ matching edges and $errors errors" : ""
+    valid_joins, invalid_joins = score(puzzle)
+    header_score = valid_joins > 0 ? ", $valid_joins matching edge pairs and $invalid_joins errors" : ""
     print(io, "$nrows×$ncols Eternity2Puzzle with $placed_pieces $(placed_pieces == 1 ? "piece" : "pieces")$header_score")
 end
 
@@ -447,8 +446,7 @@ Clear all pieces from the board (except for the starter-piece in case of the 16�
 """
 function reset!(puzzle::Eternity2Puzzle; starter_piece::Bool = true)
     fill!(puzzle.board, 0x0000)
-    nrows, ncols = size(puzzle.board)
-    if starter_piece && nrows == ncols == 16
+    if starter_piece && size(puzzle.board) == (16, 16)
         puzzle.board[9, 8] = STARTER_PIECE << 2 | 2
     end
     puzzle
@@ -463,8 +461,8 @@ Return the number of matching and non-matching edge pairs on the board.
 function score(puzzle::Eternity2Puzzle)
     nrows, ncols = size(puzzle.board)
     npieces = nrows * ncols
-    matching_edges = 0
-    errors = 0
+    valid_joins = 0
+    invalid_joins = 0
     for col = 1:ncols-1, row = 1:nrows-1
         val1 = puzzle.board[row, col]
         p1, r1 = val1 >> 2, val1 & 3
@@ -474,10 +472,10 @@ function score(puzzle::Eternity2Puzzle)
         if 0 < p2 <= npieces
             if puzzle.pieces[p1, mod1(2 - r1, 4)] == puzzle.pieces[p2, 4 - r2]
                 if puzzle.pieces[p2, 4 - r2] != 0x00
-                    matching_edges += 1
+                    valid_joins += 1
                 end
             else
-                errors += 1
+                invalid_joins += 1
             end
         end
         val3 = puzzle.board[row + 1, col]
@@ -485,10 +483,10 @@ function score(puzzle::Eternity2Puzzle)
         if 0 < p3 <= npieces
             if puzzle.pieces[p1, mod1(3 - r1, 4)] == puzzle.pieces[p3, mod1(1 - r3, 4)]
                 if puzzle.pieces[p1, mod1(3 - r1, 4)] != 0x00
-                    matching_edges += 1
+                    valid_joins += 1
                 end
             else
-                errors += 1
+                invalid_joins += 1
             end
         end
     end
@@ -501,10 +499,10 @@ function score(puzzle::Eternity2Puzzle)
         0 < p2 <= npieces || continue
         if puzzle.pieces[p1, mod1(2 - r1, 4)] == puzzle.pieces[p2, 4 - r2]
             if puzzle.pieces[p2, 4 - r2] != 0x00
-                matching_edges += 1
+                valid_joins += 1
             end
         else
-            errors += 1
+            invalid_joins += 1
         end
     end
     for row = 1:nrows-1
@@ -516,13 +514,13 @@ function score(puzzle::Eternity2Puzzle)
         0 < p2 <= npieces || continue
         if puzzle.pieces[p1, mod1(3 - r1, 4)] == puzzle.pieces[p2, mod1(1 - r2, 4)]
             if puzzle.pieces[p1, mod1(3 - r1, 4)] != 0x00
-                matching_edges += 1
+                valid_joins += 1
             end
         else
-            errors += 1
+            invalid_joins += 1
         end
     end
-    return matching_edges, errors
+    return valid_joins, invalid_joins
 end
 
 
@@ -558,10 +556,8 @@ function remap_piece_colors(puzzle::Eternity2Puzzle)
             replace!(piece_colors, border_color=>virtual_border_color)
         end
     end
-    frame_colors_count = length(frame_colors)
-    frame_colors_range = 1:frame_colors_count
-    inner_colors_count = length(inner_colors)
-    inner_colors_range = frame_colors_count+1:frame_colors_count+inner_colors_count
+    frame_colors_range = 1:length(frame_colors)
+    inner_colors_range = (1:length(inner_colors)) .+ last(frame_colors_range)
     return remapped_pieces, frame_colors_range, inner_colors_range
 end
 
@@ -653,14 +649,13 @@ function estimate_solutions(
     edge_squares = 2 * (nrows - 2) + 2 * (ncols - 2)
     inner_squares = (nrows - 2) * (ncols - 2)
 
+    # Number of border edges for each piece
+    border_edges = vec(count(iszero, puzzle.pieces; dims=2))
+
     # Number of corner, edge and inner pieces
-    pieces_per_type = zeros(Int, 3)
-    for (piece, piece_colors) in enumerate(eachrow(puzzle.pieces))
-        border_edges = count(iszero, piece_colors)
-        @assert border_edges <= 2 "Piece $piece has too many border edges"
-        pieces_per_type[border_edges+1] += 1
-    end
-    inner_pieces, edge_pieces, corner_pieces = pieces_per_type
+    corner_pieces = count(isequal(2), border_edges)
+    edge_pieces = count(isequal(1), border_edges)
+    inner_pieces = count(iszero, border_edges)
 
     @assert corner_pieces >= corner_squares "Not enough corner pieces"
     @assert edge_pieces >= edge_squares "Not enough edge pieces"

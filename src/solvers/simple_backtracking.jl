@@ -16,7 +16,7 @@ julia> puzzle = Eternity2Puzzle(:clue1)
 ...
 
 julia> solve!(puzzle; alg=SimpleBacktrackingSearch())
-6×6 Eternity2Puzzle with 36 pieces, 60 matching edges and 0 errors:
+6×6 Eternity2Puzzle with 36 pieces, 60 matching edge pairs and 0 errors:
   26/1  28/1  31/1  10/1  13/1  14/2
   12/0   4/3  29/2   2/2  24/1   7/2
   18/0   8/2   5/2  32/0   1/3  11/2
