@@ -350,21 +350,20 @@ function _get_colors(puzzle::Eternity2Puzzle)
     return sort(collect(frame_colors)), sort(collect(inner_colors))
 end
 
+_load_pieces(filename::String) = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", filename), UInt8)
+
+@eval _get_pieces(::Val{:eternity2}) = $(_load_pieces("e2pieces.txt")), 16, 16
+@eval _get_pieces(::Val{:meta_16x16}) = $(_load_pieces("meta_16x16.txt")), 16, 16
+@eval _get_pieces(::Val{:meta_14x14}) = $(_load_pieces("meta_14x14.txt")), 14, 14
+@eval _get_pieces(::Val{:meta_12x12}) = $(_load_pieces("meta_12x12.txt")), 12, 12
+@eval _get_pieces(::Val{:meta_10x10}) = $(_load_pieces("meta_10x10.txt")), 10, 10
+@eval _get_pieces(::Val{:clue1}) = $(_load_pieces("clue1.txt")), 6, 6
+@eval _get_pieces(::Val{:clue2}) = $(_load_pieces("clue2.txt")), 6, 12
+@eval _get_pieces(::Val{:clue4}) = $(_load_pieces("clue4.txt")), 6, 12
 
 function _get_pieces(pieces::Symbol)
-    puzzles = Dict{Symbol, Tuple{String, Int, Int}}(
-        :eternity2 => ("e2pieces.txt", 16, 16),
-        :meta_16x16 => ("meta_16x16.txt", 16, 16),
-        :meta_14x14 => ("meta_14x14.txt", 14, 14),
-        :meta_12x12 => ("meta_12x12.txt", 12, 12),
-        :meta_10x10 => ("meta_10x10.txt", 10, 10),
-        :clue1 => ("clue1.txt", 6, 6),
-        :clue2 => ("clue2.txt", 6, 12),
-        :clue4 => ("clue4.txt", 6, 12)
-    )
-    puzzle = get(puzzles, pieces, nothing)
-    isnothing(puzzle) && throw(ArgumentError("Unknown option :$pieces"))
-    return DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", puzzle[1]), UInt8), puzzle[2], puzzle[3]
+    pieces in (:eternity2, :meta_16x16, :meta_14x14, :meta_12x12, :meta_10x10, :clue1, :clue2, :clue4) || throw(ArgumentError("Unknown option :$pieces"))
+    return _get_pieces(Val(pieces))
 end
 
 function _get_pieces(filename::AbstractString)
