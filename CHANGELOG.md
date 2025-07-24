@@ -24,7 +24,7 @@ Breaking changes:
   The puzzle board is automatically filled with a valid piece configuration for
   a full solution and you can use the `reset!` function to clear the board.
 
-* Renamed the included solvers `BacktrackingSearch` to `HeuristicBacktrackingSearch`
+* Renamed the included solvers `BacktrackingSearch` to `E2BacktrackingSearch`
   and `BacktrackingSearchRecursive` to `SimpleBacktrackingSearch` (using a loop
   instead of recursive function calls now).
 

@@ -15,7 +15,7 @@ using Scratch: @get_scratch!
 export Eternity2Puzzle
 export Eternity2Solver
 export SimpleBacktrackingSearch
-export HeuristicBacktrackingSearch
+export E2BacktrackingSearch
 export estimate_solutions
 export play
 export preview
@@ -27,7 +27,7 @@ export save
 
 include("core.jl")
 include("solvers/simple_backtracking.jl")
-include("solvers/heuristic_backtracking.jl")
+include("solvers/e2_backtracking.jl")
 
 
 """
@@ -80,8 +80,8 @@ function solve!(
 
     if isnothing(alg)
         seed = floor(Int, 1000 * t0)
-        alg = if size(puzzle) == (16, 16) && puzzle[9, 8] == (STARTER_PIECE, 2)
-            HeuristicBacktrackingSearch(target_score=460, seed=seed)
+        alg = if size(puzzle) == (16, 16) && puzzle["I8"] == (STARTER_PIECE, 2)
+            E2BacktrackingSearch(target_score=460, seed=seed)
         else
             SimpleBacktrackingSearch(seed=seed)
         end

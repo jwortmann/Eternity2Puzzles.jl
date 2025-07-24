@@ -1,38 +1,28 @@
 """
-    HeuristicBacktrackingSearch(target_score::Int, seed::Int)
+    E2BacktrackingSearch(target_score::Int, seed::Int)
 
-A single-threaded backtracking search with heuristics for the original Eternity II puzzle.
-
-This algorithm is not designed to search for a perfect solution, but to find partial
-solutions with a high score. Therefore a certain amount of mismatched edges is tolerated,
-controlled by the `target_score` parameter.
+A backtracking algorithm for the original Eternity II puzzle that searches for arrangements
+with a high number of matching edges, controlled by the `target_score` parameter.
 """
-@kwdef struct HeuristicBacktrackingSearch <: Eternity2Solver
+@kwdef struct E2BacktrackingSearch <: Eternity2Solver
     target_score::Int = 470
     seed::Int = 1
 end
 
 
-function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
+function solve!(puzzle::Eternity2Puzzle, solver::E2BacktrackingSearch)
     nrows, ncols = size(puzzle.board)
     npieces = size(puzzle.pieces, 1)
 
     @assert nrows == ncols == 16 "Incompatible board size"
     @assert npieces == 256 "Wrong number of pieces"
-    @assert puzzle[9, 8] == (139, 2) "Mandatory starter-piece not on square I8"
+    @assert puzzle["I8"] == (139, 2) "Mandatory starter-piece not on square I8"
     @assert 450 <= solver.target_score <= 478 "Target score must be between 450 and 478"
 
-    maximum_score = 2 * nrows * ncols - nrows - ncols
-    maxdepth = count(iszero, puzzle.board)
-    phase2_depth = count(iszero, puzzle.board[9:nrows, 1:ncols]) + 1
+    maximum_score = 480  # 2 * nrows * ncols - nrows - ncols
 
     @info "Parameters" solver.target_score solver.seed
     Random.seed!(solver.seed)
-
-    # The algorithm doesn't operate on the puzzle.board and puzzle.pieces fields directly;
-    # instead, derived arrays and lookup tables are created to reduce the amount of accessed
-    # array values and other operations. The border color number is remapped from 0 to 23,
-    # so that it can be used as an array index.
 
     # ============================== Phase 0: initialization ===============================
 
@@ -40,13 +30,11 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
     # array indices.
     pieces, frame_colors, inner_colors = remap_piece_colors(puzzle)
     ncolors = length(frame_colors) + length(inner_colors)
-    virtual_border_color = ncolors + 2
 
-    # Create a lookup table for the colors of the top and right sides for all pieces and
-    # rotations.
+    # Lookup table with the colors of the top and right edges for all pieces and rotations.
     colors = FixedSizeMatrix{UInt8}(undef, npieces << 2 | 3, 2)
     colors[0x0001, :] .= ncolors + 1  # Special value for the edge pieces
-    colors[0x0002, :] .= virtual_border_color  # Special value for the corner pieces
+    colors[0x0002, :] .= ncolors + 2  # Special value for the corner pieces
     for (piece, piece_colors) in enumerate(eachrow(pieces)), rotation = 0:3, side = 1:2
         colors[piece << 2 | rotation, side] = piece_colors[mod1(side - rotation, 4)]
     end
@@ -54,50 +42,28 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
     STARTER_PIECE_BOTTOM_COLOR = puzzle.pieces[STARTER_PIECE, 1]
     STARTER_PIECE_LEFT_COLOR = puzzle.pieces[STARTER_PIECE, 2]
 
+    # Horizontal rowscan over the full board
+    # path = ["I8", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11", "P12", "P13", "P14", "P15", "P16", "O1", "O2", "O3", "O4", "O5", "O6", "O7", "O8", "O9", "O10", "O11", "O12", "O13", "O14", "O15", "O16", "N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8", "N9", "N10", "N11", "N12", "N13", "N14", "N15", "N16", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10", "M11", "M12", "M13", "M14", "M15", "M16", "L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L10", "L11", "L12", "L13", "L14", "L15", "L16", "K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "K9", "K10", "K11", "K12", "K13", "K14", "K15", "K16", "J1", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10", "J11", "J12", "J13", "J14", "J15", "J16", "I1", "I2", "I3", "I4", "I5", "I6", "I7", "I9", "I10", "I11", "I12", "I13", "I14", "I15", "I16", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "H10", "H11", "H12", "H13", "H14", "H15", "H16", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G14", "G15", "G16", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "F13", "F14", "F15", "F16", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11", "E12", "E13", "E14", "E15", "E16", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "D14", "D15", "D16", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "C13", "C14", "C15", "C16", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12", "B13", "B14", "B15", "B16", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12", "A13", "A14", "A15", "A16"]  # 1.365031e+47
+
+    # Horizontal rowscan for the first 12 rows, and the remaining 4 rows filled vertically
+    # path = ["I8", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11", "P12", "P13", "P14", "P15", "P16", "O1", "O2", "O3", "O4", "O5", "O6", "O7", "O8", "O9", "O10", "O11", "O12", "O13", "O14", "O15", "O16", "N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8", "N9", "N10", "N11", "N12", "N13", "N14", "N15", "N16", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10", "M11", "M12", "M13", "M14", "M15", "M16", "L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L10", "L11", "L12", "L13", "L14", "L15", "L16", "K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "K9", "K10", "K11", "K12", "K13", "K14", "K15", "K16", "J1", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10", "J11", "J12", "J13", "J14", "J15", "J16", "I1", "I2", "I3", "I4", "I5", "I6", "I7", "I9", "I10", "I11", "I12", "I13", "I14", "I15", "I16", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "H10", "H11", "H12", "H13", "H14", "H15", "H16", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G14", "G15", "G16", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "F13", "F14", "F15", "F16", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11", "E12", "E13", "E14", "E15", "E16", "D1", "C1", "B1", "A1", "D2", "C2", "B2", "A2", "D3", "C3", "B3", "A3", "D4", "C4", "B4", "A4", "D5", "C5", "B5", "A5", "D6", "C6", "B6", "A6", "D7", "C7", "B7", "A7", "D8", "C8", "B8", "A8", "D9", "C9", "B9", "A9", "D10", "C10", "B10", "A10", "D11", "C11", "B11", "A11", "D12", "C12", "B12", "A12", "D13", "C13", "B13", "A13", "D14", "D15", "D16", "C14", "B14", "A14", "C15", "C16", "B15", "A15", "B16", "A16"]  # 1.366500e+47
+
+    path = ["I8", "P1", "P2", "O1", "O2", "P3", "O3", "N1", "N2", "N3", "P4", "O4", "N4", "M1", "M2", "M3", "M4", "P5", "O5", "N5", "M5", "L1", "L2", "L3", "L4", "L5", "P6", "O6", "N6", "M6", "L6", "K1", "K2", "K3", "K4", "K5", "K6", "P7", "O7", "N7", "M7", "L7", "K7", "J1", "J2", "J3", "J4", "J5", "J6", "J7", "P8", "O8", "N8", "M8", "L8", "K8", "J8", "I1", "I2", "I3", "I4", "I5", "I6", "I7", "P9", "P10", "P11", "P12", "P13", "P14", "P15", "P16", "O9", "O10", "O11", "O12", "O13", "O14", "O15", "O16", "N9", "N10", "N11", "N12", "N13", "N14", "N15", "N16", "M9", "M10", "M11", "M12", "M13", "M14", "M15", "M16", "L9", "L10", "L11", "L12", "L13", "L14", "L15", "L16", "K9", "K10", "K11", "K12", "K13", "K14", "K15", "K16", "J9", "J10", "J11", "J12", "J13", "J14", "J15", "J16", "I9", "I10", "I11", "I12", "I13", "I14", "I15", "I16", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "H10", "H11", "H12", "H13", "H14", "H15", "H16", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G14", "G15", "G16", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "F13", "F14", "F15", "F16", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11", "E12", "E13", "E14", "E15", "E16", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "D14", "D15", "D16", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "C13", "C14", "C15", "C16", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12", "B13", "B14", "B15", "B16", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12", "A13", "A14", "A15", "A16"]  # 1.363957e+47
+
+    @assert length(path) == 256
+
+    # Colors which should be eliminated early
     prioritized_colors = _prioritized_colors(puzzle)
     # prioritized_colors = [5, 15, 19]  # 94 pieces, 122 sides total
     # prioritized_colors = [5, 20, 21]  # 94 pieces, 120 sides total, 3 sides already part of the starter-piece
 
-    # Parameters for the amount of allowed errors dependent on the number of placed pieces
-    K = maximum_score - solver.target_score; B = 0.24; M = 224; nu = 3.8
-
-    # The order in which pieces are placed during the search. This has a significant
-    # influence on the search efficiency. Ideally the pieces should be placed in such a way
-    # that the search tree becomes smallest, i.e. the next considered position should always
-    # be the one with the least amount of matching piece candidates. For performance reasons
-    # a fixed search order is used, so that it is not necessary to calculate the best next
-    # position after each step. Here, pieces are placed in a way such that the number of
-    # constrained sides from the board edge and the neighboring pieces which are already
-    # placed is maximized.
-    search_order = [
-        "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11", "P12", "P13",
-        "P14", "P15", "P16", "O1", "O2", "O3", "O4", "O5", "O6", "O7", "O8", "O9", "O10",
-        "O11", "O12", "O13", "O14", "O15", "O16", "N1", "N2", "N3", "N4", "N5", "N6", "N7",
-        "N8", "N9", "N10", "N11", "N12", "N13", "N14", "N15", "N16", "M1", "M2", "M3", "M4",
-        "M5", "M6", "M7", "M8", "M9", "M10", "M11", "M12", "M13", "M14", "M15", "M16", "L1",
-        "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L10", "L11", "L12", "L13", "L14",
-        "L15", "L16", "K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "K9", "K10", "K11",
-        "K12", "K13", "K14", "K15", "K16", "J1", "J2", "J3", "J4", "J5", "J6", "J7", "J8",
-        "J9", "J10", "J11", "J12", "J13", "J14", "J15", "J16", "I1", "I2", "I3", "I4", "I5",
-        "I6", "I7", "I9", "I10", "I11", "I12", "I13", "I14", "I15", "I16", "H1", "H2", "H3",
-        "H4", "H5", "H6", "H7", "H8", "H9", "H10", "H11", "H12", "H13", "H14", "H15", "H16",
-        "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13",
-        "G14", "G15", "G16", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10",
-        "F11", "F12", "F13", "F14", "F15", "F16", "E1", "E2", "E3", "E4", "E5", "E6", "E7",
-        "E8", "E9", "E10", "E11", "E12", "E13", "E14", "E15", "E16", "D1", "C1", "B1", "A1",
-        "D2", "C2", "B2", "A2", "D3", "C3", "B3", "A3", "D4", "C4", "B4", "A4", "D5", "C5",
-        "B5", "A5", "D6", "C6", "B6", "A6", "D7", "C7", "B7", "A7", "D8", "C8", "B8", "A8",
-        "D9", "C9", "B9", "A9", "D10", "C10", "B10", "A10", "D11", "C11", "B11", "A11",
-        "D12", "C12", "B12", "A12", "D13", "C13", "B13", "A13", "D14", "D15", "D16", "C14",
-        "B14", "A14", "C15", "C16", "B15", "A15", "B16", "A16"
-    ]
-
-    @assert length(search_order) == length(unique(search_order)) == maxdepth
-
     prioritized_sides = vec(count(in(prioritized_colors), puzzle.pieces; dims=2))
     fixed_pieces = filter(!iszero, puzzle.board) .>> 2
     preplaced_prioritized_sides = count(in(prioritized_colors), puzzle.pieces[fixed_pieces, :])
-    required_prioritized_sides = sum(prioritized_sides) + div(solver.target_score, 10) - 53
+    required_prioritized_sides = sum(prioritized_sides) + div(solver.target_score, 10) - 54
+
+    # Parameters for the amount of allowed errors dependent on the number of placed pieces
+    K = maximum_score - solver.target_score; B = 0.24; M = 224; nu = 3.8
 
     # Add one more row/column at the bottom and the right edge of the board, filled with
     # only the border color. Then the side color constraints for the pieces on row/column 16
@@ -111,30 +77,30 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
     fill!(board, 0x0002)
     board[nrows+1, 3:ncols] .= 0x0001  # non-corner sides bottom frame pieces
     board[2:nrows-1, 1] .= 0x0001  # non-corner sides left frame pieces
-    available = FixedSizeVector{Bool}(undef, npieces)
+    available = FixedSizeVector{Bool}(undef, npieces)  # tracks which pieces are already placed on the board
     fill!(available, true)
-    state = FixedSizeVector{NTuple{4, Int}}(undef, maxdepth)
+    state = FixedSizeVector{NTuple{4, Int}}(undef, 256)  # stores the current state for each level in the search tree
 
-    iters = 0  # only the number of piece placements is counted, i.e. half of the total loop iterations
+    node_count = 0  # counts the total number of placed pieces, i.e. half of the loop iterations
     restarts = 0
     best_score = 0
 
     # Precompute the row/column position for each search depth, as well as the amount of
     # required placed sides with the prioritized colors (for the first half) and allowed
     # errors (for the second half)
-    board_position = FixedSizeVector{NTuple{3, Int}}(undef, maxdepth)
-    for depth = 1:phase2_depth
-        row, col = _parse_position(search_order[depth])
+    board_position = FixedSizeVector{NTuple{3, Int}}(undef, 256)
+    for depth = 2:128
+        row, col = _parse_position(path[depth])
         min_placed_sides = floor(Int, clamp((required_prioritized_sides + 300)/(1 + exp(-0.02 * (depth + 22))) - 280, 0, required_prioritized_sides))
         board_position[depth] = (row, col + 1, min_placed_sides)
     end
-    for depth = phase2_depth+1:maxdepth
-        row, col = _parse_position(search_order[depth])
+    for depth = 129:256
+        row, col = _parse_position(path[depth])
         max_errors = floor(Int, (K + 1)/(1 + exp(-B * (depth - M - K)))^(1/nu))
         board_position[depth] = (row, col + 1, max_errors)
     end
 
-    allowed_error_depths = findall(>(0), diff(last.(board_position[phase2_depth+1:maxdepth]))) .+ (phase2_depth + 1)
+    allowed_error_depths = findall(>(0), diff(last.(board_position[129:256]))) .+ 130
     @info "Heuristics" prioritized_colors=Tuple(prioritized_colors) allowed_error_depths=Tuple(allowed_error_depths)
 
     _print_progress(puzzle; clear=false)
@@ -162,8 +128,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
         placed_sides = preplaced_prioritized_sides
         candidates, index_table = _prepare_candidates_table(pieces, inner_colors, ncolors, available; prioritized_sides)
 
-        depth = 1
-        last_restart = iters
+        depth = 2
+        last_restart = node_count
 
         row, col, min_placed_sides = board_position[depth]
         left = colors[board[row, col-1], 2]
@@ -188,7 +154,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
                 state[depth] = (idx + 1, end_index, placed_sides, 0)
                 placed_sides += piece_sides
                 depth += 1
-                iters += 1
+                node_count += 1
                 row, col, min_placed_sides = board_position[depth]
                 left = colors[board[row, col-1], 2]
                 bottom = colors[board[row+1, col], 1]
@@ -205,9 +171,9 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
                 depth -= 1
                 if depth == 1
                     error("Could not fill bottom half with prioritized colors")
-                elseif iters - last_restart > 10_000_000_000
+                elseif node_count - last_restart > 10_000_000_000
                     restarts += 1
-                    _print_progress(puzzle, iters, restarts)
+                    _print_progress(puzzle, node_count, restarts)
                     @goto restart
                 end
                 row, col, min_placed_sides = board_position[depth]
@@ -225,14 +191,14 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
         # of placed pieces.
 
         fill!(available, true)
-        board[1:8, 2:ncols+1] .= 0x0000
+        board[1:8, 2:17] .= 0x0000
         available[filter(!iszero, board .>> 2)] .= false
 
         # Note that for this phase the order of the candidates doesn't matter, because all
         # of them are tried exhaustively before the search is restarted.
         candidates, index_table = _prepare_candidates_table(pieces, inner_colors, ncolors, available; shuffle=false, allow_errors=true)
 
-        depth = phase2_depth
+        depth = 129
 
         row, col, max_errors = board_position[depth]
         left = colors[board[row, col-1], 2]
@@ -242,7 +208,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
 
         # This is the main backtracking loop; it should be as fast as possible, i.e. avoid
         # allocations, function calls and unnecessary operations.
-        @inbounds while depth >= phase2_depth
+        @inbounds while depth >= 129
             @label next_iter
             for idx = start_index:end_index2
                 value = candidates[idx]
@@ -251,14 +217,14 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
                 board[row, col] = value
                 available[piece] = false
                 state[depth] = (idx+1, end_index1, end_index2, errors)
-                iters += 1
+                node_count += 1
                 if idx > end_index1
                     errors += 1
                 elseif 2 * depth > best_score + errors
                     best_score = 2 * depth - errors  # The actual score is 32 lower, but we can ignore the constant
                     puzzle.board[:, :] = board[1:nrows, 2:ncols+1]
-                    _print_progress(puzzle, iters, restarts)
-                    depth == maxdepth && return
+                    _print_progress(puzzle, node_count, restarts)
+                    depth == 256 && return
                 end
                 depth += 1
                 row, col, max_errors = board_position[depth]
@@ -276,7 +242,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::HeuristicBacktrackingSearch)
             start_index, end_index1, end_index2, errors = state[depth]
         end
         restarts += 1
-        _print_progress(puzzle, iters, restarts)
+        _print_progress(puzzle, node_count, restarts)
     end
 
     nothing
