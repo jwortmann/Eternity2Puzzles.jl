@@ -114,8 +114,7 @@ function Eternity2Puzzle(
     ncols::Integer
 )
     pieces_, _, _ = _get_pieces(pieces)
-    npieces = size(pieces_, 1)
-    @assert npieces >= nrows * ncols "Not enough pieces for given board size"
+    @assert size(pieces_, 1) >= nrows * ncols "Not enough pieces for the given board size"
     board = zeros(UInt16, nrows, ncols)
     return Eternity2Puzzle(board, pieces_)
 end
@@ -273,7 +272,7 @@ function find(puzzle::Eternity2Puzzle, piece::Integer)
 end
 
 
-# Return the number of frame colors and inner colors for the highest difficulty of a puzzle
+# Return the number of frame colors and inner colors for the hardest difficulty of a puzzle
 # with the given size. It is assumed that two disjoint sets are used for the colors of the
 # frame and inner edges, the colors have a flat distribution, and that there are no
 # duplicate or symmetric pieces.
@@ -564,39 +563,47 @@ end
 # Number of k-permutations of n (as Float128); perm(n, k) = n!/(n-k)!
 perm(n, k) = prod(n-k+1:n; init=Float128(1.0))
 
-# Number of k-combinations of n; comb(n, k) = n!/(k!(n-k)!)
-comb(n, k) = prod((n+1-i)/i for i = 1:min(k, n-k); init=1.0)
+# Number of k-combinations of n (as Float128); comb(n, k) = n!/(k!(n-k)!)
+comb(n, k) = prod((n+1-i)/i for i = 1:min(k, n-k); init=Float128(1.0))
 
 
 """
     estimate_solutions(puzzle::Eternity2Puzzle)
-    estimate_solutions(puzzle::Eternity2Puzzle, max_errors::Int=0, path::Symbol=:rowscan; verbose=true)
+    estimate_solutions(puzzle::Eternity2Puzzle, path::Union{Symbol, Vector{String}} = :rowscan, error_depths::Vector{Int} = []; verbose::Bool = false)
 
-Estimate the number of valid solutions for a given [`Eternity2Puzzle`](@ref) and the total
-number of nodes in the search tree for a backtracking algorithm, based on a probability
-model for edge matching puzzles developed by Brendan Owen.
+Estimate the number of solutions for a given [`Eternity2Puzzle`](@ref) and the total number
+of nodes in the search tree for a backtracking algorithm, based on a probability model for
+edge matching puzzles developed by Brendan Owen.
 
 Pre-placed pieces on the board are considered to be additional constraints that must be
 satisfied in a solution.
 
-If `max_errors` is given and greater than zero, a piece configuration is considered to be a
-valid solution if at most `max_errors` of the inner joins don't match. All of the joins
-between neighboring frame pieces are still required to match.
+The order in which pieces are placed onto the board can be controlled with the `path`
+argument. It can either be one of the predefined symbols `:rowscan` (fill row by row,
+starting from the bottom left corner), `:colscan` (fill column by column, starting from the
+bottom left corner), `:spiral_in` (in clockwise direction, starting from the top-left
+corner), or `path` can be given as a `Vector{String}`, containing all board positions
+explicitly; for example `["I8", "A1", "A2", "B1", ...]`. Hereby it is required that each
+board position occurs exactly once, and that the positions of pre-placed pieces are at the
+start of the list. Note that if no invalid joins are allowed, the placement order doesn't
+effect the number of solutions, but it can have a significant influence on the total number
+of nodes in the search tree.
+
+If a vector `error_depths` is given, its entries specify the numbers of placed pieces at
+which another invalid join is allowed. This means that a piece arrangement is considered to
+be valid even if not all of the inner joins match. For example the vector `[220, 230, 240]`
+specifies that at least the first 219 pieces have to be placed with all edges matching, at
+least 229 pieces have to be placed with no more than one invalid join, at least 239 pieces
+with no more than two invalid joins, and for the rest of the pieces there must be no more
+than three invalid joins in total. Note that all of the frame joins between neighboring
+frame pieces still have to match exactly.
 
 If the `verbose` keyword argument is enabled, the cumulative sum of estimated partial
 solutions is printed to the console for each depth in the search tree of a backtracking
 search. This cumulative sum represents the number of nodes that the backtracking algorithm
 has to visit in order to explore the entire search tree. The ratio between the number of
-full solutions and cumulative sum of partial solutions is a measure for the difficulty of
-the puzzle. The number of partial solutions depends on the particular order in which pieces
-are placed onto the board. This path can be controlled with the `path` positional argument.
-Currently implemented options are `:rowscan` (fill row by row, starting from the bottom left
-corner), `:colscan` (fill column by column, starting from the bottom left corner) and
-`:spiral_in` (counter-clockwise starting from the bottom right corner). Alternatively,
-`path` can be given as a `Vector{String}`, containing all board positions explicitly; for
-example `path = ["I8", "A1", "A2", "B1", ...]`. Hereby it is required that each board
-position is visited exactly once, and that the positions of pre-placed pieces are at the
-start of the list.
+full solutions and cumulative sum of partial solutions can be a measure for the difficulty
+of the puzzle.
 
 Return the number of solutions and the total number of nodes in the search tree as a tuple
 of Float128 values.
@@ -613,13 +620,6 @@ julia> trunc(Int, estimate_solutions(puzzle)[1])
 14702
 ```
 
-Estimated number of solutions if at most 2 non-matching inner joins (score >= 478) are
-allowed:
-```julia-repl
-julia> trunc(Int, estimate_solutions(puzzle, 2)[1])
-2440885684
-```
-
 Estimated average number of nodes that a backtracking algorithm has to visit in order to
 find a full solution, using a row-by-row search path starting at the bottom left corner:
 ```julia-repl
@@ -632,16 +632,19 @@ julia> nodes/solutions
 
 # References
 
-https://groups.io/g/eternity2/message/5209
-https://groups.io/g/eternity2/message/6408
+- https://groups.io/g/eternity2/message/5209
+- https://groups.io/g/eternity2/message/6408
 """
 function estimate_solutions(
     puzzle::Eternity2Puzzle,
-    max_errors::Int = 0,
-    path::Union{Symbol, Vector{String}} = :rowscan;
+    path::Union{Symbol, Vector{String}} = :rowscan,
+    error_depths::Vector{Int} = Int[];
     verbose=false
 )
     nrows, ncols = size(puzzle.board)
+    max_errors = length(error_depths)
+
+    @assert issorted(error_depths) "Error depths must be a weakly increasing sequence"
 
     # Number of corner, edge and inner squares on the board
     corner_squares = 4
@@ -689,6 +692,20 @@ function estimate_solutions(
     @assert Tb >= total_frame_joins
     @assert Tm >= total_inner_joins
 
+    search_path = _search_path(puzzle, path)
+    board = zeros(Int, nrows, ncols)
+
+    # joins(p) = Number of completed (valid or invalid) inner joins after p placed pieces
+    joins = OffsetArrays.Origin(0)(zeros(Int, nrows*ncols+1))
+
+    for placed_pieces = 1:nrows*ncols
+        row, col = _parse_position(search_path[placed_pieces])
+        board[row, col] = placed_pieces
+        joins[placed_pieces] = _count_joins(board)[2]
+    end
+
+    fill!(board, 0)
+
     # Precomputed table with number of k-permutations of n
     nmax = max(maximum(frame_joins), 2*maximum(inner_joins))
     kmax = min(nmax, max(total_frame_joins, 2*total_inner_joins))
@@ -733,8 +750,15 @@ function estimate_solutions(
         end
     end
 
-    search_path = _search_path(puzzle, path)
-    board = zeros(Int, nrows, ncols)
+    # Wm(p, i) = Number of arrangements of exactly i invalid inner joins after p placed pieces
+    Wm = OffsetArrays.Origin(0)(zeros(Float128, nrows*ncols+1, max_errors+1))
+    Wm[:, 0] .= 1.0
+    for i = 1:max_errors
+        d = error_depths[i]
+        for p = d:nrows*ncols
+            Wm[p, i] = sum(C[joins[p]-joins[d-1], i-k] * Wm[d-1, k] for k = 0:i-1)
+        end
+    end
 
     estimated_solutions::Float128 = 1.0
     cumulative_sum::Float128 = 0.0
@@ -754,7 +778,8 @@ function estimate_solutions(
             piece_configurations = perm(Cp, c) * perm(Ep, e) * perm(Ip, i) * 4.0^i
             # Probability of all frame joins are valid
             pb = Vb[frame_colors, b] / perm(Tb, b)^2
-            estimated_solutions = piece_configurations * pb * sum(pm[m, v] * C[m, v] for v = max(m-max_errors, 0):m)
+            # estimated_solutions = piece_configurations * pb * sum(pm[m, v] * C[m, v] for v = max(m-max_errors, 0):m)  # Old version that only supports to allow the invalid joins to be anywhere on the board
+            estimated_solutions = piece_configurations * pb * sum(pm[m, m-nv] * Wm[placed_pieces, nv] for nv = 0:min(max_errors, m))
         end
         cumulative_sum += estimated_solutions
         if verbose
@@ -821,50 +846,32 @@ function _search_path(puzzle::Eternity2Puzzle, strategy::Symbol = :rowscan)
     elseif strategy == :spiral_in
         _path = String[]
         sizehint!(_path, nrows*ncols)
-        row, col = nrows, ncols  # start at bottom right corner
-        vsteps, hsteps = nrows - 1, ncols - 1  # initial steps in vertical and horizontal direction
+        row, col = 1, 1  # start at the top-left corner square
+        hsteps = ncols - 1  # initial steps in horizontal direction
+        vsteps = nrows - 1  # initial steps in vertical direction
         while vsteps > 0 && hsteps > 0
-            for _ = 1:vsteps  # go up
-                iszero(puzzle.board[row, col]) && push!(_path, _board_square(row, col))
-                row -= 1
-            end
-            for _ = 1:hsteps  # go left
-                iszero(puzzle.board[row, col]) && push!(_path, _board_square(row, col))
-                col -= 1
+            for _ = 1:hsteps  # go right
+                if iszero(puzzle.board[row, col]) push!(_path, _board_square(row, col)) end
+                col += 1
             end
             for _ = 1:vsteps  # go down
-                iszero(puzzle.board[row, col]) && push!(_path, _board_square(row, col))
+                if iszero(puzzle.board[row, col]) push!(_path, _board_square(row, col)) end
                 row += 1
             end
-            for _ = 1:hsteps  # go right
-                iszero(puzzle.board[row, col]) && push!(_path, _board_square(row, col))
-                col += 1
+            for _ = 1:hsteps  # go left
+                if iszero(puzzle.board[row, col]) push!(_path, _board_square(row, col)) end
+                col -= 1
+            end
+            for _ = 1:vsteps  # go up
+                if iszero(puzzle.board[row, col]) push!(_path, _board_square(row, col)) end
+                row -= 1
             end
             vsteps -= 2
             hsteps -= 2
-            row -= 1
-            col -= 1
+            row += 1
+            col += 1
         end
         _path
-    # elseif strategy == :frame_colscan
-    #     _path = String[]
-    #     sizehint!(_path, nrows*ncols)
-    #     for col = 1:ncols
-    #         iszero(puzzle.board[nrows, col]) && push!(_path, _board_square(nrows, col))
-    #     end
-    #     for row = nrows-1:-1:1
-    #         iszero(puzzle.board[row, 1]) && push!(_path, _board_square(row, 1))
-    #     end
-    #     for row = nrows-1:-1:1
-    #         iszero(puzzle.board[row, nrows]) && push!(_path, _board_square(row, ncols))
-    #     end
-    #     for col = ncols-1:-1:2
-    #         iszero(puzzle.board[1, col]) && push!(_path, _board_square(1, col))
-    #     end
-    #     for col = 2:ncols-1, row = nrows-1:-1:2
-    #         iszero(puzzle.board[row, col]) && push!(_path, _board_square(row, col))
-    #     end
-    #     _path
     else
         error("Unknown option :$strategy")
     end
