@@ -48,105 +48,105 @@
         <path fill="#ff9126" stroke="black" stroke-width="0.2" d="M41 0a5 5 0 0 0-5-5 5 5 0 0 0-1.043.123 12 12 0 0 0-6.07-6.074A5 5 0 0 0 29-12a5 5 0 0 0-5-5 5 5 0 0 0-5 5 5 5 0 0 0 .123 1.043 12 12 0 0 0-6.08 6.08A5 5 0 0 0 12-5a5 5 0 0 0-5 5 5 5 0 0 0 5 5 5 5 0 0 0 1.049-.113 12 12 0 0 0 6.074 6.07A5 5 0 0 0 19 12a5 5 0 0 0 5 5 5 5 0 0 0 5-5 5 5 0 0 0-.123-1.041 12 12 0 0 0 6.082-6.082A5 5 0 0 0 36 5a5 5 0 0 0 5-5zm-7 0-6 4-4 6-4-6-6-4 6-4 4-6 4 6z"/>
     </g>
     <g transform="translate(288, 0)">
-        <path fill="#b44d6f" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
-        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
-        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
-        <path fill="#2ab669" stroke="black" stroke-width="0.2" d="M24-14A14 14 0 0 0 10 0a14 14 0 0 0 14 14A14 14 0 0 0 38 0a14 14 0 0 0-14-14zm4 14 5 5-4 4-5-5-5 5-4-4 5-5-5-5 4-4 5 5 5-5 4 4z"/>
-    </g>
-    <g transform="translate(336, 0)">
-        <path fill="#27b563" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
-        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
-        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
-        <path fill="#ff933e" stroke="black" stroke-width="0.2" d="M6,0 l6,-6 l9,3 l-3,-9 l6,-6 l6,6 l-3,9 l9,-3 l6,6 l-6,6 l-9,-3 l3,9 l-6,6 l-6,-6 l3,-9 l-9,3 z"/>
-    </g>
-    <g transform="translate(384, 0)">
-        <path fill="#b34d6f" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
-        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
-        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
-        <path fill="#f9e758" stroke="black" stroke-width="0.2" d="M20.85-5.456 24-14l3.15 8.544L36.124-7 30.3 0l5.824 7-8.974-1.544L24 14l-3.15-8.544L11.876 7 17.7 0l-5.824-7z"/>
-    </g>
-    <g transform="translate(432, 0)">
-        <path fill="#48cff4" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
-        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
-        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
-        <path fill="#f964af" stroke="black" stroke-width="0.2" d="M7,0 l5,-5 l2,2 l7,-7 l-2,-2 l5,-5 l5,5 l-2,2 l7,7 l2,-2 l5,5 l-5,5 l-2,-2 l-7,7 l2,2 l-5,5 l-5,-5 l2,-2 l-7,-7 l-2,2 z"/>
-    </g>
-    <g transform="translate(480, 0)">
-        <path fill="#fae857" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
-        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
-        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
-        <path fill="#2ab762" stroke="black" stroke-width="0.2" fill-rule="evenodd" d="M8,0 l16,-16 l16,16 l-16,16 z M16,0 l8,-8 l8,8 l-8,8 z"/>
-    </g>
-    <g transform="translate(528, 0)">
-        <path fill="#48cff4" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
-        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
-        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
-        <path fill="#fb65af" stroke="black" stroke-width="0.2" d="M6,0 l6,-6 l9,3 l-3,-9 l6,-6 l6,6 l-3,9 l9,-3 l6,6 l-6,6 l-9,-3 l3,9 l-6,6 l-6,-6 l3,-9 l-9,3 z"/>
-    </g>
-    <g transform="translate(576, 0)">
-        <path fill="#feeb3d" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
-        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
-        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
-        <path fill="#07618e" stroke="black" stroke-width="0.2" d="M7,0 l5,-5 l2,2 l7,-7 l-2,-2 l5,-5 l5,5 l-2,2 l7,7 l2,-2 l5,5 l-5,5 l-2,-2 l-7,7 l2,2 l-5,5 l-5,-5 l2,-2 l-7,-7 l-2,2 z"/>
-    </g>
-    <g transform="translate(624, 0)">
-        <path fill="#ff943d" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
-        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
-        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
-        <path fill="#7e5aa7" stroke="black" stroke-width="0.2" d="M20.85-5.456 24-14l3.15 8.544L36.124-7 30.3 0l5.824 7-8.974-1.544L24 14l-3.15-8.544L11.876 7 17.7 0l-5.824-7z"/>
-    </g>
-    <g transform="translate(672, 0)">
-        <path fill="#136891" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
-        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
-        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
-        <path fill="#ff9135" stroke="black" stroke-width="0.2" d="M24-17a5 5 0 0 0-5 5 5 5 0 0 0 2 3.984V-3h-5.002A5 5 0 0 0 12-5a5 5 0 0 0-5 5 5 5 0 0 0 5 5 5 5 0 0 0 3.984-2H21v5.016A5 5 0 0 0 19 12a5 5 0 0 0 5 5 5 5 0 0 0 5-5 5 5 0 0 0-2-3.998V3h5.016A5 5 0 0 0 36 5a5 5 0 0 0 5-5 5 5 0 0 0-5-5 5 5 0 0 0-3.984 2H27v-5.016A5 5 0 0 0 29-12a5 5 0 0 0-5-5"/>
-    </g>
-    <g transform="translate(720, 0)">
-        <path fill="#0f6290" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
-        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
-        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
-        <path fill="#63d4f1" stroke="black" stroke-width="0.2" fill-rule="evenodd" d="M8,0 l16,-16 l16,16 l-16,16 z M16,0 l8,-8 l8,8 l-8,8 z"/>
-    </g>
-    <g transform="translate(768, 0)">
-        <path fill="#f865ae" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
-        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
-        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
-        <path fill="#ffeb3d" stroke="black" stroke-width="0.2" d="M7,0 l5,-5 l2,2 l7,-7 l-2,-2 l5,-5 l5,5 l-2,2 l7,7 l2,-2 l5,5 l-5,5 l-2,-2 l-7,7 l2,2 l-5,5 l-5,-5 l2,-2 l-7,-7 l-2,2 z"/>
-    </g>
-    <g transform="translate(816, 0)">
-        <path fill="#136891" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
-        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
-        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
-        <path fill="#f95da8" stroke="black" stroke-width="0.2" d="M24-14A14 14 0 0 0 10 0a14 14 0 0 0 14 14A14 14 0 0 0 38 0a14 14 0 0 0-14-14zm4 14 5 5-4 4-5-5-5 5-4-4 5-5-5-5 4-4 5 5 5-5 4 4z"/>
-    </g>
-    <g transform="translate(864, 0)">
         <path fill="#f964b0" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
         <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
         <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
         <path fill="#fde859" stroke="black" stroke-width="0.2" d="M24-17a5 5 0 0 0-5 5 5 5 0 0 0 2 3.984V-3h-5.002A5 5 0 0 0 12-5a5 5 0 0 0-5 5 5 5 0 0 0 5 5 5 5 0 0 0 3.984-2H21v5.016A5 5 0 0 0 19 12a5 5 0 0 0 5 5 5 5 0 0 0 5-5 5 5 0 0 0-2-3.998V3h5.016A5 5 0 0 0 36 5a5 5 0 0 0 5-5 5 5 0 0 0-5-5 5 5 0 0 0-3.984 2H27v-5.016A5 5 0 0 0 29-12a5 5 0 0 0-5-5"/>
     </g>
-    <g transform="translate(912, 0)">
+    <g transform="translate(336, 0)">
         <path fill="#7d59a6" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
         <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
         <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
         <path fill="#aee9fa" stroke="black" stroke-width="0.2" d="M6,0 l6,-6 l9,3 l-3,-9 l6,-6 l6,6 l-3,9 l9,-3 l6,6 l-6,6 l-9,-3 l3,9 l-6,6 l-6,-6 l3,-9 l-9,3 z"/>
     </g>
-    <g transform="translate(960, 0)">
+    <g transform="translate(384, 0)">
         <path fill="#fae858" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
         <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
         <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
         <path fill="#2bb7e8" stroke="black" stroke-width="0.2" d="M20.85-5.456 24-14l3.15 8.544L36.124-7 30.3 0l5.824 7-8.974-1.544L24 14l-3.15-8.544L11.876 7 17.7 0l-5.824-7z"/>
     </g>
-    <g transform="translate(1008, 0)">
+    <g transform="translate(432, 0)">
         <path fill="#7e58a9" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
         <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
         <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
         <path fill="#f9e857" stroke="black" stroke-width="0.2" d="M24-14A14 14 0 0 0 10 0a14 14 0 0 0 14 14A14 14 0 0 0 38 0a14 14 0 0 0-14-14zm4 14 5 5-4 4-5-5-5 5-4-4 5-5-5-5 4-4 5 5 5-5 4 4z"/>
     </g>
-    <g transform="translate(1056, 0)">
+    <g transform="translate(480, 0)">
         <path fill="#30b75f" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
         <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
         <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
         <path fill="#f663af" stroke="black" stroke-width="0.2" d="M24-17a5 5 0 0 0-5 5 5 5 0 0 0 2 3.984V-3h-5.002A5 5 0 0 0 12-5a5 5 0 0 0-5 5 5 5 0 0 0 5 5 5 5 0 0 0 3.984-2H21v5.016A5 5 0 0 0 19 12a5 5 0 0 0 5 5 5 5 0 0 0 5-5 5 5 0 0 0-2-3.998V3h5.016A5 5 0 0 0 36 5a5 5 0 0 0 5-5 5 5 0 0 0-5-5 5 5 0 0 0-3.984 2H27v-5.016A5 5 0 0 0 29-12a5 5 0 0 0-5-5"/>
+    </g>
+    <g transform="translate(528, 0)">
+        <path fill="#b44d6f" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
+        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
+        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
+        <path fill="#2ab669" stroke="black" stroke-width="0.2" d="M24-14A14 14 0 0 0 10 0a14 14 0 0 0 14 14A14 14 0 0 0 38 0a14 14 0 0 0-14-14zm4 14 5 5-4 4-5-5-5 5-4-4 5-5-5-5 4-4 5 5 5-5 4 4z"/>
+    </g>
+    <g transform="translate(576, 0)">
+        <path fill="#27b563" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
+        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
+        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
+        <path fill="#ff933e" stroke="black" stroke-width="0.2" d="M6,0 l6,-6 l9,3 l-3,-9 l6,-6 l6,6 l-3,9 l9,-3 l6,6 l-6,6 l-9,-3 l3,9 l-6,6 l-6,-6 l3,-9 l-9,3 z"/>
+    </g>
+    <g transform="translate(624, 0)">
+        <path fill="#b34d6f" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
+        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
+        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
+        <path fill="#f9e758" stroke="black" stroke-width="0.2" d="M20.85-5.456 24-14l3.15 8.544L36.124-7 30.3 0l5.824 7-8.974-1.544L24 14l-3.15-8.544L11.876 7 17.7 0l-5.824-7z"/>
+    </g>
+    <g transform="translate(672, 0)">
+        <path fill="#48cff4" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
+        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
+        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
+        <path fill="#f964af" stroke="black" stroke-width="0.2" d="M7,0 l5,-5 l2,2 l7,-7 l-2,-2 l5,-5 l5,5 l-2,2 l7,7 l2,-2 l5,5 l-5,5 l-2,-2 l-7,7 l2,2 l-5,5 l-5,-5 l2,-2 l-7,-7 l-2,2 z"/>
+    </g>
+    <g transform="translate(720, 0)">
+        <path fill="#fae857" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
+        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
+        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
+        <path fill="#2ab762" stroke="black" stroke-width="0.2" fill-rule="evenodd" d="M8,0 l16,-16 l16,16 l-16,16 z M16,0 l8,-8 l8,8 l-8,8 z"/>
+    </g>
+    <g transform="translate(768, 0)">
+        <path fill="#48cff4" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
+        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
+        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
+        <path fill="#fb65af" stroke="black" stroke-width="0.2" d="M6,0 l6,-6 l9,3 l-3,-9 l6,-6 l6,6 l-3,9 l9,-3 l6,6 l-6,6 l-9,-3 l3,9 l-6,6 l-6,-6 l3,-9 l-9,3 z"/>
+    </g>
+    <g transform="translate(816, 0)">
+        <path fill="#feeb3d" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
+        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
+        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
+        <path fill="#07618e" stroke="black" stroke-width="0.2" d="M7,0 l5,-5 l2,2 l7,-7 l-2,-2 l5,-5 l5,5 l-2,2 l7,7 l2,-2 l5,5 l-5,5 l-2,-2 l-7,7 l2,2 l-5,5 l-5,-5 l2,-2 l-7,-7 l-2,2 z"/>
+    </g>
+    <g transform="translate(864, 0)">
+        <path fill="#ff943d" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
+        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
+        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
+        <path fill="#7e5aa7" stroke="black" stroke-width="0.2" d="M20.85-5.456 24-14l3.15 8.544L36.124-7 30.3 0l5.824 7-8.974-1.544L24 14l-3.15-8.544L11.876 7 17.7 0l-5.824-7z"/>
+    </g>
+    <g transform="translate(912, 0)">
+        <path fill="#136891" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
+        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
+        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
+        <path fill="#ff9135" stroke="black" stroke-width="0.2" d="M24-17a5 5 0 0 0-5 5 5 5 0 0 0 2 3.984V-3h-5.002A5 5 0 0 0 12-5a5 5 0 0 0-5 5 5 5 0 0 0 5 5 5 5 0 0 0 3.984-2H21v5.016A5 5 0 0 0 19 12a5 5 0 0 0 5 5 5 5 0 0 0 5-5 5 5 0 0 0-2-3.998V3h5.016A5 5 0 0 0 36 5a5 5 0 0 0 5-5 5 5 0 0 0-5-5 5 5 0 0 0-3.984 2H27v-5.016A5 5 0 0 0 29-12a5 5 0 0 0-5-5"/>
+    </g>
+    <g transform="translate(960, 0)">
+        <path fill="#0f6290" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
+        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
+        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
+        <path fill="#63d4f1" stroke="black" stroke-width="0.2" fill-rule="evenodd" d="M8,0 l16,-16 l16,16 l-16,16 z M16,0 l8,-8 l8,8 l-8,8 z"/>
+    </g>
+    <g transform="translate(1008, 0)">
+        <path fill="#f865ae" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
+        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
+        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
+        <path fill="#ffeb3d" stroke="black" stroke-width="0.2" d="M7,0 l5,-5 l2,2 l7,-7 l-2,-2 l5,-5 l5,5 l-2,2 l7,7 l2,-2 l5,5 l-5,5 l-2,-2 l-7,7 l2,2 l-5,5 l-5,-5 l2,-2 l-7,-7 l-2,2 z"/>
+    </g>
+    <g transform="translate(1056, 0)">
+        <path fill="#136891" d="M0,0 L24,-24 L48,0 L24,24 Z"/>
+        <path fill="url(#dark-edge)" d="M45,0 H48 L24,24 V21 z"/>
+        <path fill="url(#light-edge)" d="M0,0 H3 L24,21 V24 z"/>
+        <path fill="#f95da8" stroke="black" stroke-width="0.2" d="M24-14A14 14 0 0 0 10 0a14 14 0 0 0 14 14A14 14 0 0 0 38 0a14 14 0 0 0-14-14zm4 14 5 5-4 4-5-5-5 5-4-4 5-5-5-5 4-4 5 5 5-5 4 4z"/>
     </g>
 </svg>

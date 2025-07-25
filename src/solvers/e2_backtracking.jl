@@ -54,8 +54,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::E2BacktrackingSearch)
 
     # Colors which should be eliminated early
     prioritized_colors = _prioritized_colors(puzzle)
-    # prioritized_colors = [5, 15, 19]  # 94 pieces, 122 sides total
-    # prioritized_colors = [5, 20, 21]  # 94 pieces, 120 sides total, 3 sides already part of the starter-piece
+    # prioritized_colors = [5, 7, 20]  # 94 pieces, 122 sides total
+    # prioritized_colors = [5, 8, 9]   # 94 pieces, 120 sides total, 3 sides already part of the starter-piece
 
     prioritized_sides = vec(count(in(prioritized_colors), puzzle.pieces; dims=2))
     fixed_pieces = filter(!iszero, puzzle.board) .>> 2

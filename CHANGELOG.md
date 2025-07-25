@@ -28,6 +28,10 @@ Breaking changes:
   and `BacktrackingSearchRecursive` to `SimpleBacktrackingSearch` (using a loop
   instead of recursive function calls now).
 
+* Changed the numbering for the color patterns that is outlined in the README
+  of this package. This change should not affect solver algorithms, but the
+  visualization for puzzles from custom input files may be different now.
+
 
 New features and improvements:
 
@@ -37,7 +41,7 @@ New features and improvements:
   given puzzle with a board size of either 16x16, 6x6, or 6x12 via
   `play(puzzle::Eternity2Puzzle)`.
 
-* Added a new `estimate_solutions` function to predict the number of valid
+* Added a new `estimate_solutions` function to estimate the number of valid
   solutions for any given `Eternity2Puzzle`.
 
 * An `Eternity2Puzzle` can now be created with more puzzle pieces than are
