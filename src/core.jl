@@ -454,33 +454,26 @@ end
 """
     score(puzzle::Eternity2Puzzle)
 
-Return the number of matching and non-matching edge pairs on the board.
+Return the numbers of matching and non-matching edge pairs on the board.
 """
 function score(puzzle::Eternity2Puzzle)
     nrows, ncols = size(puzzle.board)
-    npieces = nrows * ncols
+    border_color = 0x00
     valid_joins = 0
     invalid_joins = 0
-    for col = 1:ncols-1, row = 1:nrows-1
-        val1 = puzzle.board[row, col]
-        p1, r1 = val1 >> 2, val1 & 3
-        0 < p1 <= npieces || continue
-        val2 = puzzle.board[row, col + 1]
-        p2, r2 = val2 >> 2, val2 & 3
-        if 0 < p2 <= npieces
-            if puzzle.pieces[p1, mod1(2 - r1, 4)] == puzzle.pieces[p2, 4 - r2]
-                if puzzle.pieces[p2, 4 - r2] != 0x00
-                    valid_joins += 1
-                end
-            else
-                invalid_joins += 1
-            end
-        end
-        val3 = puzzle.board[row + 1, col]
-        p3, r3 = val3 >> 2, val3 & 3
-        if 0 < p3 <= npieces
-            if puzzle.pieces[p1, mod1(3 - r1, 4)] == puzzle.pieces[p3, mod1(1 - r3, 4)]
-                if puzzle.pieces[p1, mod1(3 - r1, 4)] != 0x00
+    # Horizontal joins
+    for row = 1:nrows
+        right_piece = puzzle.board[row, 1]
+        for col = 2:ncols
+            left_piece = right_piece
+            right_piece = puzzle.board[row, col]
+            if iszero(left_piece) || iszero(right_piece) continue end
+            # Right edge color of the left piece
+            color1 = puzzle.pieces[left_piece >> 2, mod1(2 - left_piece & 3, 4)]
+            # Left edge color of the right piece
+            color2 = puzzle.pieces[right_piece >> 2, 4 - right_piece & 3]
+            if color1 == color2
+                if color1 != border_color
                     valid_joins += 1
                 end
             else
@@ -488,34 +481,24 @@ function score(puzzle::Eternity2Puzzle)
             end
         end
     end
-    for col = 1:ncols-1
-        val1 = puzzle.board[nrows, col]
-        p1, r1 = val1 >> 2, val1 & 3
-        0 < p1 <= npieces || continue
-        val2 = puzzle.board[nrows, col + 1]
-        p2, r2 = val2 >> 2, val2 & 3
-        0 < p2 <= npieces || continue
-        if puzzle.pieces[p1, mod1(2 - r1, 4)] == puzzle.pieces[p2, 4 - r2]
-            if puzzle.pieces[p2, 4 - r2] != 0x00
-                valid_joins += 1
+    # Vertical joins
+    for col = 1:ncols
+        bottom_piece = puzzle.board[1, col]
+        for row = 2:nrows
+            top_piece = bottom_piece
+            bottom_piece = puzzle.board[row, col]
+            if iszero(top_piece) || iszero(bottom_piece) continue end
+            # Bottom edge color of the top piece
+            color1 = puzzle.pieces[top_piece >> 2, mod1(3 - top_piece & 3, 4)]
+            # Top edge color of the bottom piece
+            color2 = puzzle.pieces[bottom_piece >> 2, mod1(1 - bottom_piece & 3, 4)]
+            if color1 == color2
+                if color1 != border_color
+                    valid_joins += 1
+                end
+            else
+                invalid_joins += 1
             end
-        else
-            invalid_joins += 1
-        end
-    end
-    for row = 1:nrows-1
-        val1 = puzzle.board[row, ncols]
-        p1, r1 = val1 >> 2, val1 & 3
-        0 < p1 <= npieces || continue
-        val2 = puzzle.board[row + 1, ncols]
-        p2, r2 = val2 >> 2, val2 & 3
-        0 < p2 <= npieces || continue
-        if puzzle.pieces[p1, mod1(3 - r1, 4)] == puzzle.pieces[p2, mod1(1 - r2, 4)]
-            if puzzle.pieces[p1, mod1(3 - r1, 4)] != 0x00
-                valid_joins += 1
-            end
-        else
-            invalid_joins += 1
         end
     end
     return valid_joins, invalid_joins
@@ -572,8 +555,8 @@ comb(n, k) = prod((n+1-i)/i for i = 1:min(k, n-k); init=Float128(1.0))
     estimate_solutions(puzzle::Eternity2Puzzle, path::Union{Symbol, Vector{String}} = :rowscan, error_depths::Vector{Int} = []; verbose::Bool = false)
 
 Estimate the number of solutions for a given [`Eternity2Puzzle`](@ref) and the total number
-of nodes in the search tree for a backtracking algorithm, based on a probability model for
-edge matching puzzles developed by Brendan Owen.
+of nodes in the search tree for a backtracking algorithm, based on an extended version of
+the probability model for edge matching puzzles developed by Brendan Owen.
 
 Pre-placed pieces on the board are considered to be additional constraints that must be
 satisfied in a solution.
@@ -624,10 +607,10 @@ Estimated average number of nodes that a backtracking algorithm has to visit in 
 find a full solution, using a row-by-row search path starting at the bottom left corner:
 ```julia-repl
 julia> solutions, nodes = estimate_solutions(puzzle)
-(1.47022707008833883330697753984548010e+04, 1.36503111141314695383322954302475741e+47)
+(1.47022707008833935129885673337590720e+04, 1.36503111141314673778599540194846603e+47)
 
 julia> nodes/solutions
-9.28449175766522131075433166693434524e+42
+9.28449175766521657015077720929987568e+42
 ```
 
 # References
@@ -750,7 +733,7 @@ function estimate_solutions(
         end
     end
 
-    # Wm(p, i) = Number of arrangements of exactly i invalid inner joins after p placed pieces
+    # Wm(p, i) = Number of arrangements with exactly i invalid inner joins after p placed pieces
     Wm = OffsetArrays.Origin(0)(zeros(Float128, nrows*ncols+1, max_errors+1))
     Wm[:, 0] .= 1.0
     for i = 1:max_errors
@@ -778,7 +761,7 @@ function estimate_solutions(
             piece_configurations = perm(Cp, c) * perm(Ep, e) * perm(Ip, i) * 4.0^i
             # Probability of all frame joins are valid
             pb = Vb[frame_colors, b] / perm(Tb, b)^2
-            # estimated_solutions = piece_configurations * pb * sum(pm[m, v] * C[m, v] for v = max(m-max_errors, 0):m)  # Old version that only supports to allow the invalid joins to be anywhere on the board
+            # estimated_solutions = piece_configurations * pb * sum(pm[m, v] * C[m, v] for v = max(m-max_errors, 0):m)  # Old version that only supports the invalid joins considered to be anywhere on the board
             estimated_solutions = piece_configurations * pb * sum(pm[m, m-nv] * Wm[placed_pieces, nv] for nv = 0:min(max_errors, m))
         end
         cumulative_sum += estimated_solutions
@@ -791,10 +774,9 @@ end
 
 # Numbers of corner, edge and inner pieces on the board
 function _count_pieces(board::Matrix{<:Real})
-    isnonzero = x -> !iszero(x)
-    corner_pieces = count(isnonzero, board[[1, end], [1, end]])
-    edge_pieces = count(isnonzero, board[2:end-1, [1, end]]) + count(isnonzero, board[[1, end], 2:end-1])
-    inner_pieces = count(isnonzero, board[2:end-1, 2:end-1])
+    corner_pieces = count(!iszero, board[[1, end], [1, end]])
+    edge_pieces = count(!iszero, board[2:end-1, [1, end]]) + count(!iszero, board[[1, end], 2:end-1])
+    inner_pieces = count(!iszero, board[2:end-1, 2:end-1])
     return corner_pieces, edge_pieces, inner_pieces
 end
 
