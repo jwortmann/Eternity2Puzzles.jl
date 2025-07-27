@@ -3,6 +3,8 @@ const STARTER_PIECE = 139
 const BOARD_BACKGROUND_IMG = PNGFiles.load(joinpath(@__DIR__, "images", "board.png"))
 const COLOR_PATTERNS_IMG = PNGFiles.load(joinpath(@__DIR__, "images", "colors.png"))
 
+
+""" Abstract type for a solver algorithm. """
 abstract type Eternity2Solver end
 
 
@@ -135,7 +137,7 @@ function Eternity2Puzzle(
     if inner_colors > 0
         inner_colors_ = inner_colors
     end
-    board, pieces = _generate_pieces(nrows, ncols, frame_colors_, inner_colors_, seed)
+    board, pieces = generate_pieces(nrows, ncols, frame_colors_, inner_colors_, seed)
     return Eternity2Puzzle(board, pieces)
 end
 
@@ -615,8 +617,8 @@ julia> nodes/solutions
 
 # References
 
-- https://groups.io/g/eternity2/message/5209
-- https://groups.io/g/eternity2/message/6408
+- <https://groups.io/g/eternity2/message/5209>
+- <https://groups.io/g/eternity2/message/6408>
 """
 function estimate_solutions(
     puzzle::Eternity2Puzzle,
@@ -733,7 +735,7 @@ function estimate_solutions(
         end
     end
 
-    # Wm(p, i) = Number of arrangements with exactly i invalid inner joins after p placed pieces
+    # Wm(p, i) = Number of ways to arrange exactly i invalid inner joins after p placed pieces
     Wm = OffsetArrays.Origin(0)(zeros(Float128, nrows*ncols+1, max_errors+1))
     Wm[:, 0] .= 1.0
     for i = 1:max_errors
@@ -948,25 +950,21 @@ end
 
 
 """
-    generate_pieces(nrows::Int, ncols::Int, frame_colors::Int, inner_colors::Int, seed::Int=1)
+    generate_pieces(nrows::Int, ncols::Int, frame_colors::Int, inner_colors::Int, seed::Int)
 
-Generate random pieces for an `nrows`×`ncols` Eternity II style puzzle with `frame_colors`
-frame colors and `inner_colors` inner colors.
+Generate random pieces for an Eternity II style puzzle with `nrows` rows, `ncols` columns,
+`frame_colors` frame colors and `inner_colors` inner colors.
 
-Note that the amount of frame colors and inner colors have a significant influence on the
-difficulty of the puzzle. For example if there are many different colors, there might only
-be a single solution which is easily found because the pieces can't be combined in a lot of
-different ways. Similarly, if there are only a few different colors, the number of solutions
-becomes large and it will be easy to find one of them.
+`nrows` and `ncols` must be between 3 and 20.
 
-# Examples
-```julia-repl
-julia> generate_pieces(16, 16, 5, 17)
-256×4 Matrix{UInt8}:
-...
-```
+All generated pieces are unique and not rotational symmetric. If no such pieces can be
+generated for the given numbers of frame colors and inner colors after 1000 iterations, this
+function throws an error.
+
+Return a valid arrangement on the board (i.e. puzzle solution) and a matrix with the edge
+colors for the pieces.
 """
-function _generate_pieces(
+function generate_pieces(
     nrows::Integer,
     ncols::Integer,
     frame_colors::Integer,
@@ -993,24 +991,28 @@ function _generate_pieces(
     vj = Matrix{UInt8}(undef, nrows-1, ncols)  # Grid of vertical joins
 
     frame_color_numbers = 1:frame_colors
-    inner_color_numbers = frame_colors+1:frame_colors+inner_colors
+    inner_color_numbers = (1:inner_colors) .+ frame_colors
 
     # Generate uniform distributions of frame edge colors and inner edge colors.
     frame_joins = [frame_color_numbers[mod1(i, frame_colors)] for i = 1:frame_joins_count]
     inner_joins = [inner_color_numbers[mod1(i, inner_colors)] for i = 1:inner_joins_count]
 
     function validate(pieces)
-        _pieces = repeat(pieces, 1, 2)
         # Pieces must be unique
-        for p1 = 1:npieces-1, p2 = p1+1:npieces, rotation = 0:3
-            if _pieces[p1, 1:4] == _pieces[p2, 5-rotation:8-rotation]
-                return false
+        for p1 = 1:npieces-1
+            p1_colors = pieces[p1, :]
+            for p2 = p1+1:npieces
+                p2_colors = pieces[p2, :]
+                for rotation = 0:3
+                    if p1_colors == circshift(p2_colors, rotation)
+                        return false
+                    end
+                end
             end
         end
-        # Pieces must not be symmetric (each rotation must be unique)
-        for idx = 1:npieces
-            top, right, bottom, left = pieces[idx, :]
-            if top == bottom && right == left
+        # Pieces must not be rotational symmetric
+        for p = 1:npieces
+            if pieces[p, 1] == pieces[p, 3] && pieces[p, 2] == pieces[p, 4]
                 return false
             end
         end
