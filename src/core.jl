@@ -671,11 +671,11 @@ function estimate_solutions(
     Tm = sum(inner_joins)
 
     # Number of frame joins and inner joins on the board
-    total_frame_joins = 2 * (nrows - 1) + 2 * (ncols - 1)
-    total_inner_joins = (nrows - 1) * (ncols - 2) + (nrows - 2) * (ncols - 1)
+    max_frame_joins = 2 * (nrows - 1) + 2 * (ncols - 1)
+    max_inner_joins = (nrows - 1) * (ncols - 2) + (nrows - 2) * (ncols - 1)
 
-    @assert Tb >= total_frame_joins
-    @assert Tm >= total_inner_joins
+    @assert Tb >= max_frame_joins
+    @assert Tm >= max_inner_joins
 
     search_path = _search_path(puzzle, path)
     board = zeros(Int, nrows, ncols)
@@ -693,42 +693,48 @@ function estimate_solutions(
 
     # Precomputed table with number of k-permutations of n
     nmax = max(maximum(frame_joins), 2*maximum(inner_joins))
-    kmax = min(nmax, max(total_frame_joins, 2*total_inner_joins))
+    kmax = min(nmax, max(max_frame_joins, 2*max_inner_joins))
     P = OffsetArrays.Origin(0)(zeros(Float128, nmax+1, kmax+1))
     for n = 0:nmax, k = 0:min(n, kmax)
         P[n, k] = perm(n, k)
     end
 
     # Precomputed table with number of k-combinations of n (Pascal's triangle)
-    nmax = max(total_frame_joins, total_inner_joins)
+    nmax = max(max_frame_joins, max_inner_joins)
     C = OffsetArrays.Origin(0)(zeros(Float128, nmax+1, nmax+1))
     for n = 0:nmax, k = 0:n
         C[n, k] = comb(n, k)
     end
 
     # Vb(i, b) = Number of valid configurations of b frame joins can be made using 2b edges of colors 1 to i
-    Vb = OffsetArrays.Origin(0)(zeros(Float128, frame_colors+1, total_frame_joins+1))
+    Vb = OffsetArrays.Origin(0)(zeros(Float128, frame_colors+1, max_frame_joins+1))
     Vb[0, 0] = 1.0
     for i = 1:frame_colors
         n = frame_joins[i]
-        for b = 0:total_frame_joins
+        for b = 0:max_frame_joins
             Vb[i, b] = sum(Vb[i-1, b-j] * P[n, j]^2 * C[b, j] for j = 0:min(n, b))
         end
     end
 
+    # pb(b) = Probability that all b frame joins are valid using 2b edges
+    pb = OffsetArrays.Origin(0)(zeros(Float128, max_frame_joins+1))
+    for b = 0:max_frame_joins
+        pb[b] = Vb[frame_colors, b] / perm(Tb, b)^2
+    end
+
     # Vm(i, m) = Number of valid configurations of m inner joins can be made using 2m edges of colors 1 to i
-    Vm = OffsetArrays.Origin(0)(zeros(Float128, inner_colors+1, total_inner_joins+1))
+    Vm = OffsetArrays.Origin(0)(zeros(Float128, inner_colors+1, max_inner_joins+1))
     Vm[0, 0] = 1.0
     for i = 1:inner_colors
         n = inner_joins[i]
-        for m = 0:total_inner_joins
+        for m = 0:max_inner_joins
             Vm[i, m] = sum(Vm[i-1, m-j] * P[2n, 2j] * C[m, j] for j = 0:min(n, m))
         end
     end
 
     # pm(m, v) = Probability the first v inner joins are valid and the rest are not using 2m edges
-    pm = OffsetArrays.Origin(0)(zeros(Float128, total_inner_joins+1, total_inner_joins+1))
-    for m = 0:total_inner_joins
+    pm = OffsetArrays.Origin(0)(zeros(Float128, max_inner_joins+1, max_inner_joins+1))
+    for m = 0:max_inner_joins
         pm[m, m] = Vm[inner_colors, m] / perm(2Tm, 2m)
         for v = m-1:-1:0
             pm[m, v] = pm[m-1, v] - pm[m, v+1]
@@ -741,7 +747,7 @@ function estimate_solutions(
     for i = 1:max_errors
         d = error_depths[i]
         for p = d:nrows*ncols
-            Wm[p, i] = sum(C[joins[p]-joins[d-1], i-k] * Wm[d-1, k] for k = 0:i-1)
+            Wm[p, i] = sum(Wm[d-1, k] * C[joins[p]-joins[d-1], i-k] for k = 0:i-1)
         end
     end
 
@@ -761,10 +767,8 @@ function estimate_solutions(
             b, m = _count_joins(board)
             # Number of piece configurations including 4 orientations for the inner pieces
             piece_configurations = perm(Cp, c) * perm(Ep, e) * perm(Ip, i) * 4.0^i
-            # Probability of all frame joins are valid
-            pb = Vb[frame_colors, b] / perm(Tb, b)^2
-            # estimated_solutions = piece_configurations * pb * sum(pm[m, v] * C[m, v] for v = max(m-max_errors, 0):m)  # Old version that only supports the invalid joins considered to be anywhere on the board
-            estimated_solutions = piece_configurations * pb * sum(pm[m, m-nv] * Wm[placed_pieces, nv] for nv = 0:min(max_errors, m))
+            # estimated_solutions = piece_configurations * pb[b] * sum(pm[m, v] * C[m, v] for v = max(m-max_errors, 0):m)  # Old version that only supports the invalid joins considered to be anywhere on the board
+            estimated_solutions = piece_configurations * pb[b] * sum(pm[m, m-nv] * Wm[placed_pieces, nv] for nv = 0:min(max_errors, m))
         end
         cumulative_sum += estimated_solutions
         if verbose
