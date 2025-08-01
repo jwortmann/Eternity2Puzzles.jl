@@ -554,7 +554,7 @@ comb(n, k) = prod((n+1-i)/i for i = 1:min(k, n-k); init=Float128(1.0))
 
 """
     estimate_solutions(puzzle::Eternity2Puzzle)
-    estimate_solutions(puzzle::Eternity2Puzzle, path::Union{Symbol, Vector{String}} = :rowscan, error_depths::Vector{Int} = []; verbose::Bool = false)
+    estimate_solutions(puzzle::Eternity2Puzzle, path::Union{Symbol, Vector{String}} = :rowscan, slip_array::Vector{Int} = []; verbose::Bool = false)
 
 Estimate the number of solutions for a given [`Eternity2Puzzle`](@ref) and the total number
 of nodes in the search tree for a backtracking algorithm, based on an extended version of
@@ -574,7 +574,7 @@ start of the list. Note that if no invalid joins are allowed, the placement orde
 effect the number of solutions, but it can have a significant influence on the total number
 of nodes in the search tree.
 
-If a vector `error_depths` is given, its entries specify the numbers of placed pieces at
+If a vector `slip_array` is given, its entries specify the numbers of placed pieces at
 which another invalid join is allowed. This means that a piece arrangement is considered to
 be valid even if not all of the inner joins match. For example the vector `[220, 230, 240]`
 specifies that at least the first 219 pieces have to be placed with all edges matching, at
@@ -623,13 +623,13 @@ julia> nodes/solutions
 function estimate_solutions(
     puzzle::Eternity2Puzzle,
     path::Union{Symbol, Vector{String}} = :rowscan,
-    error_depths::Vector{Int} = Int[];
+    slip_array::Vector{Int} = Int[];
     verbose=false
 )
     nrows, ncols = size(puzzle.board)
-    max_errors = length(error_depths)
+    max_errors = length(slip_array)
 
-    @assert issorted(error_depths) "Error depths must be a weakly increasing sequence"
+    @assert issorted(slip_array) "Error depths must be a weakly increasing sequence"
 
     # Number of corner, edge and inner squares on the board
     corner_squares = 4
@@ -745,7 +745,7 @@ function estimate_solutions(
     Wm = OffsetArrays.Origin(0)(zeros(Float128, nrows*ncols+1, max_errors+1))
     Wm[:, 0] .= 1.0
     for i = 1:max_errors
-        d = error_depths[i]
+        d = slip_array[i]
         for p = d:nrows*ncols
             Wm[p, i] = sum(Wm[d-1, k] * C[joins[p]-joins[d-1], i-k] for k = 0:i-1)
         end
@@ -768,7 +768,7 @@ function estimate_solutions(
             # Number of piece configurations including 4 orientations for the inner pieces
             piece_configurations = perm(Cp, c) * perm(Ep, e) * perm(Ip, i) * 4.0^i
             # estimated_solutions = piece_configurations * pb[b] * sum(pm[m, v] * C[m, v] for v = max(m-max_errors, 0):m)  # Old version that only supports the invalid joins considered to be anywhere on the board
-            estimated_solutions = piece_configurations * pb[b] * sum(pm[m, m-nv] * Wm[placed_pieces, nv] for nv = 0:min(max_errors, m))
+            estimated_solutions = piece_configurations * pb[b] * sum(pm[m, m-k] * Wm[placed_pieces, k] for k = 0:min(max_errors, m))
         end
         cumulative_sum += estimated_solutions
         if verbose
@@ -1135,13 +1135,14 @@ end
 
 function _print_progress(
     puzzle::Eternity2Puzzle,
-    iters::Int = 0,
+    nodes::Int = 0,
     restarts::Int = 0,
     solutions::Int = 0;
+    verbose::Bool = true,
     clear::Bool = true
 )
     nrows, ncols = size(puzzle.board)
-    show_board = !displayable("image/png")
+    show_board = verbose && !displayable("image/png")
     if clear
         clear_lines = ifelse(show_board, nrows+3, 1)
         print("\e[$(clear_lines)F\e[0J")
@@ -1150,7 +1151,7 @@ function _print_progress(
         display(puzzle)
     end
     pieces_str = "Pieces: $(count(!iszero, puzzle.board))/$(nrows*ncols)"
-    iterations_str = "   Iterations: $(round(iters/1_000_000_000, digits=2)) B"
+    iterations_str = "   Nodes: $(round(nodes/1_000_000_000, digits=2)) B"
     restarts_str = iszero(restarts) ? "" : "   Restarts: $restarts"
     solutions_str = iszero(solutions) ? "" : "   Solutions: $solutions"
     println(pieces_str, iterations_str, restarts_str, solutions_str)

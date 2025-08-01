@@ -1,12 +1,11 @@
 """
     SimpleBacktrackingSearch()
-    SimpleBacktrackingSearch(; seed::Int=1, exhaustive_search::Bool=false)
+    SimpleBacktrackingSearch(; seed::Int=1, slip_array::Vector{Int}=[], exhaustive_search::Bool=false)
 
 A simple backtracking search that can be used with arbitrary board sizes. Pre-placed pieces
 on the board are considered to be additional constraints for a valid solution. This search
 algorithm places pieces one after another onto the board and backtracks if no more matching
-piece can be placed. Pieces are only placed if all edges match exactly. The algorithm stops
-when a solution is found, or if the entire search space is exhausted.
+piece can be placed.
 
 # Examples
 
@@ -23,18 +22,26 @@ julia> solve!(puzzle; alg=SimpleBacktrackingSearch())
   16/0  27/1  33/0  30/2   3/1  21/2
   20/0  35/1   6/2  19/3   9/2  25/2
   34/0  15/3  17/3  23/3  22/3  36/3
-
-julia> preview(puzzle)
 ```
 """
 @kwdef struct SimpleBacktrackingSearch <: Eternity2Solver
     seed::Int = 1
+    slip_array::Vector{Int} = Int[]
     exhaustive_search::Bool = false
 end
 
 
+struct RotatedPiece
+    number::Int
+    rotation::Int
+    top::UInt8
+    right::UInt8
+    invalid_joins::Int
+end
+
+
 function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
-    @info "Parameters" solver.seed
+    @info "Solver parameters" seed=solver.seed slip_array=Tuple(solver.slip_array)
     Random.seed!(solver.seed)
 
     nrows, ncols = size(puzzle)
@@ -52,7 +59,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
     fixed_pieces = count(!iszero, puzzle.board)
     symmetries = symmetry_factor(puzzle)
 
-    @info "Properties" frame_colors inner_colors fixed_pieces symmetries
+    @info "Puzzle properties" frame_colors inner_colors fixed_pieces symmetries
 
     colors = FixedSizeMatrix{UInt8}(undef, npieces << 2 | 3, 2)
     colors[0x0001, :] .= border_color
@@ -67,7 +74,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
     available[filter(!iszero, puzzle.board .>> 2)] .= false
 
     constraints = NTuple{2, UInt8}[(0x00, 0x00)]
-    rowcol = FixedSizeVector{NTuple{3, Int}}(undef, maxdepth)
+    rowcol = FixedSizeVector{NTuple{4, Int}}(undef, maxdepth)
     depth = fixed_pieces + 1
     for row = nrows:-1:1, col = 1:ncols
         iszero(puzzle.board[row, col]) || continue
@@ -90,26 +97,58 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
             push!(constraints, (top, right))
             constraint = length(constraints)
         end
-        rowcol[depth] = (row, col+1, constraint)
+        rowcol[depth] = (row, col+1, constraint, count(<=(depth), solver.slip_array))
         depth += 1
     end
     nconstraints = length(constraints)
 
-    _candidates = [UInt16[] for _ in 1:ncolors+1, _ in 1:ncolors+1, _ in 1:nconstraints]
+    _candidates = [RotatedPiece[] for _ in 1:ncolors+1, _ in 1:ncolors+1, _ in 1:nconstraints]
     for (piece, piece_colors) in enumerate(eachrow(pieces)), rotation = 0:3
         top, right, bottom, left = circshift(piece_colors, rotation)
         for (constraint, (t, r)) in enumerate(constraints)
-            if (t == 0 || t == top) && (r == 0 || r == right)
-                push!(_candidates[bottom, left, constraint], piece << 2 | rotation)
+            # Check whether piece candidate satisfies the constraints from adjacent pieces
+            # TODO if invalid joins are allowed, also consider candidates that don't satisfy
+            # the constraints but set the corresponding number of invalid joins
+            if (top != t > 0) || (right != r > 0) continue end
+            # Piece candidates with 0 invalid joins
+            push!(_candidates[bottom, left, constraint], RotatedPiece(piece, rotation, top, right, 0))
+            if !isempty(solver.slip_array)
+                # Piece candidates with 1 invalid join
+                if left in inner_colors_range
+                    for l in inner_colors_range
+                        if l == left continue end
+                        push!(_candidates[bottom, l, constraint], RotatedPiece(piece, rotation, top, right, 1))
+                    end
+                end
+                if bottom in inner_colors_range
+                    for b in inner_colors_range
+                        if b == bottom continue end
+                        push!(_candidates[b, left, constraint], RotatedPiece(piece, rotation, top, right, 1))
+                    end
+                end
+                # Piece candidates with 2 invalid joins
+                if left in inner_colors_range && bottom in inner_colors_range
+                    for l in inner_colors_range
+                        if l == left continue end
+                        for b in inner_colors_range
+                            if b == bottom continue end
+                            push!(_candidates[b, l, constraint], RotatedPiece(piece, rotation, top, right, 2))
+                        end
+                    end
+                end
             end
         end
     end
     for idx in eachindex(_candidates)
         if length(_candidates[idx]) > 1
             Random.shuffle!(_candidates[idx])
+            # Sort by number of invalid joins, in order to prefer pieces that match best.
+            # Note that the random order from the shuffle is preserved between candidates
+            # with the same number of invalid joins.
+            sort!(_candidates[idx]; by=x->x.invalid_joins)
         end
     end
-    candidates = FixedSizeVector{UInt16}(undef, mapreduce(length, +, _candidates))
+    candidates = FixedSizeVector{RotatedPiece}(undef, mapreduce(length, +, _candidates))
     index_table = FixedSizeArray{UnitRange{Int}}(undef, ncolors+1, ncolors+1, nconstraints)
     idx = 1
     for constraint = 1:nconstraints, left = 1:ncolors+1, bottom = 1:ncolors+1
@@ -122,20 +161,39 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
         index_table[bottom, left, constraint] = start_idx:end_idx
     end
 
-    board = FixedSizeMatrix{UInt16}(undef, nrows+1, ncols+1)
-    fill!(board, 0x0002)
-    board[2:end-2, 1] .= 0x0001
-    board[end, 3:end-1] .= 0x0001
-    board[1:end-1, 2:end] = puzzle.board
+    board = FixedSizeMatrix{RotatedPiece}(undef, nrows+1, ncols+1)
+    board[1, 1] = RotatedPiece(0, 0, border_color+1, border_color+1, 0)
+    board[nrows, 1] = RotatedPiece(0, 0, border_color+1, border_color+1, 0)
+    board[nrows+1, 2] = RotatedPiece(0, 0, border_color+1, border_color+1, 0)
+    board[nrows+1, ncols+1] = RotatedPiece(0, 0, border_color+1, border_color+1, 0)
+    for row = 2:nrows-1
+        board[row, 1] = RotatedPiece(0, 0, border_color, border_color, 0)
+    end
+    for col = 3:ncols
+        board[nrows+1, col] = RotatedPiece(0, 0, border_color, border_color, 0)
+    end
+    for col = 1:ncols, row = 1:nrows
+        piece, rotation = puzzle[row, col]
+        if iszero(piece)
+            board[row, col+1] = RotatedPiece(0, 0, 0x00, 0x00, 0)
+        else
+            top = pieces[piece, mod1(1 - rotation, 4)]
+            right = pieces[piece, mod1(2 - rotation, 4)]
+            board[row, col+1] = RotatedPiece(piece, rotation, top, right, 0)
+        end
+    end
 
     idx_range = FixedSizeVector{UnitRange{Int}}(undef, maxdepth)
+    invalid_joins = FixedSizeVector{Int}(undef, maxdepth)
+    fill!(invalid_joins, 0)
 
     depth = fixed_pieces + 1
     best_depth = fixed_pieces
-    row, col, constraint = rowcol[depth]
-    _idx_range = index_table[colors[board[row+1, col], 1], colors[board[row, col-1], 2], constraint]
+    current_invalid_joins = 0
+    row, col, constraint, max_invalid_joins = rowcol[depth]
+    _idx_range = index_table[board[row+1, col].top, board[row, col-1].right, constraint]
 
-    iters = 0
+    nodes = 0
     solutions = 0
 
     _print_progress(puzzle; clear=false)
@@ -144,45 +202,56 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
         @label next
         for idx in _idx_range
             candidate = candidates[idx]
-            available[candidate >> 2] || continue
+            if !available[candidate.number] continue end
+            if current_invalid_joins + candidate.invalid_joins > max_invalid_joins
+                # Piece candidates are sorted by number of invalid joins, i.e. all folling
+                # candidates are also not allowed
+                break
+            end
+            current_invalid_joins += candidate.invalid_joins
             board[row, col] = candidate
-            iters += 1
+            nodes += 1
             if depth > best_depth
                 best_depth = depth
-                puzzle.board[:, :] = board[1:end-1, 2:end]
-                _print_progress(puzzle, iters)
+                if !solver.exhaustive_search
+                    for col = 1:ncols, row = 1:nrows
+                        piece = board[row, col+1]
+                        puzzle.board[row, col] = piece.number << 2 | piece.rotation
+                    end
+                    _print_progress(puzzle, nodes)
+                end
                 if depth == maxdepth
                     if solver.exhaustive_search
                         best_depth -= 1
                         solutions += 1
-                        _print_progress(puzzle, iters, 0, solutions; clear=false)
+                        _print_progress(puzzle, nodes, 0, solutions; verbose=false)
                         continue
                     else
-                        @info "Solution found after $iters iterations"
+                        @info "Solution found after $nodes nodes"
                         return
                     end
                 end
             end
-            available[candidate >> 2] = false
+            available[candidate.number] = false
             idx_range[depth] = idx+1:_idx_range.stop
+            invalid_joins[depth] = current_invalid_joins
             depth += 1
-            row, col, constraint = rowcol[depth]
-            bottom = colors[board[row+1, col], 1]
-            left = colors[board[row, col-1], 2]
-            _idx_range = index_table[bottom, left, constraint]
+            row, col, constraint, max_invalid_joins = rowcol[depth]
+            _idx_range = index_table[board[row+1, col].top, board[row, col-1].right, constraint]
             @goto next
         end
         depth -= 1
         if depth == fixed_pieces
             if solver.exhaustive_search
-                @info "Search finished after $iters iterations with $solutions solutions"
+                @info "Search finished with $solutions solutions after $nodes nodes"
             else
-                @warn "Search finished after $iters iterations with no valid solution found"
+                @warn "Search finished with no valid solution found after $nodes nodes"
             end
             return
         end
         row, col = rowcol[depth]
-        available[board[row, col] >> 2] = true
+        available[board[row, col].number] = true
         _idx_range = idx_range[depth]
+        current_invalid_joins = invalid_joins[depth]
     end
 end
