@@ -28,8 +28,8 @@ Breaking changes:
   and `BacktrackingSearchRecursive` to `SimpleBacktrackingSearch` (using a loop
   instead of recursive function calls now).
 
-* Changed the numbering for the color patterns that is outlined in the README
-  of this package. This change should not affect solver algorithms, but the
+* Changed the numbering convention for the color patterns and the edge order
+  in input files. This change should not affect solver algorithms, but the
   visualization for puzzles from custom input files may be different now.
 
 

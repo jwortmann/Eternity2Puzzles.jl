@@ -228,7 +228,7 @@ function ActorCollection()
         error_highlights[4*(idx-1)+4].pos = (x, y)
         # Combine the 4 images of the edges into a single image
         c1, c2, c3, c4 = PIECES[idx, 1:4]
-        image = colors[:,48*c1+1:48*c1+48] + rotr90(colors[:,48*c2+1:48*c2+48]) + rot180(colors[:,48*c3+1:48*c3+48]) + rotl90(colors[:,48*c4+1:48*c4+48])
+        image = colors[:,48*c3+1:48*c3+48] + rotr90(colors[:,48*c4+1:48*c4+48]) + rot180(colors[:,48*c1+1:48*c1+48]) + rotl90(colors[:,48*c2+1:48*c2+48])
         # Set opaque color for diagonal pixels which are half-transparent
         for i = 1:48
             image[i, i] = colorant"#323135"
@@ -350,22 +350,22 @@ function update_error_highlights()
     # Horizontal border edges
     for row = 1:NROWS
         val = puzzle.board[row, 1]
-        if val != 0x0000 && PIECES[val >> 2, 4 - val & 3] != BORDER_COLOR
+        if val != 0x0000 && PIECES[val >> 2, 6 - val & 3] != BORDER_COLOR
             push!(ui.errors, 4 * NCOLS * (row - 1) + 4)
         end
         val = puzzle.board[row, NCOLS]
-        if val != 0x0000 && PIECES[val >> 2, 6 - val & 3] != BORDER_COLOR
+        if val != 0x0000 && PIECES[val >> 2, 8 - val & 3] != BORDER_COLOR
             push!(ui.errors, 4 * NCOLS * row - 2)
         end
     end
     # Vertical border edges
     for col = 1:NCOLS
         val = puzzle.board[1, col]
-        if val != 0x0000 && PIECES[val >> 2, 5 - val & 3] != BORDER_COLOR
+        if val != 0x0000 && PIECES[val >> 2, 7 - val & 3] != BORDER_COLOR
             push!(ui.errors, 4 * col - 3)
         end
         val = puzzle.board[NROWS, col]
-        if val != 0x0000 && PIECES[val >> 2, 7 - val & 3] != BORDER_COLOR
+        if val != 0x0000 && PIECES[val >> 2, 5 - val & 3] != BORDER_COLOR
             push!(ui.errors, 4 * NCOLS * (NROWS - 1) + 4 * col - 1)
         end
     end
@@ -375,14 +375,14 @@ function update_error_highlights()
         idx2 = 4 * NCOLS * (row - 1) + 4 * col + 4
         p1 = puzzle.board[row, col]
         if p1 != 0x0000
-            p1_right = PIECES[p1 >> 2, 6 - p1 & 3]
+            p1_right = PIECES[p1 >> 2, 4 - p1 & 3]
             if p1_right == BORDER_COLOR
                 push!(ui.errors, idx1)
             end
         end
         p2 = puzzle.board[row, col + 1]
         if p2 != 0x0000
-            p2_left = PIECES[p2 >> 2, 4 - p2 & 3]
+            p2_left = PIECES[p2 >> 2, 6 - p2 & 3]
             if p2_left == BORDER_COLOR
                 push!(ui.errors, idx2)
             end
@@ -402,14 +402,14 @@ function update_error_highlights()
         idx2 = 4 * NCOLS * row + 4 * col - 3
         p1 = puzzle.board[row, col]
         if p1 != 0x0000
-            p1_bottom = PIECES[p1 >> 2, 7 - p1 & 3]
+            p1_bottom = PIECES[p1 >> 2, 5 - p1 & 3]
             if p1_bottom == BORDER_COLOR
                 push!(ui.errors, idx1)
             end
         end
         p2 = puzzle.board[row + 1, col]
         if p2 != 0x0000
-            p2_top = PIECES[p2 >> 2, 5 - p2 & 3]
+            p2_top = PIECES[p2 >> 2, 7 - p2 & 3]
             if p2_top == BORDER_COLOR
                 push!(ui.errors, idx2)
             end
@@ -423,6 +423,46 @@ function update_error_highlights()
             end
         end
     end
+end
+
+
+# For a given board position return the color constraints of all 4 edges as a vector
+# [bottom, left, top, right] with UInt8 entries for the color constraints or `nothing` if
+# there is no adjacent piece in that direction.
+function _get_color_constraints(puzzle::Eternity2Puzzle, row::Int, col::Int)
+    nrows, ncols = size(puzzle.board)
+    if nrows == ncols == 16 && (row, col) == (9, 8)
+        return circshift(puzzle.pieces[STARTER_PIECE, :], 2)  # starter-piece has 180° rotation
+    end
+    if row == 1
+        top = 0x00
+        val = puzzle.board[row + 1, col]
+        bottom = iszero(val) ? nothing : puzzle.pieces[val >> 2, mod1(3 - val & 3, 4)]
+    elseif row == nrows
+        val = puzzle.board[row - 1, col]
+        top = iszero(val) ? nothing : puzzle.pieces[val >> 2, mod1(1 - val & 3, 4)]
+        bottom = 0x00
+    else
+        val = puzzle.board[row - 1, col]
+        top = iszero(val) ? nothing : puzzle.pieces[val >> 2, mod1(1 - val & 3, 4)]
+        val = puzzle.board[row + 1, col]
+        bottom = iszero(val) ? nothing : puzzle.pieces[val >> 2, mod1(3 - val & 3, 4)]
+    end
+    if col == 1
+        left = 0x00
+        val = puzzle.board[row, col + 1]
+        right = iszero(val) ? nothing : puzzle.pieces[val >> 2, mod1(2 - val & 3, 4)]
+    elseif col == ncols
+        val = puzzle.board[row, col - 1]
+        left = iszero(val) ? nothing : puzzle.pieces[val >> 2, 4 - val & 3]
+        right = 0x00
+    else
+        val = puzzle.board[row, col - 1]
+        left = iszero(val) ? nothing : puzzle.pieces[val >> 2, 4 - val & 3]
+        val = puzzle.board[row, col + 1]
+        right = iszero(val) ? nothing : puzzle.pieces[val >> 2, mod1(2 - val & 3, 4)]
+    end
+    return [bottom, left, top, right]
 end
 
 

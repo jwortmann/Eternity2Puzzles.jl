@@ -200,8 +200,8 @@ function Base.show(io::IO, ::MIME"image/png", puzzle::Eternity2Puzzle)
             piece = value >> 2
             rotation = value & 3
             c1, c2, c3, c4 = puzzle.pieces[piece, :]
-            piece_img = colors_img[:, 48c1+1:48c1+48] + rotr90(colors_img[:, 48c2+1:48c2+48]) +
-                rot180(colors_img[:, 48c3+1:48c3+48]) + rotl90(colors_img[:, 48c4+1:48c4+48])
+            piece_img = colors_img[:, 48c3+1:48c3+48] + rotr90(colors_img[:, 48c4+1:48c4+48]) +
+                rot180(colors_img[:, 48c1+1:48c1+48]) + rotl90(colors_img[:, 48c2+1:48c2+48])
             for i = 1:48
                 piece_img[i, i] = dark_gray
                 piece_img[i, 49-i] = dark_gray
@@ -471,9 +471,9 @@ function score(puzzle::Eternity2Puzzle)
             right_piece = puzzle.board[row, col]
             if iszero(left_piece) || iszero(right_piece) continue end
             # Right edge color of the left piece
-            color1 = puzzle.pieces[left_piece >> 2, mod1(2 - left_piece & 3, 4)]
+            color1 = puzzle.pieces[left_piece >> 2, 4 - left_piece & 3]
             # Left edge color of the right piece
-            color2 = puzzle.pieces[right_piece >> 2, 4 - right_piece & 3]
+            color2 = puzzle.pieces[right_piece >> 2, mod1(2 - right_piece & 3, 4)]
             if color1 == color2
                 if color1 != border_color
                     valid_joins += 1
@@ -491,9 +491,9 @@ function score(puzzle::Eternity2Puzzle)
             bottom_piece = puzzle.board[row, col]
             if iszero(top_piece) || iszero(bottom_piece) continue end
             # Bottom edge color of the top piece
-            color1 = puzzle.pieces[top_piece >> 2, mod1(3 - top_piece & 3, 4)]
+            color1 = puzzle.pieces[top_piece >> 2, mod1(1 - top_piece & 3, 4)]
             # Top edge color of the bottom piece
-            color2 = puzzle.pieces[bottom_piece >> 2, mod1(1 - bottom_piece & 3, 4)]
+            color2 = puzzle.pieces[bottom_piece >> 2, mod1(3 - bottom_piece & 3, 4)]
             if color1 == color2
                 if color1 != border_color
                     valid_joins += 1
@@ -913,46 +913,6 @@ function symmetry_factor(puzzle::Eternity2Puzzle)
 end
 
 
-# For a given board position return the color constraints of all 4 edges as a vector
-# [top, right, bottom, left] with UInt8 entries for the color constraints or `nothing` if
-# there is no adjacent piece in that direction.
-function _get_color_constraints(puzzle::Eternity2Puzzle, row::Int, col::Int)
-    nrows, ncols = size(puzzle.board)
-    if nrows == ncols == 16 && (row, col) == (9, 8)
-        return puzzle.pieces[STARTER_PIECE, 2:-1:1]  # starter-piece has 180° rotation
-    end
-    if row == 1
-        top = 0x00
-        val = puzzle.board[row + 1, col]
-        bottom = iszero(val) ? nothing : puzzle.pieces[val >> 2, mod1(1 - val & 3, 4)]
-    elseif row == nrows
-        val = puzzle.board[row - 1, col]
-        top = iszero(val) ? nothing : puzzle.pieces[val >> 2, mod1(3 - val & 3, 4)]
-        bottom = 0x00
-    else
-        val = puzzle.board[row - 1, col]
-        top = iszero(val) ? nothing : puzzle.pieces[val >> 2, mod1(3 - val & 3, 4)]
-        val = puzzle.board[row + 1, col]
-        bottom = iszero(val) ? nothing : puzzle.pieces[val >> 2, mod1(1 - val & 3, 4)]
-    end
-    if col == 1
-        left = 0x00
-        val = puzzle.board[row, col + 1]
-        right = iszero(val) ? nothing : puzzle.pieces[val >> 2, mod1(4 - val & 3, 4)]
-    elseif col == ncols
-        val = puzzle.board[row, col - 1]
-        left = iszero(val) ? nothing : puzzle.pieces[val >> 2, mod1(2 - val & 3, 4)]
-        right = 0x00
-    else
-        val = puzzle.board[row, col - 1]
-        left = iszero(val) ? nothing : puzzle.pieces[val >> 2, mod1(2 - val & 3, 4)]
-        val = puzzle.board[row, col + 1]
-        right = iszero(val) ? nothing : puzzle.pieces[val >> 2, mod1(4 - val & 3, 4)]
-    end
-    return [top, right, bottom, left]
-end
-
-
 """
     generate_pieces(nrows::Int, ncols::Int, frame_colors::Int, inner_colors::Int, seed::Int)
 
@@ -1047,38 +1007,38 @@ function generate_pieces(
         # are the edge pieces, eventually followed by the numbers for the inner pieces.
 
         # Corner pieces (rotate such that the border edges are at the bottom and left sides)
-        pieces[1, :] = [hj[1, 1], vj[1, 1], 0, 0]          # top-left corner
-        pieces[2, :] = [vj[1, end], hj[1, end], 0, 0]      # top-right corner
-        pieces[3, :] = [vj[end, 1], hj[end, 1], 0, 0]      # bottom-left corner
-        pieces[4, :] = [hj[end, end], vj[end, end], 0, 0]  # bottom-right corner
+        pieces[1, :] = [0, 0, hj[1, 1], vj[1, 1]]          # top-left corner
+        pieces[2, :] = [0, 0, vj[1, end], hj[1, end]]      # top-right corner
+        pieces[3, :] = [0, 0, vj[end, 1], hj[end, 1]]      # bottom-left corner
+        pieces[4, :] = [0, 0, hj[end, end], vj[end, end]]  # bottom-right corner
         rotations[1:4] = [1, 2, 0, 3]
 
         # Edge pieces in clockwise direction, starting from the top-left corner (rotate
         # such that the border edge is at the bottom side)
         idx = 5
         for col = 2:ncols-1
-            pieces[idx, :] = [vj[1, col], hj[1, col-1], 0, hj[1, col]]
+            pieces[idx, :] = [0, hj[1, col], vj[1, col], hj[1, col-1]]
             rotations[idx] = 2
             idx += 1
         end
         for row = 2:nrows-1
-            pieces[idx, :] = [hj[row, end], vj[row-1, end], 0, vj[row, end]]
+            pieces[idx, :] = [0, vj[row, end], hj[row, end], vj[row-1, end]]
             rotations[idx] = 3
             idx += 1
         end
         for col = ncols-1:-1:2
-            pieces[idx, :] = [vj[end, col], hj[end, col], 0, hj[end, col-1]]
+            pieces[idx, :] = [0, hj[end, col-1], vj[end, col], hj[end, col]]
             idx += 1
         end
         for row = nrows-1:-1:2
-            pieces[idx, :] = [hj[row, 1], vj[row, 1], 0, vj[row-1, 1]]
+            pieces[idx, :] = [0, vj[row-1, 1], hj[row, 1], vj[row, 1]]
             rotations[idx] = 1
             idx += 1
         end
 
         # Inner pieces row by row from left to right
         for row = 2:nrows-1, col = 2:ncols-1
-            pieces[idx, :] = [vj[row-1, col], hj[row, col], vj[row, col], hj[row, col-1]]
+            pieces[idx, :] = [vj[row, col], hj[row, col-1], vj[row-1, col], hj[row, col]]
             idx += 1
         end
 
@@ -1092,9 +1052,9 @@ function generate_pieces(
             pieces[inner_pieces_range, :] = pieces[inner_pieces_idx, :]
 
             # Rotate inner pieces randomly
-            rotations[inner_pieces_range] = rand([0, 1, 2, 3], length(inner_pieces_range))
+            rotations[inner_pieces_range] = rand(0:3, length(inner_pieces_range))
             for idx = inner_pieces_range, _ = 1:rotations[idx]
-                pieces[idx, :] = [pieces[idx, 2:4]..., pieces[idx, 1]]
+                pieces[idx, :] = circshift(pieces[idx, :], -rotations[idx])
             end
 
             board[1, 1] = findfirst(isequal(1), corner_pieces_idx) << 2 | 1

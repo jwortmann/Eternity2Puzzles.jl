@@ -35,12 +35,12 @@ function solve!(puzzle::Eternity2Puzzle, solver::E2BacktrackingSearch)
     colors = FixedSizeMatrix{UInt8}(undef, npieces << 2 | 3, 2)
     colors[0x0001, :] .= ncolors + 1  # Special value for the edge pieces
     colors[0x0002, :] .= ncolors + 2  # Special value for the corner pieces
-    for (piece, piece_colors) in enumerate(eachrow(pieces)), rotation = 0:3, side = 1:2
+    for (piece, piece_colors) in enumerate(eachrow(pieces)), rotation = 0:3, side = 3:4
         colors[piece << 2 | rotation, side] = piece_colors[mod1(side - rotation, 4)]
     end
 
-    STARTER_PIECE_BOTTOM_COLOR = puzzle.pieces[STARTER_PIECE, 1]
-    STARTER_PIECE_LEFT_COLOR = puzzle.pieces[STARTER_PIECE, 2]
+    STARTER_PIECE_BOTTOM_COLOR = puzzle.pieces[STARTER_PIECE, 3]
+    STARTER_PIECE_LEFT_COLOR = puzzle.pieces[STARTER_PIECE, 4]
 
     path = ["I8", "P1", "P2", "O1", "O2", "P3", "O3", "N1", "N2", "N3", "P4", "O4", "N4", "M1", "M2", "M3", "M4", "P5", "O5", "N5", "M5", "L1", "L2", "L3", "L4", "L5", "P6", "O6", "N6", "M6", "L6", "K1", "K2", "K3", "K4", "K5", "K6", "P7", "O7", "N7", "M7", "L7", "K7", "J1", "J2", "J3", "J4", "J5", "J6", "J7", "P8", "O8", "N8", "M8", "L8", "K8", "J8", "I1", "I2", "I3", "I4", "I5", "I6", "I7", "P9", "P10", "P11", "P12", "P13", "P14", "P15", "P16", "O9", "O10", "O11", "O12", "O13", "O14", "O15", "O16", "N9", "N10", "N11", "N12", "N13", "N14", "N15", "N16", "M9", "M10", "M11", "M12", "M13", "M14", "M15", "M16", "L9", "L10", "L11", "L12", "L13", "L14", "L15", "L16", "K9", "K10", "K11", "K12", "K13", "K14", "K15", "K16", "J9", "J10", "J11", "J12", "J13", "J14", "J15", "J16", "I9", "I10", "I11", "I12", "I13", "I14", "I15", "I16", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "H10", "H11", "H12", "H13", "H14", "H15", "H16", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12", "G13", "G14", "G15", "G16", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "F13", "F14", "F15", "F16", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11", "E12", "E13", "E14", "E15", "E16", "D1", "C1", "B1", "A1", "D2", "C2", "B2", "A2", "D3", "C3", "B3", "A3", "D4", "C4", "B4", "A4", "D5", "C5", "B5", "A5", "D6", "C6", "B6", "A6", "D7", "C7", "B7", "A7", "D8", "C8", "B8", "A8", "D9", "C9", "B9", "A9", "D10", "C10", "B10", "A10", "D11", "C11", "B11", "A11", "D12", "C12", "B12", "A12", "D13", "C13", "B13", "A13", "D14", "D15", "D16", "C14", "B14", "A14", "C15", "C16", "B15", "A15", "B16", "A16"]
 
@@ -139,9 +139,9 @@ function solve!(puzzle::Eternity2Puzzle, solver::E2BacktrackingSearch)
                 piece_sides = prioritized_sides[piece]
                 placed_sides + piece_sides >= min_placed_sides || continue
                 if (row, col) == (10, 9)
-                    pieces[piece, mod1(1 - value & 3, 4)] == STARTER_PIECE_BOTTOM_COLOR || continue
+                    pieces[piece, mod1(3 - value & 3, 4)] == STARTER_PIECE_BOTTOM_COLOR || continue
                 elseif (row, col) == (9, 8)
-                    pieces[piece, mod1(2 - value & 3, 4)] == STARTER_PIECE_LEFT_COLOR || continue
+                    pieces[piece, 4 - value & 3] == STARTER_PIECE_LEFT_COLOR || continue
                 end
                 board[row, col] = value
                 available[piece] = false
@@ -281,8 +281,8 @@ function _prepare_candidates_table(
         available[piece] || continue
         for rotation = 0:3
             value = piece << 2 | rotation
-            bottom = colors[mod1(3 - rotation, 4)]
-            left = colors[4 - rotation]
+            bottom = colors[mod1(1 - rotation, 4)]
+            left = colors[mod1(2 - rotation, 4)]
             if allow_errors
                 bottom > ncolors && continue
                 push!(candidates_table[left, bottom, 1], value)

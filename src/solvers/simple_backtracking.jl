@@ -61,14 +61,6 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
 
     @info "Puzzle properties" frame_colors inner_colors fixed_pieces symmetries
 
-    colors = FixedSizeMatrix{UInt8}(undef, npieces << 2 | 3, 2)
-    colors[0x0001, :] .= border_color
-    colors[0x0002, :] .= border_color + 1
-
-    for (piece, piece_colors) in enumerate(eachrow(pieces)), rotation = 0:3, side = 1:2
-        colors[piece << 2 | rotation, side] = piece_colors[mod1(side - rotation, 4)]
-    end
-
     available = FixedSizeVector{Bool}(undef, npieces)
     fill!(available, true)
     available[filter(!iszero, puzzle.board .>> 2)] .= false
@@ -83,13 +75,13 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
         if row > 1
             piece, rotation = puzzle[row-1, col]
             if !iszero(piece)
-                top = pieces[piece, mod1(3 - rotation, 4)]
+                top = pieces[piece, mod1(1 - rotation, 4)]
             end
         end
         if col < ncols
             piece, rotation = puzzle[row, col+1]
             if !iszero(piece)
-                right = pieces[piece, 4 - rotation]
+                right = pieces[piece, mod1(2 - rotation, 4)]
             end
         end
         constraint = findfirst(isequal((top, right)), constraints)
@@ -104,7 +96,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
 
     _candidates = [RotatedPiece[] for _ in 1:ncolors+1, _ in 1:ncolors+1, _ in 1:nconstraints]
     for (piece, piece_colors) in enumerate(eachrow(pieces)), rotation = 0:3
-        top, right, bottom, left = circshift(piece_colors, rotation)
+        bottom, left, top, right = circshift(piece_colors, rotation)
         for (constraint, (t, r)) in enumerate(constraints)
             # Check whether piece candidate satisfies the constraints from adjacent pieces
             # TODO if invalid joins are allowed, also consider candidates that don't satisfy
@@ -162,23 +154,26 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
     end
 
     board = FixedSizeMatrix{RotatedPiece}(undef, nrows+1, ncols+1)
-    board[1, 1] = RotatedPiece(0, 0, border_color+1, border_color+1, 0)
-    board[nrows, 1] = RotatedPiece(0, 0, border_color+1, border_color+1, 0)
-    board[nrows+1, 2] = RotatedPiece(0, 0, border_color+1, border_color+1, 0)
-    board[nrows+1, ncols+1] = RotatedPiece(0, 0, border_color+1, border_color+1, 0)
+    empty_square = RotatedPiece(0, 0, 0x00, 0x00, 0)
+    edge_border = RotatedPiece(0, 0, border_color, border_color, 0)
+    corner_border = RotatedPiece(0, 0, border_color+1, border_color+1, 0)
+    board[1, 1] = corner_border
+    board[nrows, 1] = corner_border
+    board[nrows+1, 2] = corner_border
+    board[nrows+1, ncols+1] = corner_border
     for row = 2:nrows-1
-        board[row, 1] = RotatedPiece(0, 0, border_color, border_color, 0)
+        board[row, 1] = edge_border
     end
     for col = 3:ncols
-        board[nrows+1, col] = RotatedPiece(0, 0, border_color, border_color, 0)
+        board[nrows+1, col] = edge_border
     end
     for col = 1:ncols, row = 1:nrows
         piece, rotation = puzzle[row, col]
         if iszero(piece)
-            board[row, col+1] = RotatedPiece(0, 0, 0x00, 0x00, 0)
+            board[row, col+1] = empty_square
         else
-            top = pieces[piece, mod1(1 - rotation, 4)]
-            right = pieces[piece, mod1(2 - rotation, 4)]
+            top = pieces[piece, mod1(3 - rotation, 4)]
+            right = pieces[piece, 4 - rotation]
             board[row, col+1] = RotatedPiece(piece, rotation, top, right, 0)
         end
     end
