@@ -93,7 +93,7 @@ Then in a second phase, use a regular backtracking algorithm to place the pieces
 The fixed rotations should reduce the average branching factor at each search depth by 4, so an exhaustive search for a balanced rotations set should be possible and fast.
 
 The problem is that there are so many possible balanced rotations sets expected, that this approach probably isn't better than a regular backtracking search.
-Considering that the orientation of the frame pieces are restricted by their border edges, there are ``4!\cdot C(56, 14)\cdot C(42, 14)\cdot C(28, 14)`` possible rotations for the frame pieces and ``4^195`` possible rotations for the inner pieces, excluding the fixed starter-piece, which in total gives a combined number of ``7.45\cdot 10^{149}`` possible rotations for all of the pieces.
+Considering that the orientation of the frame pieces are restricted by their border edges, there are ``4!\cdot C(56, 14)\cdot C(42, 14)\cdot C(28, 14)`` possible rotations for the frame pieces and ``4^{195}`` possible rotations for the inner pieces, excluding the fixed starter-piece, which in total gives a combined number of ``7.45\cdot 10^{149}`` possible rotations for all of the pieces.
 To get a rough estimate for the probability of balanced edges for a particular color, we could model the orientation of the edges with that color as a symmetric random walk on a 2-dimensional grid (``\mathbb{Z}^2``).
 With this model, for ``2n`` edges of a particular color, the probability that the edges are balanced in both vertical and horizontal direction is given by
 ```math

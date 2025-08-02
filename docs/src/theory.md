@@ -150,7 +150,7 @@ Figures 1 and 2 show the probabilities of a particular join to be valid, plotted
 ```@raw html
 <figure>
   <picture style="width: 100%">
-    <source srcset="assets/frame_probabilities_dark.svg" media="(prefers-color-scheme: dark)">
+    <source srcset="../assets/frame_probabilities_dark.svg" media="(prefers-color-scheme: dark)">
     <img src="../assets/frame_probabilities.svg">
   </picture>
   <figcaption><b>Figure 1</b>: Probabilities of valid frame joins for the Eternity II puzzle with 256 pieces</figcaption>
@@ -158,7 +158,7 @@ Figures 1 and 2 show the probabilities of a particular join to be valid, plotted
 
 <figure>
   <picture style="width: 100%">
-    <source srcset="assets/inner_probabilities_dark.svg" media="(prefers-color-scheme: dark)">
+    <source srcset="../assets/inner_probabilities_dark.svg" media="(prefers-color-scheme: dark)">
     <img src="../assets/inner_probabilities.svg">
   </picture>
   <figcaption><b>Figure 2</b>: Probabilities of valid inner joins for the Eternity II puzzle with 256 pieces</figcaption>
