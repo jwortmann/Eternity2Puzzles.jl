@@ -1,0 +1,10 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
+Eternity2Puzzles = "7b8a590e-5f29-49cd-9d3d-d6aab43f7c56"
+
+[sources]
+Eternity2Puzzles = {path = ".."}
+
+[compat]
+Documenter = "1.14"

@@ -2,6 +2,11 @@
   <h1 align="center">Eternity2Puzzles.jl</h1>
 </p>
 
+[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://jwortmann.github.io/Eternity2Puzzles.jl/)
+[![Julia](https://img.shields.io/badge/Julia-1.10%2B-9558b2.svg)](https://julialang.org/)
+[![Version](https://juliahub.com/docs/General/Eternity2Puzzles/stable/version.svg)](https://juliahub.com/ui/Packages/General/Eternity2Puzzles)
+[![License](https://img.shields.io/github/license/jwortmann/Eternity2Puzzles.jl)](https://github.com/jwortmann/Eternity2Puzzles.jl/blob/main/LICENSE)
+
 <p align="center">
   <img src="svg/logo.svg">
 </p>
@@ -44,7 +49,7 @@ Puzzle pieces can be moved with the left mouse button and rotated with a right c
 
 You can also use the commands `play(:clue1)`, `play(:clue2)` or `play(:clue4)` to play one of the smaller clue puzzles.
 
-Please visit the [documentation]() for a detailed description about more features of this package, for example how to run an automatic solver algorithm and how to calculate an estimation for the number of solutions of an arbitrary Eternity II type puzzle.
+Please visit the [documentation](https://jwortmann.github.io/Eternity2Puzzles.jl/) for a detailed description about more features of this package, for example how to run a solver algorithm.
 
 
 ## Preview
