@@ -151,7 +151,7 @@ Figures 1 and 2 show the probabilities of a particular join to be valid, plotted
 <figure>
   <picture style="width: 100%">
     <source srcset="assets/frame_probabilities_dark.svg" media="(prefers-color-scheme: dark)">
-    <img src="assets/frame_probabilities.svg">
+    <img src="../assets/frame_probabilities.svg">
   </picture>
   <figcaption><b>Figure 1</b>: Probabilities of valid frame joins for the Eternity II puzzle with 256 pieces</figcaption>
 </figure>
@@ -159,7 +159,7 @@ Figures 1 and 2 show the probabilities of a particular join to be valid, plotted
 <figure>
   <picture style="width: 100%">
     <source srcset="assets/inner_probabilities_dark.svg" media="(prefers-color-scheme: dark)">
-    <img src="assets/inner_probabilities.svg">
+    <img src="../assets/inner_probabilities.svg">
   </picture>
   <figcaption><b>Figure 2</b>: Probabilities of valid inner joins for the Eternity II puzzle with 256 pieces</figcaption>
 </figure>
@@ -195,11 +195,11 @@ Table 1 compares the predicted numbers of solutions with empirical results for t
 <figure style="display: flex; justify-content: space-around; flex-wrap: wrap">
   <span></span>
   <figure style="width: 40%">
-    <img src="assets/pieces_06x06.png">
+    <img src="../assets/pieces_06x06.png">
     <figcaption>Puzzle A: 3 frame colors, 5 inner colors,<br>160 solutions</figcaption>
   </figure>
   <figure style="width: 40%">
-    <img src="assets/clue1.png">
+    <img src="../assets/clue1.png">
     <figcaption>Puzzle B: 4 frame colors, 3 inner colors, 115071633408 solutions</figcaption>
   </figure>
   <figcaption><b>Figure 3</b>: 6x6 puzzles with different characteristics</figcaption>
@@ -232,19 +232,19 @@ It is worth to mention that the optimal optimal search order depends on the spec
 <figure style="display: flex; justify-content: space-around; flex-wrap: wrap">
   <span></span>
   <figure style="width: 40%">
-    <img src="assets/search_order1.svg">
+    <img src="../assets/search_order1.svg">
     <figcaption>Horizontal rowscan - 1.365e+47 nodes</figcaption>
   </figure>
   <figure style="width: 40%">
-    <img src="assets/search_order2.svg">
+    <img src="../assets/search_order2.svg">
     <figcaption>Best known search order - 1.364e+47 nodes</figcaption>
   </figure>
   <figure style="width: 40%">
-    <img src="assets/search_order3.svg">
+    <img src="../assets/search_order3.svg">
     <figcaption>Spiral-in path - 3.979e+57 nodes</figcaption>
   </figure>
   <figure style="width: 40%">
-    <img src="assets/search_order4.svg">
+    <img src="../assets/search_order4.svg">
     <figcaption>Frame first, then horizontal rowscan - 1.110e+57 nodes</figcaption>
   </figure>
   <figcaption><b>Figure 4</b>: Different search orders and the total number of nodes in the corresponding search trees</figcaption>
@@ -344,11 +344,11 @@ Here the search order on the right, which only fills the first 12 rows horizonta
 <figure style="display: flex; justify-content: space-around; flex-wrap: wrap">
   <span></span>
   <figure style="width: 40%">
-    <img src="assets/search_order1.svg">
+    <img src="../assets/search_order1.svg">
     <figcaption>Horizontal rowscan - 3.715e+58 nodes</figcaption>
   </figure>
   <figure style="width: 40%">
-    <img src="assets/search_order5.svg">
+    <img src="../assets/search_order5.svg">
     <figcaption>Horizontal rowscan with the last 4 rows filled vertically - 7.000e+57 nodes</figcaption>
   </figure>
   <figcaption><b>Figure 5</b>: Two search orders for the Eternity II puzzle with up to 10 allowed invalid joins</figcaption>

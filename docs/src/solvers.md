@@ -31,7 +31,7 @@ The current implementation uses the search order shown in figure 1.
 
 ```@raw html
 <figure>
-  <img src="assets/search_order6.svg">
+  <img src="../assets/search_order6.svg">
   <figcaption><b>Figure 1</b>: Search order for the Eternity II puzzle</figcaption>
 </figure>
 ```
@@ -69,15 +69,15 @@ An advantage could be that the distribution of these 459 macro edge types is not
 <figure style="display: flex; justify-content: space-around; flex-wrap: wrap">
   <span></span>
   <figure style="width: 20%">
-    <img src="assets/compound_corner_piece.png">
+    <img src="../assets/compound_corner_piece.png">
     <figcaption>2x2 corner piece</figcaption>
   </figure>
   <figure style="width: 20%">
-    <img src="assets/compound_edge_piece.png">
+    <img src="../assets/compound_edge_piece.png">
     <figcaption>2x2 edge piece</figcaption>
   </figure>
   <figure style="width: 20%">
-    <img src="assets/compound_inner_piece.png">
+    <img src="../assets/compound_inner_piece.png">
     <figcaption>2x2 inner piece</figcaption>
   </figure>
   <figcaption><b>Figure 2</b>: Different types of 2x2 compound pieces</figcaption>
