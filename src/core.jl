@@ -1053,7 +1053,7 @@ function generate_pieces(
 
             # Rotate inner pieces randomly
             rotations[inner_pieces_range] = rand(0:3, length(inner_pieces_range))
-            for idx = inner_pieces_range, _ = 1:rotations[idx]
+            for idx = inner_pieces_range
                 pieces[idx, :] = circshift(pieces[idx, :], -rotations[idx])
             end
 
