@@ -21,9 +21,9 @@ using Test
     @test count(!iszero, puzzle.board) == 0
 
     # Puzzle with randomly generated pieces and different numbers of rows and columns
-    puzzle = Eternity2Puzzle(5, 4)
-    @test size(puzzle.board) == (5, 4)
-    @test count(iszero, puzzle.board) == 0  # Board prefilled with a solution
+    puzzle = Eternity2Puzzle(6, 12)
+    @test size(puzzle.board) == (6, 12)
+    @test Eternity2Puzzles.score(puzzle) == (126, 0)  # Prefilled board with valid solution
 
     # Puzzle with all 256 original Eternity II pieces, but with a smaller board size
     puzzle = Eternity2Puzzle(:eternity2, 14, 14)
