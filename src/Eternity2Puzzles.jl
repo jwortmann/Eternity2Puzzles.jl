@@ -7,6 +7,7 @@ import GameZero
 import NativeFileDialog
 import OffsetArrays
 import PNGFiles
+using PrecompileTools: @compile_workload
 using Printf: @printf
 using Quadmath: Float128
 import Random
@@ -99,6 +100,12 @@ function solve!(
         end
     end
     nothing
+end
+
+
+@compile_workload begin
+    puzzle = Eternity2Puzzle(3, 3)
+    estimate_solutions(puzzle)
 end
 
 end
