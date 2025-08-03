@@ -10,9 +10,9 @@ abstract type Eternity2Solver end
 
 """
     Eternity2Puzzle()
-    Eternity2Puzzle(; starter_piece::Bool = true, hint_pieces::Bool = false)
+    Eternity2Puzzle(; starter_piece::Bool=true, hint_pieces::Bool=false)
     Eternity2Puzzle(pieces::Union{Symbol, String}[, nrows::Int, ncols::Int])
-    Eternity2Puzzle(nrows::Int, ncols::Int, seed::Int = 1; frame_colors::Int, inner_colors::Int)
+    Eternity2Puzzle(nrows::Int, ncols::Int; frame_colors::Int, inner_colors::Int, seed::Int=1)
 
 The `Eternity2Puzzle` type represents a puzzle instance consisting of the piece definitions
 and the piece configuration on the board.
@@ -34,10 +34,10 @@ and columns must be declared explicitly by passing two integers in addition to t
 If provided, those numbers override the derived size of the board. This can also be used,
 for example, to solve a smaller sized board using only a subset of the specified pieces.
 
-If only two or three integer arguments are passed without the `pieces` argument, a puzzle
-for the specified board size will be created with randomly generated pieces. Optional
-keyword arguments `frame_colors` and `inner_colors` can be used to adjust the numbers of
-frame and inner color types.
+If only two integer arguments for the numbers of rows and columns are passed without the
+`pieces` argument, a puzzle is created with randomly generated pieces. Optional keyword
+arguments `frame_colors` and `inner_colors` can be used to adjust the numbers of frame and
+inner color types.
 
 To load the piece configuration on the board from a file in `.et2` format, use the
 [`load!`](@ref) function.
@@ -123,10 +123,10 @@ end
 
 function Eternity2Puzzle(
     nrows::Integer,
-    ncols::Integer,
-    seed::Integer = 1;
+    ncols::Integer;
     frame_colors::Integer = 0,
-    inner_colors::Integer = 0
+    inner_colors::Integer = 0,
+    seed::Integer = 1
 )
     @assert 3 <= nrows <= 20 "Number of rows must be between 3 and 20"
     @assert 3 <= ncols <= 20 "Number of columns must be between 3 and 20"
