@@ -24,6 +24,7 @@ using Test
     puzzle = Eternity2Puzzle(6, 12)
     @test size(puzzle.board) == (6, 12)
     @test Eternity2Puzzles.score(puzzle) == (126, 0)  # Prefilled board with valid solution
+    @test Eternity2Puzzles.symmetry_factor(puzzle) == 1  # No symmetric or identical pieces
 
     # Puzzle with all 256 original Eternity II pieces, but with a smaller board size
     puzzle = Eternity2Puzzle(:eternity2, 14, 14)

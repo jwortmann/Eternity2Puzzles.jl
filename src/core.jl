@@ -921,8 +921,8 @@ Generate random pieces for an Eternity II style puzzle with `nrows` rows, `ncols
 
 `nrows` and `ncols` must be between 3 and 20.
 
-All generated pieces are unique and not rotational symmetric. If no such pieces can be
-generated for the given numbers of frame colors and inner colors after 1000 iterations, this
+All generated pieces are unique and not rotationally symmetric. If no such pieces can be
+generated for the given numbers of frame colors and inner colors after 1000 iterations, the
 function throws an error.
 
 Return a valid arrangement on the board (i.e. puzzle solution) and a matrix with the edge
@@ -938,46 +938,31 @@ function generate_pieces(
     @assert 3 <= nrows <= 20
     @assert 3 <= ncols <= 20
 
-    board = zeros(UInt16, nrows, ncols)
     npieces = nrows * ncols
-
-    corner_pieces_range = 1:4
-    edge_pieces_range = 5:2*nrows+2*ncols-4
-    inner_pieces_range = last(edge_pieces_range)+1:npieces
-
-    frame_joins_count = 2 * (nrows - 1) + 2 * (ncols - 1)
-    inner_joins_count = (nrows - 1) * (ncols - 2) + (nrows - 2) * (ncols - 1)
-
-    pieces = Matrix{UInt8}(undef, npieces, 4)
-    rotations = zeros(Int, npieces)
-
-    hj = Matrix{UInt8}(undef, nrows, ncols-1)  # Grid of horizontal joins
-    vj = Matrix{UInt8}(undef, nrows-1, ncols)  # Grid of vertical joins
-
-    frame_color_numbers = 1:frame_colors
-    inner_color_numbers = (1:inner_colors) .+ frame_colors
+    frame_joins_count = 2*(nrows-1) + 2*(ncols-1)
+    inner_joins_count = (nrows-1)*(ncols-2) + (nrows-2)*(ncols-1)
 
     # Generate uniform distributions of frame edge colors and inner edge colors.
-    frame_joins = [frame_color_numbers[mod1(i, frame_colors)] for i = 1:frame_joins_count]
-    inner_joins = [inner_color_numbers[mod1(i, inner_colors)] for i = 1:inner_joins_count]
+    frame_joins = [mod1(i, frame_colors) for i = 1:frame_joins_count]
+    inner_joins = [mod1(i, inner_colors) + frame_colors for i = 1:inner_joins_count]
+
+    hj = zeros(UInt8, nrows, ncols+1)  # Horizontal joins including border
+    vj = zeros(UInt8, nrows+1, ncols)  # Vertical joins including border
+
+    pieces = Matrix{UInt8}(undef, npieces, 4)
 
     function validate(pieces)
-        # Pieces must be unique
-        for p1 = 1:npieces-1
-            p1_colors = pieces[p1, :]
-            for p2 = p1+1:npieces
-                p2_colors = pieces[p2, :]
-                for rotation = 0:3
-                    if p1_colors == circshift(p2_colors, rotation)
-                        return false
-                    end
-                end
-            end
-        end
-        # Pieces must not be rotational symmetric
-        for p = 1:npieces
-            if pieces[p, 1] == pieces[p, 3] && pieces[p, 2] == pieces[p, 4]
+        for (p1, colors) in enumerate(eachrow(pieces))
+            # Pieces must not be rotationally symmetric
+            if colors[1] == colors[3] && colors[2] == colors[4]
                 return false
+            end
+            # Pieces must be unique
+            for p2 = p1+1:npieces
+                v = view(pieces, p2, :)
+                if any(colors == circshift(v, r) for r = 0:3)
+                    return false
+                end
             end
         end
         return true
@@ -990,102 +975,39 @@ function generate_pieces(
     for _ in 1:maxiters
         Random.shuffle!(frame_joins)
         Random.shuffle!(inner_joins)
-        # Randomly assign the frame colors to adjacent edges of the frame pieces
-        hj[1, :] = frame_joins[1:ncols-1]
-        hj[end, :] = frame_joins[ncols:2ncols-2]
-        vj[:, 1] = frame_joins[2ncols-1:2ncols+nrows-3]
-        vj[:, end] = frame_joins[2ncols+nrows-2:2ncols+2nrows-4]
-        # Randomly assign the inner colors to adjacent edges of the inner pieces
-        horizontal_inner_edges_count = (nrows - 2) * (ncols - 1)
-        hj[2:end-1, :] = reshape(inner_joins[1:horizontal_inner_edges_count], nrows-2, ncols-1)
-        vj[:, 2:end-1] = reshape(inner_joins[horizontal_inner_edges_count+1:end], nrows-1, ncols-2)
 
-        # Generate the pieces using the grids of horizontal and vertical edge colors. Color
-        # numbers are assigned in the order [top, right, bottom, left], with color 0 being
-        # the border color. In accordance with the original Eternity II puzzle, The piece
-        # numbers 1 to 4 are used for the corner pieces, the next 2*nrows+2*ncols-8 numbers
-        # are the edge pieces, eventually followed by the numbers for the inner pieces.
+        # Assign random frame colors to adjacent edges of the frame pieces
+        hj[1, 2:end-1] = frame_joins[1:ncols-1]
+        hj[end, 2:end-1] = frame_joins[ncols:2ncols-2]
+        vj[2:end-1, 1] = frame_joins[2ncols-1:2ncols+nrows-3]
+        vj[2:end-1, end] = frame_joins[2ncols+nrows-2:end]
+        # Assign random inner colors to adjacent edges of the inner pieces
+        hj[2:end-1, 2:end-1] = reshape(inner_joins[1:(nrows-2)*(ncols-1)], nrows-2, ncols-1)
+        vj[2:end-1, 2:end-1] = reshape(inner_joins[(nrows-2)*(ncols-1)+1:end], nrows-1, ncols-2)
 
-        # Corner pieces (rotate such that the border edges are at the bottom and left sides)
-        pieces[1, :] = [0, 0, hj[1, 1], vj[1, 1]]          # top-left corner
-        pieces[2, :] = [0, 0, vj[1, end], hj[1, end]]      # top-right corner
-        pieces[3, :] = [0, 0, vj[end, 1], hj[end, 1]]      # bottom-left corner
-        pieces[4, :] = [0, 0, hj[end, end], vj[end, end]]  # bottom-right corner
-        rotations[1:4] = [1, 2, 0, 3]
-
-        # Edge pieces in clockwise direction, starting from the top-left corner (rotate
-        # such that the border edge is at the bottom side)
-        idx = 5
-        for col = 2:ncols-1
-            pieces[idx, :] = [0, hj[1, col], vj[1, col], hj[1, col-1]]
-            rotations[idx] = 2
-            idx += 1
-        end
-        for row = 2:nrows-1
-            pieces[idx, :] = [0, vj[row, end], hj[row, end], vj[row-1, end]]
-            rotations[idx] = 3
-            idx += 1
-        end
-        for col = ncols-1:-1:2
-            pieces[idx, :] = [0, hj[end, col-1], vj[end, col], hj[end, col]]
-            idx += 1
-        end
-        for row = nrows-1:-1:2
-            pieces[idx, :] = [0, vj[row-1, 1], hj[row, 1], vj[row, 1]]
-            rotations[idx] = 1
-            idx += 1
-        end
-
-        # Inner pieces row by row from left to right
-        for row = 2:nrows-1, col = 2:ncols-1
-            pieces[idx, :] = [vj[row, col], hj[row, col-1], vj[row-1, col], hj[row, col]]
-            idx += 1
+        for p = 1:npieces
+            row, col = fldmod1(p, ncols)
+            pieces[p, :] = [vj[row+1, col], hj[row, col], vj[row, col], hj[row, col+1]]
         end
 
         if validate(pieces)
-            # Remap piece numbers randomly
-            corner_pieces_idx = Random.shuffle(corner_pieces_range)
-            edge_pieces_idx = Random.shuffle(edge_pieces_range)
-            inner_pieces_idx = Random.shuffle(inner_pieces_range)
-            pieces[corner_pieces_range, :] = pieces[corner_pieces_idx, :]
-            pieces[edge_pieces_range, :] = pieces[edge_pieces_idx, :]
-            pieces[inner_pieces_range, :] = pieces[inner_pieces_idx, :]
-
-            # Rotate inner pieces randomly
-            rotations[inner_pieces_range] = rand(0:3, length(inner_pieces_range))
-            for idx = inner_pieces_range
-                pieces[idx, :] = circshift(pieces[idx, :], -rotations[idx])
+            rotations = zeros(Int, npieces)
+            for p = 1:npieces
+                v = view(pieces, p, :)
+                # Find rotation which minimizes the ordered color values
+                r = argmin(r -> Tuple(circshift(v, -r)), 0:3)
+                circshift!(v, -r)
+                rotations[p] = r
+            end
+            idx = sortperm(collect(Tuple(colors) for colors in eachrow(pieces)))
+            idx2 = sortperm(idx)
+            board = Matrix{UInt16}(undef, nrows, ncols)
+            for p = 1:npieces
+                row, col = fldmod1(p, ncols)
+                board[row, col] = idx2[p] << 2 | rotations[p]
             end
 
-            board[1, 1] = findfirst(isequal(1), corner_pieces_idx) << 2 | 1
-            board[1, ncols] = findfirst(isequal(2), corner_pieces_idx) << 2 | 2
-            board[nrows, 1] = findfirst(isequal(3), corner_pieces_idx) << 2 | 0
-            board[nrows, ncols] = findfirst(isequal(4), corner_pieces_idx) << 2 | 3
-            idx = 5
-            for col = 2:ncols-1
-                board[1, col] = (findfirst(isequal(idx), edge_pieces_idx) + 4) << 2 | 2
-                idx += 1
-            end
-            for row = 2:nrows-1
-                board[row, ncols] = (findfirst(isequal(idx), edge_pieces_idx) + 4) << 2 | 3
-                idx += 1
-            end
-            for col = ncols-1:-1:2
-                board[nrows, col] = (findfirst(isequal(idx), edge_pieces_idx) + 4) << 2 | 0
-                idx += 1
-            end
-            for row = nrows-1:-1:2
-                board[row, 1] = (findfirst(isequal(idx), edge_pieces_idx) + 4) << 2 | 1
-                idx += 1
-            end
-            offset = 2*nrows+2*ncols-4
-            for row = 2:nrows-1, col = 2:ncols-1
-                piece = findfirst(isequal(idx), inner_pieces_idx) + offset
-                board[row, col] = piece << 2 | rotations[piece]
-                idx += 1
-            end
-
-            return board, pieces
+            return board, pieces[idx, :]
         end
     end
 
