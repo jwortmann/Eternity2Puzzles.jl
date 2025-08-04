@@ -36,7 +36,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::E2BacktrackingSearch)
     colors[0x0001, :] .= ncolors + 1  # Special value for the edge pieces
     colors[0x0002, :] .= ncolors + 2  # Special value for the corner pieces
     for (piece, piece_colors) in enumerate(eachrow(pieces)), rotation = 0:3, side = 3:4
-        colors[piece << 2 | rotation, side] = piece_colors[mod1(side - rotation, 4)]
+        colors[piece << 2 | rotation, side - 2] = piece_colors[mod1(side - rotation, 4)]
     end
 
     STARTER_PIECE_BOTTOM_COLOR = puzzle.pieces[STARTER_PIECE, 3]
@@ -94,8 +94,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::E2BacktrackingSearch)
         board_position[depth] = (row, col + 1, max_errors)
     end
 
-    allowed_error_depths = findall(>(0), diff(last.(board_position[129:256]))) .+ 130
-    @info "Heuristics" prioritized_colors=Tuple(prioritized_colors) allowed_error_depths=Tuple(allowed_error_depths)
+    slip_array = findall(>(0), diff(last.(board_position[129:256]))) .+ 130
+    @info "Heuristics" prioritized_colors=Tuple(prioritized_colors) slip_array=Tuple(slip_array)
 
     _print_progress(puzzle; clear=false)
 
@@ -130,7 +130,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::E2BacktrackingSearch)
         bottom = colors[board[row+1, col], 1]
         start_index, end_index, _ = index_table[left, bottom]
 
-        @inbounds while depth < allowed_error_depths[1]
+        @inbounds while depth < slip_array[1]
             piece_found = false
             for idx = start_index:end_index
                 value = candidates[idx]
