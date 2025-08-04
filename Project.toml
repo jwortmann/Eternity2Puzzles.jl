@@ -1,7 +1,7 @@
 name = "Eternity2Puzzles"
 uuid = "7b8a590e-5f29-49cd-9d3d-d6aab43f7c56"
 authors = ["Janos Wortmann <jwortmann@outlook.com>"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
