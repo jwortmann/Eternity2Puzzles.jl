@@ -976,15 +976,17 @@ function generate_pieces(
         Random.shuffle!(frame_joins)
         Random.shuffle!(inner_joins)
 
-        # Assign random frame colors to adjacent edges of the frame pieces
+        # Assign random frame colors to frame joins
         hj[1, 2:end-1] = frame_joins[1:ncols-1]
         hj[end, 2:end-1] = frame_joins[ncols:2ncols-2]
         vj[2:end-1, 1] = frame_joins[2ncols-1:2ncols+nrows-3]
         vj[2:end-1, end] = frame_joins[2ncols+nrows-2:end]
-        # Assign random inner colors to adjacent edges of the inner pieces
+
+        # Assign random inner colors to inner joins
         hj[2:end-1, 2:end-1] = reshape(inner_joins[1:(nrows-2)*(ncols-1)], nrows-2, ncols-1)
         vj[2:end-1, 2:end-1] = reshape(inner_joins[(nrows-2)*(ncols-1)+1:end], nrows-1, ncols-2)
 
+        # Assign joins to edges of the pieces
         for p = 1:npieces
             row, col = fldmod1(p, ncols)
             pieces[p, :] = [vj[row+1, col], hj[row, col], vj[row, col], hj[row, col+1]]
@@ -999,8 +1001,9 @@ function generate_pieces(
                 circshift!(v, -r)
                 rotations[p] = r
             end
+            # Sort pieces by their edge color numbers
             idx = sortperm(collect(Tuple(colors) for colors in eachrow(pieces)))
-            idx2 = sortperm(idx)
+            idx2 = invperm(idx)
             board = Matrix{UInt16}(undef, nrows, ncols)
             for p = 1:npieces
                 row, col = fldmod1(p, ncols)
@@ -1011,7 +1014,7 @@ function generate_pieces(
         end
     end
 
-    error("No valid edge colors configuration found after $maxiters iterations")
+    error("No valid edge color configuration found after $maxiters iterations")
 end
 
 
