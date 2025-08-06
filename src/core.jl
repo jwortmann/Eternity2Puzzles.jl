@@ -360,10 +360,11 @@ _load_pieces(filename::String) = DelimitedFiles.readdlm(abspath(@__DIR__, "..", 
 @eval _get_pieces(::Val{:meta_10x10}) = $(_load_pieces("meta_10x10.txt")), 10, 10
 @eval _get_pieces(::Val{:clue1}) = $(_load_pieces("clue1.txt")), 6, 6
 @eval _get_pieces(::Val{:clue2}) = $(_load_pieces("clue2.txt")), 6, 12
+@eval _get_pieces(::Val{:clue3}) = $(_load_pieces("clue3.txt")), 6, 6
 @eval _get_pieces(::Val{:clue4}) = $(_load_pieces("clue4.txt")), 6, 12
 
 function _get_pieces(pieces::Symbol)
-    pieces in (:eternity2, :meta_16x16, :meta_14x14, :meta_12x12, :meta_10x10, :clue1, :clue2, :clue4) || throw(ArgumentError("Unknown option :$pieces"))
+    pieces in (:eternity2, :meta_16x16, :meta_14x14, :meta_12x12, :meta_10x10, :clue1, :clue2, :clue3, :clue4) || throw(ArgumentError("Unknown option :$pieces"))
     return _get_pieces(Val(pieces))
 end
 

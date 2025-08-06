@@ -39,6 +39,8 @@ julia> play(:clue1)
 
 julia> play(:clue2)
 
+julia> play(:clue3)
+
 julia> play(:clue4)
 ```
 

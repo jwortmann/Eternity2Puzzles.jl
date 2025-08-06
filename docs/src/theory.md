@@ -351,7 +351,7 @@ Here the search order on the right, which only fills the first 12 rows horizonta
     <img src="../assets/search_order5.svg">
     <figcaption>Horizontal rowscan with the last 4 rows filled vertically - 7.000e+57 nodes</figcaption>
   </figure>
-  <figcaption><b>Figure 5</b>: Two search orders for the Eternity II puzzle with up to 10 allowed invalid joins</figcaption>
+  <figcaption><b>Figure 5</b>: Two search orders for the Eternity II puzzle with up to 10 invalid joins allowed</figcaption>
 </figure>
 ```
 
