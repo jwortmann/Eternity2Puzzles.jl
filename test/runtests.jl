@@ -57,4 +57,10 @@ end
     reset!(puzzle; starter_piece=false)
     @test Eternity2Puzzles.symmetry_factor(puzzle) == 4
     @test trunc(Int, estimate_solutions(puzzle)[1]) == 11526580
+
+    # Numbers of symmetries for the clue puzzles
+    @test Eternity2Puzzles.symmetry_factor(Eternity2Puzzle(:clue1)) == 6144
+    @test Eternity2Puzzles.symmetry_factor(Eternity2Puzzle(:clue2)) == 1902536294400
+    @test Eternity2Puzzles.symmetry_factor(Eternity2Puzzle(:clue3)) == 4608
+    @test Eternity2Puzzles.symmetry_factor(Eternity2Puzzle(:clue4)) == 226492416
 end
