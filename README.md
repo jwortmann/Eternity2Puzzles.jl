@@ -4,7 +4,6 @@
 
 [![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://jwortmann.github.io/Eternity2Puzzles.jl/)
 [![Julia](https://img.shields.io/badge/Julia-1.10%2B-9558b2.svg)](https://julialang.org/)
-[![Version](https://juliahub.com/docs/General/Eternity2Puzzles/stable/version.svg)](https://juliahub.com/ui/Packages/General/Eternity2Puzzles)
 [![License](https://img.shields.io/github/license/jwortmann/Eternity2Puzzles.jl)](https://github.com/jwortmann/Eternity2Puzzles.jl/blob/main/LICENSE)
 
 <p align="center">
