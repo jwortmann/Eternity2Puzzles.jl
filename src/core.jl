@@ -930,11 +930,12 @@ Return a valid arrangement on the board (i.e. puzzle solution) and a matrix with
 colors for the pieces.
 """
 function generate_pieces(
-    nrows::Integer,
-    ncols::Integer,
-    frame_colors::Integer,
-    inner_colors::Integer,
-    seed::Integer
+    nrows::Int,
+    ncols::Int,
+    frame_colors::Int,
+    inner_colors::Int,
+    seed::Int,
+    maxiters::Int = 1000
 )
     @assert 3 <= nrows <= 20
     @assert 3 <= ncols <= 20
@@ -951,6 +952,7 @@ function generate_pieces(
     vj = zeros(UInt8, nrows+1, ncols)  # Vertical joins including border
 
     pieces = Matrix{UInt8}(undef, npieces, 4)
+    rotations = Vector{Int}(undef, npieces)
 
     function validate(pieces)
         for (p1, colors) in enumerate(eachrow(pieces))
@@ -959,19 +961,14 @@ function generate_pieces(
                 return false
             end
             # Pieces must be unique
-            for p2 = p1+1:npieces
-                v = view(pieces, p2, :)
-                if any(colors == circshift(v, r) for r = 0:3)
-                    return false
-                end
+            if any(colors == view(pieces, p2, :) for p2 = p1+1:npieces)
+                return false
             end
         end
         return true
     end
 
     Random.seed!(seed)
-
-    maxiters = 1000
 
     for _ in 1:maxiters
         Random.shuffle!(frame_joins)
@@ -987,21 +984,18 @@ function generate_pieces(
         hj[2:end-1, 2:end-1] = reshape(inner_joins[1:(nrows-2)*(ncols-1)], nrows-2, ncols-1)
         vj[2:end-1, 2:end-1] = reshape(inner_joins[(nrows-2)*(ncols-1)+1:end], nrows-1, ncols-2)
 
-        # Assign joins to edges of the pieces
+        # Generate pieces with edge colors from the grid of joins
         for p = 1:npieces
             row, col = fldmod1(p, ncols)
-            pieces[p, :] = [vj[row+1, col], hj[row, col], vj[row, col], hj[row, col+1]]
+            # Edge colors in order [bottom, left, top, right]
+            edges = [vj[row+1, col], hj[row, col], vj[row, col], hj[row, col+1]]
+            # Find rotation which minimizes the tuple of edge color values
+            r = argmin(r -> Tuple(circshift(edges, -r)), 0:3)
+            pieces[p, :] = circshift(edges, -r)
+            rotations[p] = r
         end
 
         if validate(pieces)
-            rotations = zeros(Int, npieces)
-            for p = 1:npieces
-                v = view(pieces, p, :)
-                # Find rotation which minimizes the ordered color values
-                r = argmin(r -> Tuple(circshift(v, -r)), 0:3)
-                circshift!(v, -r)
-                rotations[p] = r
-            end
             # Sort pieces by their edge color numbers
             idx = sortperm(collect(Tuple(colors) for colors in eachrow(pieces)))
             idx2 = invperm(idx)
