@@ -233,7 +233,7 @@ It is worth to mention that the optimal optimal search order depends on the spec
   <span></span>
   <figure style="width: 40%">
     <img src="../assets/search_order1.svg">
-    <figcaption>Horizontal rowscan - 1.365e+47 nodes</figcaption>
+    <figcaption>Horizontal rowscan - 1.364e+47 nodes</figcaption>
   </figure>
   <figure style="width: 40%">
     <img src="../assets/search_order2.svg">

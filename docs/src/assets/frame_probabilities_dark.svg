@@ -187,7 +187,6 @@
 <path clip-rule="nonzero" d="M 66 16 L 734 16 L 734 285 L 66 285 Z M 66 16 "/>
 </clipPath>
 </defs>
-<rect x="-75" y="-40" width="900" height="480" fill="rgb(12.156863%, 14.117648%, 14.117648%)" fill-opacity="1"/>
 <path fill-rule="nonzero" fill="rgb(15.686275%, 18.431373%, 18.431373%)" fill-opacity="1" d="M 59 346 L 734 346 L 734 16 L 59 16 Z M 59 346 "/>
 <path fill="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(100%, 100%, 100%)" stroke-opacity="0.09" stroke-miterlimit="1.154701" d="M 59 346 L 59 16 "/>
 <path fill="none" stroke-width="1" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(100%, 100%, 100%)" stroke-opacity="0.09" stroke-miterlimit="1.154701" d="M 115.25 346 L 115.25 16 "/>
