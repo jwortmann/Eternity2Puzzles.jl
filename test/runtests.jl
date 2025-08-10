@@ -44,23 +44,31 @@ end
 end
 
 
-@testset "Advanced functions" begin
-    puzzle = Eternity2Puzzle()
-
-    # Number of symmetries
-    @test Eternity2Puzzles.symmetry_factor(puzzle) == 1
-
-    # Predicted number of solutions with constraint from the starter-piece
-    @test trunc(Int, estimate_solutions(puzzle)[1]) == 14702
-
-    # Symmetries and predicted number of solutions without the starter-piece
-    reset!(puzzle; starter_piece=false)
-    @test Eternity2Puzzles.symmetry_factor(puzzle) == 4
-    @test trunc(Int, estimate_solutions(puzzle)[1]) == 11526580
-
-    # Numbers of symmetries for the clue puzzles
+@testset "Symmetries" begin
+    @test Eternity2Puzzles.symmetry_factor(Eternity2Puzzle()) == 1
+    @test Eternity2Puzzles.symmetry_factor(Eternity2Puzzle(starter_piece=false)) == 4
     @test Eternity2Puzzles.symmetry_factor(Eternity2Puzzle(:clue1)) == 6144
     @test Eternity2Puzzles.symmetry_factor(Eternity2Puzzle(:clue2)) == 1902536294400
     @test Eternity2Puzzles.symmetry_factor(Eternity2Puzzle(:clue3)) == 4608
     @test Eternity2Puzzles.symmetry_factor(Eternity2Puzzle(:clue4)) == 226492416
+end
+
+
+@testset "Search paths" begin
+    for (nrows, ncols) in [(8, 8), (9, 9), (4, 8), (8, 4), (4, 9), (9, 4), (5, 8), (8, 5), (5, 9), (9, 5)]
+        puzzle = Eternity2Puzzle(nrows, ncols)
+        reset!(puzzle)
+        @test length(Eternity2Puzzles.generate_search_path(puzzle, :spiral_in)) == nrows * ncols
+    end
+end
+
+
+@testset "Solution estimates" begin
+    # Predicted number of solutions with constraint from the starter-piece
+    puzzle = Eternity2Puzzle()
+    @test trunc(Int, estimate_solutions(puzzle)[1]) == 14702
+
+    # Predicted number of solutions without the starter-piece
+    puzzle = Eternity2Puzzle(starter_piece=false)
+    @test trunc(Int, estimate_solutions(puzzle)[1]) == 11526580
 end

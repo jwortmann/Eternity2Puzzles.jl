@@ -623,13 +623,14 @@ julia> nodes/solutions
 """
 function estimate_solutions(
     puzzle::Eternity2Puzzle,
-    path::Union{Symbol, Vector{String}} = :rowscan,
+    path::Vector{String},
     slip_array::Vector{Int} = Int[];
     verbose=false
 )
     nrows, ncols = size(puzzle.board)
     max_errors = length(slip_array)
 
+    @assert length(path) == nrows * ncols "Invalid search path"
     @assert issorted(slip_array) "Error depths must be a weakly increasing sequence"
 
     # Number of corner, edge and inner squares on the board
@@ -678,14 +679,13 @@ function estimate_solutions(
     @assert Tb >= max_frame_joins
     @assert Tm >= max_inner_joins
 
-    search_path = _search_path(puzzle, path)
     board = zeros(Int, nrows, ncols)
 
     # joins(p) = Number of completed (valid or invalid) inner joins after p placed pieces
     joins = OffsetArrays.Origin(0)(zeros(Int, nrows*ncols+1))
 
     for placed_pieces = 1:nrows*ncols
-        row, col = _parse_position(search_path[placed_pieces])
+        row, col = _parse_position(path[placed_pieces])
         board[row, col] = placed_pieces
         joins[placed_pieces] = _count_joins(board)[2]
     end
@@ -756,7 +756,7 @@ function estimate_solutions(
     cumulative_sum::Float128 = 0.0
 
     for placed_pieces = 1:nrows*ncols
-        square = search_path[placed_pieces]
+        square = path[placed_pieces]
         row, col = _parse_position(square)
         board[row, col] = placed_pieces
         if placed_pieces > fixed_corner_pieces + fixed_edge_pieces + fixed_inner_pieces
@@ -777,6 +777,10 @@ function estimate_solutions(
         end
     end
     return estimated_solutions, cumulative_sum
+end
+
+function estimate_solutions(puzzle::Eternity2Puzzle, path::Symbol = :rowscan, slip_array::Vector{Int} = Int[]; verbose=false)
+    return estimate_solutions(puzzle, generate_search_path(puzzle, path), slip_array; verbose=verbose)
 end
 
 # Numbers of corner, edge and inner pieces on the board
@@ -824,47 +828,64 @@ end
 _board_square(row::Int, col::Int) = ('@' + row) * string(col)            # (2, 6) -> "B6"
 _parse_position(pos::String) = pos[1] - 'A' + 1, parse(Int, pos[2:end])  # "B6" -> (2, 6)
 
-_search_path(puzzle::Eternity2Puzzle, path::Vector{String}) = path
-function _search_path(puzzle::Eternity2Puzzle, strategy::Symbol = :rowscan)
+function generate_search_path(puzzle::Eternity2Puzzle, strategy::Symbol)
     nrows, ncols = size(puzzle)
-    preplaced_pieces = [_board_square(Tuple(idx)...) for idx in eachindex(IndexCartesian(), puzzle.board) if !iszero(puzzle.board[idx])]
-    path = if strategy == :rowscan
-        [_board_square(row, col) for row = nrows:-1:1 for col = 1:ncols if iszero(puzzle.board[row, col])]
-    elseif strategy == :colscan
-        [_board_square(row, col) for col = 1:ncols for row = nrows:-1:1 if iszero(puzzle.board[row, col])]
-    elseif strategy == :spiral_in
-        _path = String[]
-        sizehint!(_path, nrows*ncols)
-        row, col = 1, 1  # start at the top-left corner square
-        hsteps = ncols - 1  # initial steps in horizontal direction
-        vsteps = nrows - 1  # initial steps in vertical direction
-        while vsteps > 0 && hsteps > 0
-            for _ = 1:hsteps  # go right
-                if iszero(puzzle.board[row, col]) push!(_path, _board_square(row, col)) end
-                col += 1
-            end
-            for _ = 1:vsteps  # go down
-                if iszero(puzzle.board[row, col]) push!(_path, _board_square(row, col)) end
-                row += 1
-            end
-            for _ = 1:hsteps  # go left
-                if iszero(puzzle.board[row, col]) push!(_path, _board_square(row, col)) end
-                col -= 1
-            end
-            for _ = 1:vsteps  # go up
-                if iszero(puzzle.board[row, col]) push!(_path, _board_square(row, col)) end
-                row -= 1
-            end
-            vsteps -= 2
-            hsteps -= 2
-            row += 1
-            col += 1
+    path = String[]
+    sizehint!(path, nrows*ncols)
+    # Add pre-placed pieces first
+    for idx in eachindex(IndexCartesian(), puzzle.board)
+        if !iszero(puzzle.board[idx])
+            push!(path, _board_square(Tuple(idx)...))
         end
-        _path
-    else
-        error("Unknown option :$strategy")
     end
-    return vcat(preplaced_pieces, path)
+
+    if strategy == :rowscan
+        for row = nrows:-1:1, col = 1:ncols
+            if iszero(puzzle.board[row, col])
+                push!(path, _board_square(row, col))
+            end
+        end
+    elseif strategy == :colscan
+        for col = 1:ncols, row = nrows:-1:1
+            if iszero(puzzle.board[row, col])
+                push!(path, _board_square(row, col))
+            end
+        end
+    elseif strategy == :spiral_in  # Clockwise direction starting in the top-left corner
+        row, col = 1, 0
+        hsteps = ncols
+        vsteps = nrows
+        while true
+            if hsteps == 0 break end
+            for _ = 1:hsteps  # Move right
+                col += 1
+                if iszero(puzzle.board[row, col]) push!(path, _board_square(row, col)) end
+            end
+            vsteps -= 1
+            if vsteps == 0 break end
+            for _ = 1:vsteps  # Move down
+                row += 1
+                if iszero(puzzle.board[row, col]) push!(path, _board_square(row, col)) end
+            end
+            hsteps -= 1
+            if hsteps == 0 break end
+            for _ = 1:hsteps  # Move left
+                col -= 1
+                if iszero(puzzle.board[row, col]) push!(path, _board_square(row, col)) end
+            end
+            vsteps -= 1
+            if vsteps == 0 break end
+            for _ = 1:vsteps  # Move up
+                row -= 1
+                if iszero(puzzle.board[row, col]) push!(path, _board_square(row, col)) end
+            end
+            hsteps -= 1
+        end
+    else
+        throw(ArgumentError("Unknown option :$strategy"))
+    end
+
+    return path
 end
 
 
