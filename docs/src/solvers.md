@@ -31,21 +31,21 @@ The current implementation uses the search order shown in figure 1.
 
 ```@raw html
 <figure>
-  <img src="../assets/search_order6.svg">
+  <img src="../assets/path_e2.svg">
   <figcaption><b>Figure 1</b>: Search order for the Eternity II puzzle</figcaption>
 </figure>
 ```
 
 !!! note "A note about dynamic search orders"
 
-    Instead of using a predetermined search order, it might seem natural to compare the numbers of piece candidates for different squares after every piece that gets placed, and then choose the next square as that one with the fewest possible candidates.
+    Instead of using a predetermined search order, it might seem like a good idea to compare the numbers of piece candidates for different squares after every placed piece, and then choose the next square to be the one with the fewest possible candidates.
     However, aside from making the implementation more difficult, such a dynamic search order is actually significantly less efficient than a good, fixed search order.
     The reason for that is because choosing the next square by using a greedy strategy minimizes the branching factor of the search tree early on, but it generates partially filled board configurations which leave less optimal choices later during the search.
     So it is better to have a more global view of the situation and to keep the branching factor small when it counts the most.
     The greatest width of the search tree for the Eternity II puzzle is reached after placing around 160 to 170 pieces.
     It turns out that good search orders are those which minimize the number of open edges on the board when the search depths with the greatest widths are reached, which is for example the case using a simple rowscan order.
     Furthermore, the exact order in which the last pieces are placed almost doesn't matter, because the corresponding search depths are reached so rarely that their influence is negligible.
-    The last statement is however not true if specific heuristics are used, for example if some number of invalid joins is permitted after a certain amount of pieces was placed onto the board.
+    The last statement is however not true if specific heuristics are used, for example if some invalid joins are allowed after a certain amount of pieces are placed onto the board.
 
 
 ### Heuristics

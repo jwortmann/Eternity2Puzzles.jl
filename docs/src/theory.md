@@ -225,29 +225,47 @@ A backtracking search algorithm gradually fills the board with pieces one after 
 After each placed piece for that search order we can count the total numbers of the already placed corner, edge and inner pieces, as well as the numbers of frame joins and inner joins between neighboring pieces, and then estimate the number of partial solutions for that particular, partially filled board.
 The cumulative sum of these partial solutions, from placing the first until the last piece, represents an estimation for the total numbers of nodes in the search tree.
 
-Figure 4 visualizes four selected search orders for the Eternity II puzzle with a single fixed piece on square I8, and shows the total number of nodes in the corresponding search trees.
+Figure 4 visualizes different search orders for the Eternity II puzzle with a single fixed piece on square I8, and shows the total number of nodes in the corresponding search trees.
 It is worth to mention that the optimal optimal search order depends on the specific properties of the puzzle, i.e. the board size, the number of frame and inner colors, the distribution of colors, and the number of symmetries in the pieces.
 
 ```@raw html
 <figure style="display: flex; justify-content: space-around; flex-wrap: wrap">
   <span></span>
   <figure style="width: 40%">
-    <img src="../assets/search_order1.svg">
-    <figcaption>Horizontal rowscan - 1.364e+47 nodes</figcaption>
+    <img src="../assets/path_rowscan.svg">
+    <figcaption>Horizontal rowscan - 1.365e+47 nodes</figcaption>
   </figure>
   <figure style="width: 40%">
-    <img src="../assets/search_order2.svg">
+    <img src="../assets/path_best.svg">
     <figcaption>Best known search order - 1.364e+47 nodes</figcaption>
   </figure>
   <figure style="width: 40%">
-    <img src="../assets/search_order3.svg">
+    <img src="../assets/path_frame_rowscan.svg">
+    <figcaption>Frame first, then horizontal rowscan - 1.110e+57 nodes</figcaption>
+  </figure>
+  <figure style="width: 40%">
+    <img src="../assets/path_zig_zag.svg">
+    <figcaption>Diagonal zig-zag path - 4.176e+53 nodes</figcaption>
+  </figure>
+  <figure style="width: 40%">
+    <img src="../assets/path_spiral_in.svg">
     <figcaption>Spiral-in path - 3.979e+57 nodes</figcaption>
   </figure>
   <figure style="width: 40%">
-    <img src="../assets/search_order4.svg">
-    <figcaption>Frame first, then horizontal rowscan - 1.110e+57 nodes</figcaption>
+    <img src="../assets/path_spiral_out.svg">
+    <figcaption>Spiral-out path - 1.556e+57 nodes</figcaption>
   </figure>
   <figcaption><b>Figure 4</b>: Different search orders and the total number of nodes in the corresponding search trees</figcaption>
+</figure>
+```
+
+```@raw html
+<figure>
+  <picture style="width: 100%">
+    <source srcset="../assets/search_tree_dark.svg" media="(prefers-color-scheme: dark)">
+    <img src="../assets/search_tree.svg">
+  </picture>
+  <figcaption><b>Figure 5</b>: Search tree estimates for selected search orders</figcaption>
 </figure>
 ```
 
@@ -333,7 +351,7 @@ p_\text{m} = \sum_{i=0}^N p_\text{m}(m, m-i)\cdot W(p, i)
 Note that if invalid joins are allowed only for the inner edges, the optimal search order is usually different from the best search order if no invalid joins were allowed.
 The reason for that is because allowing mismatching inner edges significantly increases the number of possible piece candidates for the inner board squares.
 Therefore a search order which prioritizes the frame squares during the later phase of the search when invalid joins are allowed is more efficient than a search order which for example leaves the entire top row of the board until the very end.
-Figure 5 shows the total number of nodes in the search tree for two different search orders, assuming that up to 10 invalid joins (target score 470) within the four topmost rows of the Eternity II board are allowed, which corresponds to the slip array
+Figure 6 shows the total number of nodes in the search tree for two different search orders, assuming that up to 10 invalid joins (target score 470) within the four topmost rows of the Eternity II board are allowed, which corresponds to the slip array
 ```math
 [192, 192, 192, 192, 192, 192, 192, 192, 192, 192]
 ```
@@ -344,14 +362,14 @@ Here the search order on the right, which only fills the first 12 rows horizonta
 <figure style="display: flex; justify-content: space-around; flex-wrap: wrap">
   <span></span>
   <figure style="width: 40%">
-    <img src="../assets/search_order1.svg">
+    <img src="../assets/path_rowscan.svg">
     <figcaption>Horizontal rowscan - 3.715e+58 nodes</figcaption>
   </figure>
   <figure style="width: 40%">
-    <img src="../assets/search_order5.svg">
+    <img src="../assets/path_rowscan2.svg">
     <figcaption>Horizontal rowscan with the last 4 rows filled vertically - 7.000e+57 nodes</figcaption>
   </figure>
-  <figcaption><b>Figure 5</b>: Two search orders for the Eternity II puzzle with up to 10 invalid joins allowed</figcaption>
+  <figcaption><b>Figure 6</b>: Two search orders for the Eternity II puzzle with up to 10 invalid joins allowed</figcaption>
 </figure>
 ```
 
