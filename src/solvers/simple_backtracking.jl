@@ -5,7 +5,7 @@
 A simple backtracking search that can be used with arbitrary board sizes. Pre-placed pieces
 on the board are considered to be additional constraints for a valid solution. This search
 algorithm places pieces one after another onto the board and backtracks if no more matching
-piece can be placed.
+piece can be placed. The implementation favours flexibility over maximum performance.
 
 # Examples
 
@@ -61,6 +61,11 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
 
     @info "Puzzle properties" frame_colors inner_colors fixed_pieces symmetries
 
+    if fixed_pieces == nrows * ncols
+        @warn "Puzzle already solved. Use reset! to clear the puzzle board."
+        return
+    end
+
     available = FixedSizeVector{Bool}(undef, npieces)
     fill!(available, true)
     available[filter(!iszero, puzzle.board .>> 2)] .= false
@@ -94,7 +99,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
     end
     nconstraints = length(constraints)
 
-    _candidates = [RotatedPiece[] for _ in 1:ncolors+1, _ in 1:ncolors+1, _ in 1:nconstraints]
+    candidates_table = [RotatedPiece[] for _ in 1:ncolors+1, _ in 1:ncolors+1, _ in 1:nconstraints]
     for (piece, piece_colors) in enumerate(eachrow(pieces)), rotation = 0:3
         bottom, left, top, right = circshift(piece_colors, rotation)
         for (constraint, (t, r)) in enumerate(constraints)
@@ -103,19 +108,19 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
             # the constraints but set the corresponding number of invalid joins
             if (top != t > 0) || (right != r > 0) continue end
             # Piece candidates with 0 invalid joins
-            push!(_candidates[bottom, left, constraint], RotatedPiece(piece, rotation, top, right, 0))
+            push!(candidates_table[bottom, left, constraint], RotatedPiece(piece, rotation, top, right, 0))
             if !isempty(solver.slip_array)
                 # Piece candidates with 1 invalid join
                 if left in inner_colors_range
                     for l in inner_colors_range
                         if l == left continue end
-                        push!(_candidates[bottom, l, constraint], RotatedPiece(piece, rotation, top, right, 1))
+                        push!(candidates_table[bottom, l, constraint], RotatedPiece(piece, rotation, top, right, 1))
                     end
                 end
                 if bottom in inner_colors_range
                     for b in inner_colors_range
                         if b == bottom continue end
-                        push!(_candidates[b, left, constraint], RotatedPiece(piece, rotation, top, right, 1))
+                        push!(candidates_table[b, left, constraint], RotatedPiece(piece, rotation, top, right, 1))
                     end
                 end
                 # Piece candidates with 2 invalid joins
@@ -124,28 +129,44 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
                         if l == left continue end
                         for b in inner_colors_range
                             if b == bottom continue end
-                            push!(_candidates[b, l, constraint], RotatedPiece(piece, rotation, top, right, 2))
+                            push!(candidates_table[b, l, constraint], RotatedPiece(piece, rotation, top, right, 2))
                         end
                     end
                 end
             end
         end
     end
-    for idx in eachindex(_candidates)
-        if length(_candidates[idx]) > 1
-            Random.shuffle!(_candidates[idx])
+
+    for idx in eachindex(IndexCartesian(), candidates_table)
+        selected_candidates = candidates_table[idx]
+        n = length(selected_candidates)
+        if n > 1
+            bottom = idx[1]
+            left = idx[2]
+            # Filter out rotationally symmetric individual piece candidates
+            for k = n:-1:1
+                p = selected_candidates[k]
+                if p.top == bottom && p.right == left && p.rotation > ifelse(bottom == left, 0, 1)
+                    deleteat!(selected_candidates, k)
+                end
+            end
+            Random.shuffle!(selected_candidates)
             # Sort by number of invalid joins, in order to prefer pieces that match best.
             # Note that the random order from the shuffle is preserved between candidates
             # with the same number of invalid joins.
-            sort!(_candidates[idx]; by=x->x.invalid_joins)
+            sort!(selected_candidates; by=x->x.invalid_joins)
         end
     end
-    candidates = FixedSizeVector{RotatedPiece}(undef, mapreduce(length, +, _candidates))
+
+    ncandidates = mapreduce(length, +, candidates_table)
+    @info "Pieces lookup table" ncandidates
+
+    candidates = FixedSizeVector{RotatedPiece}(undef, ncandidates)
     index_table = FixedSizeArray{UnitRange{Int}}(undef, ncolors+1, ncolors+1, nconstraints)
     idx = 1
     for constraint = 1:nconstraints, left = 1:ncolors+1, bottom = 1:ncolors+1
         start_idx = idx
-        for candidate in _candidates[bottom, left, constraint]
+        for candidate in candidates_table[bottom, left, constraint]
             candidates[idx] = candidate
             idx += 1
         end
