@@ -633,11 +633,6 @@ function estimate_solutions(
     @assert length(path) == nrows * ncols "Invalid search path"
     @assert issorted(slip_array) "Error depths must be a weakly increasing sequence"
 
-    # Number of corner, edge and inner squares on the board
-    corner_squares = 4
-    edge_squares = 2 * (nrows - 2) + 2 * (ncols - 2)
-    inner_squares = (nrows - 2) * (ncols - 2)
-
     # Number of border edges for each piece
     border_edges = vec(count(iszero, puzzle.pieces; dims=2))
 
@@ -646,9 +641,9 @@ function estimate_solutions(
     edge_pieces = count(isequal(1), border_edges)
     inner_pieces = count(iszero, border_edges)
 
-    @assert corner_pieces >= corner_squares "Not enough corner pieces"
-    @assert edge_pieces >= edge_squares "Not enough edge pieces"
-    @assert inner_pieces >= inner_squares "Not enough inner pieces"
+    @assert corner_pieces >= 4 "Not enough corner pieces"
+    @assert edge_pieces >= 2nrows + 2ncols - 8 "Not enough edge pieces"
+    @assert inner_pieces >= (nrows-2) * (ncols-2) "Not enough inner pieces"
 
     # Number of pre-placed corner, edge and inner pieces
     fixed_corner_pieces, fixed_edge_pieces, fixed_inner_pieces = _count_pieces(puzzle.board)
