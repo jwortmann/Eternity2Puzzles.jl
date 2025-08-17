@@ -12,7 +12,7 @@ abstract type Eternity2Solver end
     Eternity2Puzzle()
     Eternity2Puzzle(; starter_piece::Bool=true, hint_pieces::Bool=false)
     Eternity2Puzzle(pieces::Union{Symbol, String}[, nrows::Int, ncols::Int])
-    Eternity2Puzzle(nrows::Int, ncols::Int; frame_colors::Int, inner_colors::Int, seed::Int=1)
+    Eternity2Puzzle(nrows::Int, ncols::Int; frame_colors::Int, inner_colors::Int, seed::Int=1, symmetries::Bool=false)
 
 The `Eternity2Puzzle` type represents a puzzle instance consisting of the piece definitions
 and the piece configuration on the board.
@@ -37,7 +37,8 @@ for example, to solve a smaller sized board using only a subset of the specified
 If only two integer arguments for the numbers of rows and columns are passed without the
 `pieces` argument, a puzzle is created with randomly generated pieces. Optional keyword
 arguments `frame_colors` and `inner_colors` can be used to adjust the numbers of frame and
-inner color types.
+inner color types, and `symmetries` controls whether the generated pieces must all be unique
+and not rotationally symmetric.
 
 To load the piece configuration on the board from a file in `.et2` format, use the
 [`load!`](@ref) function.
@@ -126,7 +127,8 @@ function Eternity2Puzzle(
     ncols::Integer;
     frame_colors::Integer = 0,
     inner_colors::Integer = 0,
-    seed::Integer = 1
+    seed::Integer = 1,
+    symmetries::Bool = false
 )
     @assert 3 <= nrows <= 20 "Number of rows must be between 3 and 20"
     @assert 3 <= ncols <= 20 "Number of columns must be between 3 and 20"
@@ -137,7 +139,7 @@ function Eternity2Puzzle(
     if inner_colors > 0
         inner_colors_ = inner_colors
     end
-    board, pieces = generate_pieces(nrows, ncols, frame_colors_, inner_colors_, seed)
+    board, pieces = generate_pieces(nrows, ncols, frame_colors_, inner_colors_, seed, symmetries)
     return Eternity2Puzzle(board, pieces)
 end
 
@@ -931,16 +933,16 @@ end
 
 
 """
-    generate_pieces(nrows::Int, ncols::Int, frame_colors::Int, inner_colors::Int, seed::Int)
+    generate_pieces(nrows::Int, ncols::Int, frame_colors::Int, inner_colors::Int, seed::Int, symmetries::Bool)
 
 Generate random pieces for an Eternity II style puzzle with `nrows` rows, `ncols` columns,
 `frame_colors` frame colors and `inner_colors` inner colors.
 
 `nrows` and `ncols` must be between 3 and 20.
 
-All generated pieces are unique and not rotationally symmetric. If no such pieces can be
-generated for the given numbers of frame colors and inner colors after 1000 iterations, the
-function throws an error.
+`symmetries` controls whether the generated pieces must all be unique and not rotationally
+symmetric. If set to `false` and no such pieces can be generated for the given numbers of
+frame colors and inner colors after `maxiters` iterations, the function throws an error.
 
 Return a valid arrangement on the board (i.e. puzzle solution) and a matrix with the edge
 colors for the pieces.
@@ -951,6 +953,7 @@ function generate_pieces(
     frame_colors::Int,
     inner_colors::Int,
     seed::Int,
+    symmetries::Bool,
     maxiters::Int = 1000
 )
     @assert 3 <= nrows <= 20
@@ -1011,7 +1014,7 @@ function generate_pieces(
             rotations[p] = r
         end
 
-        if validate(pieces)
+        if symmetries || validate(pieces)
             # Sort pieces by their edge color numbers
             idx = sortperm(collect(Tuple(colors) for colors in eachrow(pieces)))
             idx2 = invperm(idx)
