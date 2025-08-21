@@ -16,12 +16,12 @@ julia> puzzle = Eternity2Puzzle(:clue1)
 
 julia> solve!(puzzle; alg=SimpleBacktrackingSearch())
 6×6 Eternity2Puzzle with 36 pieces, 60 matching edge pairs and 0 errors:
-  26/1  28/1  31/1  10/1  13/1  14/2
-  12/0   4/3  29/2   2/2  24/1   7/2
-  18/0   8/2   5/2  32/0   1/3  11/2
-  16/0  27/1  33/0  30/2   3/1  21/2
-  20/0  35/1   6/2  19/3   9/2  25/2
-  34/0  15/3  17/3  23/3  22/3  36/3
+  36/1   7/1  23/1  31/1  12/1  26/2
+  25/0  35/3   4/3  29/2  27/1  22/2
+  16/0   8/1   2/1   6/2   1/1  18/2
+  10/0  30/3  32/1  24/2   3/0  13/2
+  20/0  33/2   9/1  19/1   5/2  17/2
+  34/0  21/3  11/3  15/3  28/3  14/3
 ```
 """
 @kwdef struct SimpleBacktrackingSearch <: Eternity2Solver
@@ -38,6 +38,8 @@ struct RotatedPiece
     right::UInt8
     invalid_joins::Int
 end
+
+Broadcast.broadcastable(x::RotatedPiece) = Ref(x)
 
 
 function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
@@ -182,12 +184,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
     board[nrows, 1] = corner_border
     board[nrows+1, 2] = corner_border
     board[nrows+1, ncols+1] = corner_border
-    for row = 2:nrows-1
-        board[row, 1] = edge_border
-    end
-    for col = 3:ncols
-        board[nrows+1, col] = edge_border
-    end
+    board[2:nrows-1, 1] .= edge_border
+    board[nrows+1, 3:ncols] .= edge_border
     for col = 1:ncols, row = 1:nrows
         piece, rotation = puzzle[row, col]
         if iszero(piece)
@@ -199,7 +197,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
         end
     end
 
-    idx_range = FixedSizeVector{UnitRange{Int}}(undef, maxdepth)
+    idx_state = FixedSizeVector{UnitRange{Int}}(undef, maxdepth)
     invalid_joins = FixedSizeVector{Int}(undef, maxdepth)
     fill!(invalid_joins, 0)
 
@@ -207,7 +205,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
     best_depth = fixed_pieces
     current_invalid_joins = 0
     row, col, constraint, max_invalid_joins = rowcol[depth]
-    _idx_range = index_table[board[row+1, col].top, board[row, col-1].right, constraint]
+    idx_range = index_table[board[row+1, col].top, board[row, col-1].right, constraint]
 
     nodes = 0
     solutions = 0
@@ -216,7 +214,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
 
     @inbounds while true
         @label next
-        for idx in _idx_range
+        for idx in idx_range
             candidate = candidates[idx]
             if !available[candidate.number] continue end
             if current_invalid_joins + candidate.invalid_joins > max_invalid_joins
@@ -249,11 +247,11 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
                 end
             end
             available[candidate.number] = false
-            idx_range[depth] = idx+1:_idx_range.stop
+            idx_state[depth] = idx+1:idx_range.stop
             invalid_joins[depth] = current_invalid_joins
             depth += 1
             row, col, constraint, max_invalid_joins = rowcol[depth]
-            _idx_range = index_table[board[row+1, col].top, board[row, col-1].right, constraint]
+            idx_range = index_table[board[row+1, col].top, board[row, col-1].right, constraint]
             @goto next
         end
         depth -= 1
@@ -267,7 +265,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
         end
         row, col = rowcol[depth]
         available[board[row, col].number] = true
-        _idx_range = idx_range[depth]
+        idx_range = idx_state[depth]
         current_invalid_joins = invalid_joins[depth]
     end
 end
