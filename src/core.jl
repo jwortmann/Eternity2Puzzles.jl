@@ -159,7 +159,6 @@ end
 
 function Base.show(io::IO, ::MIME"image/png", puzzle::Eternity2Puzzle)
     nrows, ncols = size(puzzle.board)
-    ncolors = maximum(puzzle.pieces)
     img = if nrows == ncols == 16
         copy(BOARD_BACKGROUND_IMG)
     else
@@ -174,28 +173,7 @@ function Base.show(io::IO, ::MIME"image/png", puzzle::Eternity2Puzzle)
     end
     if !iszero(puzzle.board)
         dark_gray = colorant"#323135"
-        colors_img = if ncolors <= 22
-            COLOR_PATTERNS_IMG
-        else
-            pixels = fill(colorant"transparent", 48, 48*(ncolors+1))
-            for y = 1:24, x = y:49-y
-                pixels[y, x] = colorant"#5a818a"
-            end
-            frame_color_numbers, inner_color_numbers = _get_colors(puzzle)
-            frame_colors = distinguishable_colors(length(frame_color_numbers); lchoices=[70], cchoices=[25])
-            inner_colors = distinguishable_colors(length(inner_color_numbers); lchoices=[50, 60, 70], cchoices=[40, 60, 80])
-            colors = fill(colorant"black", ncolors)
-            for (i, c) in enumerate(frame_color_numbers)
-                colors[c] = frame_colors[i]
-            end
-            for (i, c) in enumerate(inner_color_numbers)
-                colors[c] = inner_colors[i]
-            end
-            for c = 1:ncolors, y = 1:24, x = 48c+y:48c+49-y
-                pixels[y, x] = colors[c]
-            end
-            pixels
-        end
+        colors_img = _get_color_patterns_image(puzzle)
         for col = 1:ncols, row = 1:nrows
             value = puzzle.board[row, col]
             iszero(value) && continue
@@ -258,6 +236,42 @@ function preview(puzzle::Eternity2Puzzle)
     filepath = joinpath(@get_scratch!("eternity2"), "preview.png")
     open(filepath, "w") do file
         show(file, "image/png", puzzle)
+    end
+    command = @static Sys.iswindows() ? `powershell.exe start $filepath` : `open $filepath`
+    run(command)
+    nothing
+end
+
+
+"""
+    preview_pieces(puzzle::Eternity2Puzzle)
+
+Open a preview image of all the puzzle pieces.
+"""
+function preview_pieces(puzzle::Eternity2Puzzle)
+    filepath = joinpath(@get_scratch!("eternity2"), "preview.png")
+    npieces = size(puzzle.pieces, 1)
+    pieces_per_row = 16
+    rows = ceil(Int, npieces/pieces_per_row)
+    imgwidth = 48*pieces_per_row + 8*(pieces_per_row+1)
+    imgheight = 48*rows + 8*(rows+1)
+    dark_gray = colorant"#323135"
+    img = fill(colorant"transparent", imgheight, imgwidth)
+    colors_img = _get_color_patterns_image(puzzle)
+    for (idx, (c1, c2, c3, c4)) in enumerate(eachrow(puzzle.pieces))
+        piece_img = colors_img[:, 48c3+1:48c3+48] + rotr90(colors_img[:, 48c4+1:48c4+48]) +
+            rot180(colors_img[:, 48c1+1:48c1+48]) + rotl90(colors_img[:, 48c2+1:48c2+48])
+        for i = 1:48
+            piece_img[i, i] = dark_gray
+            piece_img[i, 49-i] = dark_gray
+        end
+        row, col = fldmod1(idx, pieces_per_row)
+        x = 56*col - 47
+        y = 56*row - 47
+        img[y:y+47, x:x+47] = piece_img
+    end
+    open(filepath, "w") do file
+        PNGFiles.save(file, img)
     end
     command = @static Sys.iswindows() ? `powershell.exe start $filepath` : `open $filepath`
     run(command)
@@ -331,7 +345,7 @@ function _get_number_of_colors(nrows::Integer, ncols::Integer)
 end
 
 
-# Return a the frame color numbers and the inner color numbers
+# Return the frame color numbers and the inner color numbers
 function _get_colors(puzzle::Eternity2Puzzle)
     frame_colors = Set{UInt8}()
     inner_colors = Set{UInt8}()
@@ -351,6 +365,32 @@ function _get_colors(puzzle::Eternity2Puzzle)
         end
     end
     return sort(collect(frame_colors)), sort(collect(inner_colors))
+end
+
+function _get_color_patterns_image(puzzle::Eternity2Puzzle)
+    ncolors = maximum(puzzle.pieces)
+    return if ncolors <= 22
+        COLOR_PATTERNS_IMG
+    else
+        pixels = fill(colorant"transparent", 48, 48*(ncolors+1))
+        for y = 1:24, x = y:49-y
+            pixels[y, x] = colorant"#5a818a"
+        end
+        frame_color_numbers, inner_color_numbers = _get_colors(puzzle)
+        frame_colors = distinguishable_colors(length(frame_color_numbers); lchoices=[70], cchoices=[25])
+        inner_colors = distinguishable_colors(length(inner_color_numbers); lchoices=[50, 60, 70], cchoices=[40, 60, 80])
+        colors = fill(colorant"black", ncolors)
+        for (i, c) in enumerate(frame_color_numbers)
+            colors[c] = frame_colors[i]
+        end
+        for (i, c) in enumerate(inner_color_numbers)
+            colors[c] = inner_colors[i]
+        end
+        for c = 1:ncolors, y = 1:24, x = 48c+y:48c+49-y
+            pixels[y, x] = colors[c]
+        end
+        pixels
+    end
 end
 
 _load_pieces(filename::String) = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", filename), UInt8)
