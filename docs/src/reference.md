@@ -7,6 +7,7 @@ Eternity2Puzzle
 Eternity2Solver
 SimpleBacktrackingSearch
 E2BacktrackingSearch
+E2BacktrackingSearch2x2
 estimate_solutions
 play
 preview

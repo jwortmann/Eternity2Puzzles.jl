@@ -50,20 +50,16 @@ The current implementation uses the search order shown in figure 1.
 
 ### Heuristics
 
-Heuristics can work if there are many solutions, but they are less effective if there are only a few solutions.
-A heuristic that is used for the Eternity II puzzle is to prioritize the piece candidates with certain edge colors during the first phase of the search, such that some of the colors get eliminated early, which creates an uneven color distribution and increases the probability during the end of the search that the remaining pieces match together.
+Heuristics can be very useful if there are many solutions, but they are less effective if there are only a few solutions.
+A good heuristic that is used for the Eternity II puzzle is to prioritize the piece candidates with certain edge colors during the first phase of the search, such that some of the colors get eliminated early, which creates an uneven color distribution and increases the probability during the end of the search that the remaining pieces match together.
 
 
 ## Backtracking search with 2x2 pieces
 
-A different version of the backtracking algorithm uses precomputed "macro pieces" made of four pieces that can be combined into a ``2\times 2`` block.
-In each step of the backtracking algortihm such a full block is then placed or removed from the board.
-With this approach, the board size is reduced from ``16\times 16`` to ``8\times 8``, which means that the depth of the search tree is reduced by a factor of 4.
-On the other hand, there are a lot more possible ``2\times 2`` macro pieces than the original 256 regular pieces.
-In other words, this strategy trades a reduction of the search tree depth against a significantly higher branching factor at each level in the tree.
-
-Instead of 22 different edge types (colors), there are now ``17\cdot 17 + 5\cdot 17 + 17\cdot 5 = 459`` different edge types for the macro pieces.
-An advantage could be that the distribution of these 459 macro edge types is not as flat as the distribution for the original 22 colors, which might be utilized by heuristics.
+A different version of the backtracking algorithm uses precomputed compound pieces made of four regular pieces that can be combined into a valid ``2\times 2`` block (figure 2).
+In each step of the backtracking algorithm a ``2\times 2`` block is placed onto the board.
+Instead of the original ``16\times 16`` board size, the grid for the compound pieces has only 8 rows and columns, i.e. the depth of the search tree is reduced by a factor of 4.
+On the other hand, there are a lot more possible ``2\times 2`` compound pieces than the 256 regular pieces, so this approach trades the reduced maximum search depth against a significantly higher branching factor at each level in the search tree.
 
 ```@raw html
 <figure style="display: flex; justify-content: space-around; flex-wrap: wrap">
@@ -84,16 +80,27 @@ An advantage could be that the distribution of these 459 macro edge types is not
 </figure>
 ```
 
+Instead of the original ``5 + 17 = 22`` different edge types (frame and inner colors, not counting the border color), there are now ``17\cdot 17 + 5\cdot 17 + 17\cdot 5 = 459`` possible combinations for the edge types of the compound pieces.
 
-## Balanced rotations
+An advantage could be that the distribution of these 459 macro edge types is not equaly flat as the distribution for the original 22 colors.
+This could be utilized by heuristics, for example prefer those piece candidates which have the highest number of matching candidate pieces for the open edges.
 
-Idea: find a set of rotations for each of the pieces, such that the numbers of vertical edges (top/bottom) and horizontal edges (left/right) for each color are balanced.
-This could further be combined with "checkerboard parity", i.e. divide the pieces into two groups "black" and "white", such that for each color the number of left edges on the black squares is the same as the number of right edges on the white squares, and so on.
+
+## Balanced rotation sets
+
+Note that in a valid puzzle solution, for each of the 22 colors the numbers of right edges is equal to the number of left edges on the board with that color, and similarly the numbers of top and bottom edges with that color.
+Let's call a set of rotations for all pieces *balanced*, if the edges on the pieces satisfy this condition.
+
+Idea: find a set of "balanced rotations" for each of the pieces, such that the numbers of vertical edges (top/bottom) and horizontal edges (left/right) for each color are equal.
+Hereby only those sets need to be considered which also have each of the four rotations for the four corner pieces exactly once, and exactly 14 edge pieces with each of the four rotations, so that a valid border around the outside of the puzzle board is possible.
 Then in a second phase, use a regular backtracking algorithm to place the pieces on the board.
-The fixed rotations should reduce the average branching factor at each search depth by 4, so an exhaustive search for a balanced rotations set should be possible and fast.
+The fixed rotations reduces the number of possible pre-rotated piece candidates in the lookup table and accordingly the branching factor at each depth in the search tree by factor of 4, which makes an exhaustive search for a balanced rotations set possible.
 
-The problem is that there are so many possible balanced rotations sets expected, that this approach probably isn't better than a regular backtracking search.
+This could further be combined with "checkerboard parity", i.e. divide the pieces into two groups "black" and "white", such that for each color the number of left edges on the black squares is the same as the number of right edges on the white squares, and so on.
+
+The problem is that there are probably so many possible balanced rotations sets, that this approach might have no advantages over a regular backtracking search.
 Considering that the orientation of the frame pieces are restricted by their border edges, there are ``4!\cdot C(56, 14)\cdot C(42, 14)\cdot C(28, 14)`` possible rotations for the frame pieces and ``4^{195}`` possible rotations for the inner pieces, excluding the fixed starter-piece, which in total gives a combined number of ``7.45\cdot 10^{149}`` possible rotations for all of the pieces.
+
 To get a rough estimate for the probability of balanced edges for a particular color, we could model the orientation of the edges with that color as a symmetric random walk on a 2-dimensional grid (``\mathbb{Z}^2``).
 With this model, for ``2n`` edges of a particular color, the probability that the edges are balanced in both vertical and horizontal direction is given by
 ```math
@@ -109,7 +116,7 @@ p_{48} \approx 0.0131255
 ```
 And for the 5 frame colors with ``n=12`` joins (24 edges):
 ```math
-p_{12} \approx 0.0259791
+p_{24} \approx 0.0259791
 ```
 
-This model gives an estimated number of ``7.45\cdot 10^{149}\cdot {p_{12}}^5\cdot {p_{48}}^5\cdot {p_{50}}^{12}\approx 5.53\cdot 10^{109}`` different balanced rotations sets.
+This model gives an estimated number of ``7.45\cdot 10^{149}\cdot {p_{24}}^5\cdot {p_{48}}^5\cdot {p_{50}}^{12}\approx 5.53\cdot 10^{109}`` different balanced rotations sets.

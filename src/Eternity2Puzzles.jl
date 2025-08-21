@@ -1,5 +1,6 @@
 module Eternity2Puzzles
 
+using BitIntegers: UInt256
 using Colors
 import DelimitedFiles
 using FixedSizeArrays
@@ -17,6 +18,7 @@ export Eternity2Puzzle
 export Eternity2Solver
 export SimpleBacktrackingSearch
 export E2BacktrackingSearch
+export E2BacktrackingSearch2x2
 export estimate_solutions
 export play
 export preview
@@ -29,6 +31,7 @@ export save
 include("core.jl")
 include("solvers/simple_backtracking.jl")
 include("solvers/e2_backtracking.jl")
+include("solvers/e2_backtracking_2x2.jl")
 
 
 """
