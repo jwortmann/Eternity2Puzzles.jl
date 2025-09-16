@@ -207,7 +207,8 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
     row, col, constraint, max_invalid_joins = rowcol[depth]
     idx_range = index_table[board[row+1, col].top, board[row, col-1].right, constraint]
 
-    nodes = 0
+    nodes = zeros(Int, maxdepth)
+    nodes[1:fixed_pieces] .= 1
     solutions = 0
 
     _print_progress(puzzle; clear=false)
@@ -224,7 +225,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
             end
             current_invalid_joins += candidate.invalid_joins
             board[row, col] = candidate
-            nodes += 1
+            nodes[depth] += 1
             if depth > best_depth
                 best_depth = depth
                 if !solver.exhaustive_search
@@ -232,16 +233,16 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
                         piece = board[row, col+1]
                         puzzle.board[row, col] = piece.number << 2 | piece.rotation
                     end
-                    _print_progress(puzzle, nodes)
+                    _print_progress(puzzle, sum(nodes))
                 end
                 if depth == maxdepth
                     if solver.exhaustive_search
                         best_depth -= 1
                         solutions += 1
-                        _print_progress(puzzle, nodes, 0, solutions; verbose=false)
+                        _print_progress(puzzle, sum(nodes), 0, solutions; verbose=false)
                         continue
                     else
-                        @info "Solution found after $nodes nodes"
+                        @info "Solution found after $(sum(nodes)) nodes"
                         return
                     end
                 end
@@ -257,9 +258,10 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
         depth -= 1
         if depth == fixed_pieces
             if solver.exhaustive_search
-                @info "Search finished with $solutions solutions after $nodes nodes"
+                @info "Search finished with $solutions solutions after $(sum(nodes)) nodes"
+                @info "Nodes per depth" nodes=Tuple(nodes)
             else
-                @warn "Search finished with no valid solution found after $nodes nodes"
+                @warn "Search finished with no valid solution found after $(sum(nodes)) nodes"
             end
             return
         end
