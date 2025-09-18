@@ -102,36 +102,39 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
     nconstraints = length(constraints)
 
     candidates_table = [RotatedPiece[] for _ in 1:ncolors+1, _ in 1:ncolors+1, _ in 1:nconstraints]
-    for (piece, piece_colors) in enumerate(eachrow(pieces)), rotation = 0:3
-        bottom, left, top, right = circshift(piece_colors, rotation)
-        for (constraint, (t, r)) in enumerate(constraints)
-            # Check whether piece candidate satisfies the constraints from adjacent pieces
-            # TODO if invalid joins are allowed, also consider candidates that don't satisfy
-            # the constraints but set the corresponding number of invalid joins
-            if (top != t > 0) || (right != r > 0) continue end
-            # Piece candidates with 0 invalid joins
-            push!(candidates_table[bottom, left, constraint], RotatedPiece(piece, rotation, top, right, 0))
-            if !isempty(solver.slip_array)
-                # Piece candidates with 1 invalid join
-                if left in inner_colors_range
-                    for l in inner_colors_range
-                        if l == left continue end
-                        push!(candidates_table[bottom, l, constraint], RotatedPiece(piece, rotation, top, right, 1))
+    for (piece, piece_colors) in enumerate(eachrow(pieces))
+        if !available[piece] continue end
+        for rotation = 0:3
+            bottom, left, top, right = circshift(piece_colors, rotation)
+            for (constraint, (t, r)) in enumerate(constraints)
+                # Check whether piece candidate satisfies the constraints from adjacent pieces
+                # TODO if invalid joins are allowed, also consider candidates that don't satisfy
+                # the constraints but set the corresponding number of invalid joins
+                if (top != t > 0) || (right != r > 0) continue end
+                # Piece candidates with 0 invalid joins
+                push!(candidates_table[bottom, left, constraint], RotatedPiece(piece, rotation, top, right, 0))
+                if !isempty(solver.slip_array)
+                    # Piece candidates with 1 invalid join
+                    if left in inner_colors_range
+                        for l in inner_colors_range
+                            if l == left continue end
+                            push!(candidates_table[bottom, l, constraint], RotatedPiece(piece, rotation, top, right, 1))
+                        end
                     end
-                end
-                if bottom in inner_colors_range
-                    for b in inner_colors_range
-                        if b == bottom continue end
-                        push!(candidates_table[b, left, constraint], RotatedPiece(piece, rotation, top, right, 1))
-                    end
-                end
-                # Piece candidates with 2 invalid joins
-                if left in inner_colors_range && bottom in inner_colors_range
-                    for l in inner_colors_range
-                        if l == left continue end
+                    if bottom in inner_colors_range
                         for b in inner_colors_range
                             if b == bottom continue end
-                            push!(candidates_table[b, l, constraint], RotatedPiece(piece, rotation, top, right, 2))
+                            push!(candidates_table[b, left, constraint], RotatedPiece(piece, rotation, top, right, 1))
+                        end
+                    end
+                    # Piece candidates with 2 invalid joins
+                    if left in inner_colors_range && bottom in inner_colors_range
+                        for l in inner_colors_range
+                            if l == left continue end
+                            for b in inner_colors_range
+                                if b == bottom continue end
+                                push!(candidates_table[b, l, constraint], RotatedPiece(piece, rotation, top, right, 2))
+                            end
                         end
                     end
                 end
