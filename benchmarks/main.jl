@@ -60,7 +60,7 @@ function solve(maxdepth::Int = 206)
     depth = 17
     nodes = 0
     _maxdepth = maxdepth + 16  # stop condition: number of placed pieces + 16 (offset)
-    idx = index_table[board[depth-16].top, board[depth-1].right]
+    idx = index_table[board[1].top, board[16].right]
 
     t0 = time_ns()
 
@@ -87,7 +87,7 @@ function solve(maxdepth::Int = 206)
             return nodes, round(1000*nodes/(t1 - t0), digits=1)
         end
         depth += 1
-        idx = index_table[board[depth-16].top, board[depth-1].right]
+        idx = index_table[board[depth-16].top, candidate.right]
         @goto loop
     end
 end
