@@ -57,9 +57,10 @@ For the original Eternity II puzzle with 16 rows and 16 columns there are 4 corn
 Under the restriction that the frame pieces must be placed with all their border edges around the outside of the board, we have ``4! = 24`` different permutations for the arrangement of the corner pieces, ``56!`` possible configurations of the edge pieces, and ``195!\cdot 4^{195}`` possible configurations for the inner pieces, including the four rotations for each piece. In total this yields ``4!\cdot 56!\cdot 195!\cdot 4^{195}\approx 1.12\cdot 10^{557}`` possible configurations for all the pieces.
 
 The board of the Eternity II puzzle has 60 frame joins and 420 inner joins, and there are 5 different frame colors and 17 different inner colors with flat distributions over the number of edges.
-A very simple approach is to use the value ``1/5`` as approximation for the probability of a valid frame join, and ``1/17`` for the probability of a valid inner join.
-If the probabilities of valid joins are assumed to be independent over the entire board, one could simply multiply these values and get the probability ``(1/5)^{60}\cdot (1/17)^{420}\approx 1.88\cdot 10^{-559}`` that all of the joins are valid.
-Multiplication of this value with the number of possible configurations results in an estimated number of ``0.02`` solutions, which suggests that the puzzle has only a single solution -- the one that was used to generate the puzzle pieces.
+A very simple approach is to use the value ``1/5`` as an approximation for the probability of a valid frame join, and ``1/17`` for the probability of a valid inner join.
+If the probabilities of valid joins are assumed to be independent over the entire board, one could simply multiply these values and get the total probability ``(1/5)^{60}\cdot (1/17)^{420}\approx 1.88\cdot 10^{-559}`` that all of the joins are valid.
+Then the expected number of solutions is the product from the number of all possible configurations and the probability that all joins for a particular configuration are valid.
+With the values from above we expect ``0.02`` solutions, which suggests that the puzzle has only a single solution -- the one that was used to generate the puzzle pieces.
 However, when comparing this method with empirical results from puzzles with fewer pieces, which can be searched exhaustively with a backtracking algorithm, it becomes apparent that this approximation is not very accurate.
 In fact, it is clear that in practice the probabilities of valid joins are not independent and constant over the whole board; after more and more pieces are correctly placed onto the board, the color distribution over the remaining edges changes and the probability to create valid joins increases as some of the colors get used up.
 
@@ -225,7 +226,35 @@ A backtracking search algorithm gradually fills the board with pieces one after 
 After each placed piece for that search order we can count the total numbers of the already placed corner, edge and inner pieces, as well as the numbers of frame joins and inner joins between neighboring pieces, and then estimate the number of partial solutions for that particular, partially filled board.
 The cumulative sum of these partial solutions, from placing the first until the last piece, represents an estimation for the total numbers of nodes in the search tree.
 
-Figure 4 visualizes different search orders for the Eternity II puzzle with a single fixed piece on square I8, and shows the total number of nodes in the corresponding search trees.
+It has been observed that the predicted numbers from the theoretical model matches empirical results gathered by exhaustive searches very well, and the relative error becomes smaller with bigger puzzle sizes.
+Figure 4 shows two different puzzles with 64 pieces, but with the same characteristics (3 frame colors, 8 inner colors, no symmetric or identical pieces), and figure 5 visualizes the estimated and empirical numbers of nodes for each depth in the search tree, using a simple rowscan search order starting from the bottom-left corner.
+
+```@raw html
+<figure style="display: flex; justify-content: space-around; flex-wrap: wrap">
+  <span></span>
+  <figure style="width: 40%">
+    <img src="../assets/pieces_08x08_set_1.png">
+    <figcaption>Puzzle C: 52 solutions</figcaption>
+  </figure>
+  <figure style="width: 40%">
+    <img src="../assets/pieces_08x08_set_2.png">
+    <figcaption>Puzzle D: 96 solutions</figcaption>
+  </figure>
+  <figcaption><b>Figure 4</b>: 8x8 puzzles with 3 frame colors and 8 inner colors</figcaption>
+</figure>
+```
+
+```@raw html
+<figure>
+  <picture style="width: 100%">
+    <source srcset="../assets/search_tree_8x8_dark.svg" media="(prefers-color-scheme: dark)">
+    <img src="../assets/search_tree_8x8.svg">
+  </picture>
+  <figcaption><b>Figure 5</b>: Estimated and empirical numbers of nodes in the search tree</figcaption>
+</figure>
+```
+
+Figure 6 visualizes different search orders for the original Eternity II puzzle with a single fixed piece on square I8, and shows the total number of nodes in the corresponding search trees.
 It is worth to mention that the optimal optimal search order depends on the specific properties of the puzzle, i.e. the board size, the number of frame and inner colors, the distribution of colors, and the number of symmetries in the pieces.
 
 ```@raw html
@@ -255,7 +284,7 @@ It is worth to mention that the optimal optimal search order depends on the spec
     <img src="../assets/path_spiral_out.svg">
     <figcaption>Spiral-out path - 1.556e+57 nodes</figcaption>
   </figure>
-  <figcaption><b>Figure 4</b>: Different search orders and the total number of nodes in the corresponding search trees</figcaption>
+  <figcaption><b>Figure 6</b>: Different search orders and the total number of nodes in the corresponding search trees</figcaption>
 </figure>
 ```
 
@@ -265,7 +294,7 @@ It is worth to mention that the optimal optimal search order depends on the spec
     <source srcset="../assets/search_tree_dark.svg" media="(prefers-color-scheme: dark)">
     <img src="../assets/search_tree.svg">
   </picture>
-  <figcaption><b>Figure 5</b>: Search tree estimates for selected search orders</figcaption>
+  <figcaption><b>Figure 7</b>: Search tree estimates for selected search orders</figcaption>
 </figure>
 ```
 
@@ -351,7 +380,7 @@ p_\text{m} = \sum_{i=0}^N p_\text{m}(m, m-i)\cdot W(p, i)
 Note that if invalid joins are allowed only for the inner edges, the optimal search order is usually different from the best search order if no invalid joins were allowed.
 The reason for that is because allowing mismatching inner edges significantly increases the number of possible piece candidates for the inner board squares.
 Therefore a search order which prioritizes the frame squares during the later phase of the search when invalid joins are allowed is more efficient than a search order which for example leaves the entire top row of the board until the very end.
-Figure 6 shows the total number of nodes in the search tree for two different search orders, assuming that up to 10 invalid joins (target score 470) within the four topmost rows of the Eternity II board are allowed, which corresponds to the slip array
+Figure 8 shows the total number of nodes in the search tree for two different search orders, assuming that up to 10 invalid joins (target score 470) within the four topmost rows of the Eternity II board are allowed, which corresponds to the slip array
 ```math
 [192, 192, 192, 192, 192, 192, 192, 192, 192, 192]
 ```
@@ -369,7 +398,7 @@ Here the search order on the right, which only fills the first 12 rows horizonta
     <img src="../assets/path_rowscan2.svg">
     <figcaption>Horizontal rowscan with the last 4 rows filled vertically - 7.000e+57 nodes</figcaption>
   </figure>
-  <figcaption><b>Figure 6</b>: Two search orders for the Eternity II puzzle with up to 10 invalid joins allowed</figcaption>
+  <figcaption><b>Figure 8</b>: Two search orders for the Eternity II puzzle with up to 10 invalid joins allowed</figcaption>
 </figure>
 ```
 

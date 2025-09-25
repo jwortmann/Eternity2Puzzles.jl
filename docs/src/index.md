@@ -97,8 +97,8 @@ julia> preview(puzzle)
 
 !!! tip
 
-    If your terminal emulator supports the Sixel graphics format, the puzzle board can also be displayed in form of an image directly inside the REPL by loading the [ImageInTerminal.jl](https://juliahub.com/ui/Packages/General/ImageInTerminal) package.
-    It is possible to toggle between the regular text output and image rendering using the `ImageInTerminal.disable_encoding()` and `ImageInTerminal.enable_encoding()` functions.
+    If your terminal emulator supports the Sixel graphics format, the puzzle board can also be rendered directly inside the REPL by loading the [ImageInTerminal.jl](https://juliahub.com/ui/Packages/General/ImageInTerminal) package.
+    It is possible to toggle between the regular text output and image display using the `ImageInTerminal.disable_encoding()` and `ImageInTerminal.enable_encoding()` functions.
 
 The [`solve!`](@ref) function accepts an optional keyword argument `alg`, which should a subtype of [`Eternity2Solver`](@ref) and selects the algorithm that is used to search for a solution of the given [`Eternity2Puzzle`](@ref).
 
@@ -122,7 +122,7 @@ The `solve!` method with a single positional argument is just a thin wrapper tha
 
 In case a solution is found, the custom `solve!` implementation is expected to update the `puzzle.board` array which contains the arrangement and the rotations for all puzzle pieces on the board, see [`Eternity2Puzzle`](@ref) for details.
 
-The number of solutions for any [`Eternity2Puzzle`](@ref) can be estimated without solving the puzzle with the [`estimate_solutions`](@ref) function:
+The number of solutions for any given [`Eternity2Puzzle`](@ref) can be estimated without solving the puzzle using the [`estimate_solutions`](@ref) function:
 
 ```@repl
 using Eternity2Puzzles  # hide
