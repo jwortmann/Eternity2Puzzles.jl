@@ -26,7 +26,7 @@ function solve(maxdepth::Int = 206)
     candidates_table = [RotatedPiece[] for _ in 1:24, _ in 1:23]
     for (piece, piece_colors) in enumerate(eachrow(pieces)), rotation = 0:3
         bottom, left, top, right = circshift(piece_colors, rotation)
-        if top == 23  # skip pieces of the top row because we won't reach that far
+        if top == 23  # skip pieces of the topmost row because we won't reach that far
             continue
         elseif bottom == right == 23  # bottom-right corner
             bottom = 24
@@ -52,14 +52,12 @@ function solve(maxdepth::Int = 206)
     end
 
     fill!(used, false)
-    edge = RotatedPiece(0, 23, 0)
-    corner = RotatedPiece(0, 24, 23)
-    board[1:15] .= edge
-    board[16] = corner
+    board[1:15] .= RotatedPiece(0, 23, 0)
+    board[16] = RotatedPiece(0, 24, 23)
 
     depth = 17
+    maxdepth += 16  # stop criterium: number of placed pieces + 16 (offset)
     nodes = 0
-    _maxdepth = maxdepth + 16  # stop condition: number of placed pieces + 16 (offset)
     idx = index_table[board[1].top, board[16].right]
 
     t0 = time_ns()
@@ -80,10 +78,10 @@ function solve(maxdepth::Int = 206)
         used[piece] = true
         idx_state[depth] = idx
         nodes += 1
-        if depth == _maxdepth
+        if depth == maxdepth
             t1 = time_ns()
             # show piece numbers on the board
-            display(transpose(reshape(vcat(Int.(getfield.(board[17:_maxdepth], :number)), zeros(Int, 256-maxdepth)), 16, 16))[16:-1:1, :])
+            display(transpose(reshape(vcat(Int.(getfield.(board[17:maxdepth], :number)), zeros(Int, 272-maxdepth)), 16, 16))[16:-1:1, :])
             return nodes, round(1000*nodes/(t1 - t0), digits=1)
         end
         depth += 1
