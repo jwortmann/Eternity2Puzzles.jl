@@ -380,12 +380,12 @@ p_\text{m} = \sum_{i=0}^N p_\text{m}(m, m-i)\cdot W(p, i)
 Note that if invalid joins are allowed only for the inner edges, the optimal search order is usually different from the best search order if no invalid joins were allowed.
 The reason for that is because allowing mismatching inner edges significantly increases the number of possible piece candidates for the inner board squares.
 Therefore a search order which prioritizes the frame squares during the later phase of the search when invalid joins are allowed is more efficient than a search order which for example leaves the entire top row of the board until the very end.
-Figure 8 shows the total number of nodes in the search tree for two different search orders, assuming that up to 10 invalid joins (target score 470) within the four topmost rows of the Eternity II board are allowed, which corresponds to the slip array
+Figures 8 and 9 show the total number of nodes in the search tree for two different search orders, assuming that up to 10 invalid inner joins (target score 470) within the four topmost rows of the Eternity II board are allowed, which corresponds to the slip array
 ```math
 [192, 192, 192, 192, 192, 192, 192, 192, 192, 192]
 ```
 and an estimated number of ``1.481\cdot 10^{25}`` piece configurations that satisfy these constraints.
-Here the search order on the right, which only fills the first 12 rows horizontally and then the last 4 rows vertically, is over 80% more efficient than the pure horizontal rowscan over the entire board.
+Here the search order on the right, which only fills the first 12 rows horizontally and then the last 4 rows vertically, is over 80% more efficient than a full horizontal rowscan over the entire board.
 
 ```@raw html
 <figure style="display: flex; justify-content: space-around; flex-wrap: wrap">
@@ -402,6 +402,15 @@ Here the search order on the right, which only fills the first 12 rows horizonta
 </figure>
 ```
 
+```@raw html
+<figure>
+  <picture style="width: 100%">
+    <source srcset="../assets/search_tree_470_dark.svg" media="(prefers-color-scheme: dark)">
+    <img src="../assets/search_tree_470.svg">
+  </picture>
+  <figcaption><b>Figure 9</b>: Search tree estimates with up to 10 invalid joins allowed</figcaption>
+</figure>
+```
 
 ## References
 
