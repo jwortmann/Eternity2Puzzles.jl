@@ -34,21 +34,26 @@ function solve(maxdepth::Int = 206)
         push!(candidates_table[bottom, left], RotatedPiece(piece, top, right))
     end
 
-    candidates = FixedSizeVector{RotatedPiece}(undef, 1512)
+    candidates = FixedSizeVector{RotatedPiece}(undef, 1289)
     index_table = FixedSizeMatrix{Int}(undef, 24, 23)
     used = FixedSizeVector{Bool}(undef, 256)
     board = FixedSizeVector{RotatedPiece}(undef, 272)
     idx_state = FixedSizeVector{Int}(undef, 272)
 
-    idx = 1
+    candidates[1] = RotatedPiece(0, 0, 0)
+    idx = 2
     for bottom = 1:24, left = 1:23
-        index_table[bottom, left] = idx
-        for candidate in candidates_table[bottom, left]
-            candidates[idx] = candidate
+        if isempty(candidates_table[bottom, left])
+            index_table[bottom, left] = 1
+        else
+            index_table[bottom, left] = idx
+            for candidate in candidates_table[bottom, left]
+                candidates[idx] = candidate
+                idx += 1
+            end
+            candidates[idx] = RotatedPiece(0, 0, 0)
             idx += 1
         end
-        candidates[idx] = RotatedPiece(0, 0, 0)
-        idx += 1
     end
 
     fill!(used, false)
