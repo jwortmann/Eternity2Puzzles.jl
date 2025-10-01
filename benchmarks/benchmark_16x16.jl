@@ -34,7 +34,9 @@ function solve(maxdepth::Int = 206)
         push!(candidates_table[bottom, left], RotatedPiece(piece, top, right))
     end
 
-    candidates = FixedSizeVector{RotatedPiece}(undef, 1289)
+    len = 1 + mapreduce(length, +, candidates_table) + mapreduce(!isempty, +, candidates_table)
+
+    candidates = FixedSizeVector{RotatedPiece}(undef, len)
     index_table = FixedSizeMatrix{Int}(undef, 24, 23)
     used = FixedSizeVector{Bool}(undef, 256)
     board = FixedSizeVector{RotatedPiece}(undef, 272)
@@ -43,11 +45,12 @@ function solve(maxdepth::Int = 206)
     candidates[1] = RotatedPiece(0, 0, 0)
     idx = 2
     for bottom = 1:24, left = 1:23
-        if isempty(candidates_table[bottom, left])
+        matching_candidates = candidates_table[bottom, left]
+        if isempty(matching_candidates)
             index_table[bottom, left] = 1
         else
             index_table[bottom, left] = idx
-            for candidate in candidates_table[bottom, left]
+            for candidate in matching_candidates
                 candidates[idx] = candidate
                 idx += 1
             end
@@ -63,7 +66,7 @@ function solve(maxdepth::Int = 206)
     depth = 17
     maxdepth += 16  # stop criterium: number of placed pieces + 16 (offset)
     nodes = 0
-    idx = index_table[board[1].top, board[16].right]
+    idx = index_table[23, 23]
 
     t0 = time_ns()
 
@@ -78,7 +81,9 @@ function solve(maxdepth::Int = 206)
             @goto loop
         end
         idx += 1
-        if used[piece] @goto loop end
+        if used[piece]
+            @goto loop
+        end
         board[depth] = candidate
         used[piece] = true
         idx_state[depth] = idx
