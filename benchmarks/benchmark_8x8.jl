@@ -89,6 +89,7 @@ function solve(maxdepth::Int = 64)
             depth += 1
             # TODO the following ifelse is only necessary if maxdepth >= 65 (top-left corner)
             idx = index_table[board[depth-8].top, ifelse(depth == 65, 13, candidate.right)]
+            # idx = index_table[board[depth-8].top, candidate.right + (depth == 65)]
             @goto loop
         end
     end
