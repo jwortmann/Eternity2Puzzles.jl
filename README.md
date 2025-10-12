@@ -12,7 +12,7 @@
 </p>
 
 Eternity2Puzzles.jl is an implementation of the [Eternity II puzzle](https://en.wikipedia.org/wiki/Eternity_II_puzzle) in the [Julia](https://julialang.org/) programming language.
-This package allows to either play the puzzle as an interactive game, or to attempt to find a solution using a brute-force backtracking search.
+This package allows to play the puzzle as an interactive game and to search for a solution using a brute-force backtracking search.
 
 
 ## Installation
@@ -48,6 +48,10 @@ julia> play()
 Puzzle pieces can be moved with the left mouse button and rotated with a right click.
 
 You can also use the commands `play(:clue1)`, `play(:clue2)`, `play(:clue3)` or `play(:clue4)` to play one of the smaller clue puzzles.
+
+> [!IMPORTANT]
+> Unfortunately the interactive game is not yet compatible with Julia 1.12.
+> Upstream tracking issue: https://github.com/aviks/GameZero.jl/issues/86
 
 Please visit the [documentation](https://jwortmann.github.io/Eternity2Puzzles.jl/) for a detailed description about more features of this package, for example how to run a solver algorithm.
 
