@@ -38,6 +38,7 @@ include("solvers/e2_backtracking_2x2.jl")
     play()
     play(:clue1)
     play(:clue2)
+    play(:clue3)
     play(:clue4)
 
 Start the interactive game.
@@ -49,7 +50,7 @@ function play(puzzle::Eternity2Puzzle)
     cache_path = @get_scratch!("eternity2")
     save(puzzle, joinpath(cache_path, "board.et2"))
     open(joinpath(cache_path, "pieces.txt"), "w") do file
-        write(file, join([join([col for col in row], " ") for row in eachrow(puzzle.pieces)], "\n") * "\n")
+        DelimitedFiles.writedlm(file, puzzle.pieces, ' ')
     end
     _project = Base.active_project()
     Base.set_active_project(abspath(@__DIR__, "..", "Project.toml"))

@@ -95,6 +95,7 @@ function Eternity2Puzzle(
     hint_pieces::Bool = false
 )
     _pieces, nrows, ncols = _get_pieces(pieces)
+    @assert _pieces isa Matrix
     @assert nrows > 0 && ncols > 0 "Board size undefined"
     board = zeros(UInt16, nrows, ncols)
     if pieces == :eternity2
@@ -359,7 +360,7 @@ function _get_colors(puzzle::Eternity2Puzzle)
         elseif border_edges == 1
             # Extract the frame color numbers from the edge pieces, i.e. the sides which are
             # adjacent to the border side
-            border_edge_index = findfirst(iszero, piece_colors)
+            border_edge_index = @something findfirst(iszero, piece_colors) continue
             push!(frame_colors, piece_colors[mod1(border_edge_index + 1, 4)])
             push!(frame_colors, piece_colors[mod1(border_edge_index - 1, 4)])
         end
@@ -429,7 +430,7 @@ function _load(filename::AbstractString)
         filename = abspath(pwd(), filename)
     end
     isfile(filename) || throw(ArgumentError("File not found: $filename"))
-    parsed = DelimitedFiles.readdlm(filename, String)
+    parsed = DelimitedFiles.readdlm(filename, String)::Matrix{String}
     nrows, ncols = size(parsed)
     npieces = nrows * ncols
     board = zeros(UInt16, nrows, ncols)
@@ -1014,17 +1015,14 @@ function generate_pieces(
     rotations = Vector{Int}(undef, npieces)
 
     function validate(pieces)
-        for (p1, colors) in enumerate(eachrow(pieces))
+        for colors in eachrow(pieces)
             # Pieces must not be rotationally symmetric
             if colors[1] == colors[3] && colors[2] == colors[4]
                 return false
             end
-            # Pieces must be unique
-            if any(colors == view(pieces, p2, :) for p2 = p1+1:npieces)
-                return false
-            end
         end
-        return true
+        # All pieces must be unique
+        return allunique(eachrow(pieces))
     end
 
     Random.seed!(seed)
