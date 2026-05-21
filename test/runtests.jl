@@ -66,9 +66,9 @@ end
 @testset "Solution estimates" begin
     # Predicted number of solutions with constraint from the starter-piece
     puzzle = Eternity2Puzzle()
-    @test trunc(Int, estimate_solutions(puzzle)[1]) == 14702
+    @test round(Int, estimate_solutions(puzzle)[1]) == 14702
 
     # Predicted number of solutions without the starter-piece
     puzzle = Eternity2Puzzle(starter_piece=false)
-    @test trunc(Int, estimate_solutions(puzzle)[1]) == 11526580
+    @test round(Int, estimate_solutions(puzzle)[1]) == 11526580
 end

@@ -6,13 +6,13 @@ import DelimitedFiles
 using FixedSizeArrays
 import GameZero
 import NativeFileDialog
-import OffsetArrays
 import PNGFiles
 using PrecompileTools: @compile_workload
 using Printf: @printf
 using Quadmath: Float128
 import Random
 using Scratch: @get_scratch!
+using ZeroOrigin: @origin
 
 export Eternity2Puzzle
 export Eternity2Solver

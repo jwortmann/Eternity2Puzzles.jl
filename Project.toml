@@ -1,7 +1,7 @@
 name = "Eternity2Puzzles"
 uuid = "7b8a590e-5f29-49cd-9d3d-d6aab43f7c56"
-authors = ["Janos Wortmann <jwortmann@outlook.com>"]
 version = "0.2.0"
+authors = ["Janos Wortmann <jwortmann@outlook.com>"]
 
 [deps]
 BitIntegers = "c3b6d118-76ef-56ca-8cc7-ebb389d030a1"
@@ -10,7 +10,6 @@ DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 FixedSizeArrays = "3821ddf9-e5b5-40d5-8e25-6813ab96b5e2"
 GameZero = "9da27670-f782-11e9-1da1-f53579315bfe"
 NativeFileDialog = "e1fe445b-aa65-4df4-81c1-2041507f0fd4"
-OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 PNGFiles = "f57f5aa1-a3ce-4bc8-8ab9-96f992907883"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
@@ -18,6 +17,7 @@ Quadmath = "be4d8f0f-7fa4-5f49-b795-2f01399ab2dd"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Scratch = "6c6a2e73-6563-6170-7368-637461726353"
 SimpleDirectMediaLayer = "98e33af6-2ee5-5afd-9e75-cbc738b767c4"
+ZeroOrigin = "421443cc-9b00-11ea-1646-3bac74f84b0c"
 
 [weakdeps]
 ImageInTerminal = "d8c32880-2388-543b-8c61-d9f865259254"
@@ -33,7 +33,6 @@ FixedSizeArrays = "1"
 GameZero = "0.3"
 ImageInTerminal = "0.5"
 NativeFileDialog = "0.2"
-OffsetArrays = "1"
 PNGFiles = "0.4"
 PrecompileTools = "1"
 Printf = "1.10"
@@ -41,6 +40,7 @@ Quadmath = "0.5, 1.0"
 Random = "1.10"
 Scratch = "1"
 SimpleDirectMediaLayer = "0.4, 0.5"
+ZeroOrigin = "0.2"
 julia = "1.10"
 
 [extras]

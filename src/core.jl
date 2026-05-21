@@ -300,49 +300,51 @@ function _get_number_of_colors(nrows::Integer, ncols::Integer)
     @assert 3 <= nrows <= 20
     @assert 3 <= ncols <= 20
 
-    frame_colors = OffsetArrays.Origin(3)([
-        2  2  2  2  3  3  3  3  4  4  4  4  5  5  5  5  6  6
-        2  2  2  3  3  3  3  3  4  4  4  4  4  4  5  5  5  5
-        2  2  3  3  3  3  3  3  3  4  4  4  4  4  5  5  5  5
-        2  3  3  3  3  3  3  3  3  4  4  4  4  4  4  5  5  5
-        3  3  3  3  3  3  3  3  4  4  4  4  4  4  4  5  5  5
-        3  3  3  3  3  3  3  4  4  4  4  4  4  4  4  5  5  5
-        3  3  3  3  3  3  4  4  4  4  4  4  4  4  4  5  5  5
-        3  3  3  3  3  4  4  4  4  4  4  4  4  4  5  5  5  5
-        4  4  3  3  4  4  4  4  4  4  4  4  4  5  5  5  5  5
-        4  4  4  4  4  4  4  4  4  4  4  4  5  5  5  5  5  5
-        4  4  4  4  4  4  4  4  4  4  4  5  5  5  5  5  5  5
-        4  4  4  4  4  4  4  4  4  4  5  5  5  5  5  5  5  5
-        5  4  4  4  4  4  4  4  4  5  5  5  5  5  5  5  5  5
-        5  4  4  4  4  4  4  4  5  5  5  5  5  5  5  5  5  5
-        5  5  5  4  4  4  4  5  5  5  5  5  5  5  5  5  5  5
-        5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5
-        6  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  6
-        6  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  6  6
-    ])
+    @origin (frame_colors => 3, inner_colors => 3) begin
+        frame_colors = [
+            2  2  2  2  3  3  3  3  4  4  4  4  5  5  5  5  6  6
+            2  2  2  3  3  3  3  3  4  4  4  4  4  4  5  5  5  5
+            2  2  3  3  3  3  3  3  3  4  4  4  4  4  5  5  5  5
+            2  3  3  3  3  3  3  3  3  4  4  4  4  4  4  5  5  5
+            3  3  3  3  3  3  3  3  4  4  4  4  4  4  4  5  5  5
+            3  3  3  3  3  3  3  4  4  4  4  4  4  4  4  5  5  5
+            3  3  3  3  3  3  4  4  4  4  4  4  4  4  4  5  5  5
+            3  3  3  3  3  4  4  4  4  4  4  4  4  4  5  5  5  5
+            4  4  3  3  4  4  4  4  4  4  4  4  4  5  5  5  5  5
+            4  4  4  4  4  4  4  4  4  4  4  4  5  5  5  5  5  5
+            4  4  4  4  4  4  4  4  4  4  4  5  5  5  5  5  5  5
+            4  4  4  4  4  4  4  4  4  4  5  5  5  5  5  5  5  5
+            5  4  4  4  4  4  4  4  4  5  5  5  5  5  5  5  5  5
+            5  4  4  4  4  4  4  4  5  5  5  5  5  5  5  5  5  5
+            5  5  5  4  4  4  4  5  5  5  5  5  5  5  5  5  5  5
+            5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5
+            6  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  6
+            6  5  5  5  5  5  5  5  5  5  5  5  5  5  5  5  6  6
+        ]
 
-    inner_colors = OffsetArrays.Origin(3)([
-        2  2  3  3  3  3  4  4  4  4  4  5  5  5  5  5  5  5
-        2  3  3  4  4  5  5  5  5  6  6  6  6  7  7  7  7  8
-        3  3  4  5  5  5  6  6  7  7  7  8  8  8  8  9  9  9
-        3  4  5  5  6  6  7  7  8  8  8  9  9  9 10 10 10 11
-        3  4  5  6  6  7  7  8  8  9  9 10 10 10 11 11 11 12
-        3  5  5  6  7  8  8  9  9 10 10 11 11 11 12 12 12 13
-        4  5  6  7  7  8  9  9 10 10 11 11 12 12 13 13 13 14
-        4  5  6  7  8  9  9 10 11 11 12 12 13 13 13 14 14 15
-        4  5  7  8  8  9 10 11 11 12 12 13 13 14 14 15 15 16
-        4  6  7  8  9 10 10 11 12 12 13 13 14 15 15 16 16 16
-        4  6  7  8  9 10 11 12 12 13 14 14 15 15 16 16 17 17
-        5  6  8  9 10 11 11 12 13 13 14 15 15 16 16 17 17 18
-        5  6  8  9 10 11 12 13 13 14 15 15 16 17 17 18 18 19
-        5  7  8  9 10 11 12 13 14 15 15 16 17 17 18 18 19 19
-        5  7  8 10 11 12 13 13 14 15 16 16 17 18 18 19 20 20
-        5  7  9 10 11 12 13 14 15 16 16 17 18 18 19 20 20 21
-        5  7  9 10 11 12 13 14 15 16 17 17 18 19 20 20 21 21
-        5  8  9 11 12 13 14 15 16 16 17 18 19 19 20 21 21 22
-    ])
+        inner_colors = [
+            2  2  3  3  3  3  4  4  4  4  4  5  5  5  5  5  5  5
+            2  3  3  4  4  5  5  5  5  6  6  6  6  7  7  7  7  8
+            3  3  4  5  5  5  6  6  7  7  7  8  8  8  8  9  9  9
+            3  4  5  5  6  6  7  7  8  8  8  9  9  9 10 10 10 11
+            3  4  5  6  6  7  7  8  8  9  9 10 10 10 11 11 11 12
+            3  5  5  6  7  8  8  9  9 10 10 11 11 11 12 12 12 13
+            4  5  6  7  7  8  9  9 10 10 11 11 12 12 13 13 13 14
+            4  5  6  7  8  9  9 10 11 11 12 12 13 13 13 14 14 15
+            4  5  7  8  8  9 10 11 11 12 12 13 13 14 14 15 15 16
+            4  6  7  8  9 10 10 11 12 12 13 13 14 15 15 16 16 16
+            4  6  7  8  9 10 11 12 12 13 14 14 15 15 16 16 17 17
+            5  6  8  9 10 11 11 12 13 13 14 15 15 16 16 17 17 18
+            5  6  8  9 10 11 12 13 13 14 15 15 16 17 17 18 18 19
+            5  7  8  9 10 11 12 13 14 15 15 16 17 17 18 18 19 19
+            5  7  8 10 11 12 13 13 14 15 16 16 17 18 18 19 20 20
+            5  7  9 10 11 12 13 14 15 16 16 17 18 18 19 20 20 21
+            5  7  9 10 11 12 13 14 15 16 17 17 18 19 20 20 21 21
+            5  8  9 11 12 13 14 15 16 16 17 18 19 19 20 21 21 22
+        ]
 
-    return frame_colors[nrows, ncols], inner_colors[nrows, ncols]
+        return frame_colors[nrows, ncols], inner_colors[nrows, ncols]
+    end
 end
 
 
@@ -645,7 +647,7 @@ julia> puzzle = Eternity2Puzzle()
 16×16 Eternity2Puzzle with 1 piece:
 ...
 
-julia> trunc(Int, estimate_solutions(puzzle)[1])
+julia> round(Int, estimate_solutions(puzzle)[1])
 14702
 ```
 
@@ -719,101 +721,104 @@ function estimate_solutions(
 
     board = zeros(Int, nrows, ncols)
 
-    # joins(p) = Number of completed (valid or invalid) inner joins after p placed pieces
-    joins = OffsetArrays.Origin(0)(zeros(Int, nrows*ncols+1))
+    @origin (joins => 0, P => 0, C => 0, Vb => 0, pb => 0, Vm => 0, pm => 0, Wm => 0) begin
+        # joins(p) = Number of completed (valid or invalid) inner joins after p placed pieces
+        joins = zeros(Int, nrows*ncols+1)
 
-    for placed_pieces = 1:nrows*ncols
-        row, col = _parse_position(path[placed_pieces])
-        board[row, col] = placed_pieces
-        joins[placed_pieces] = _count_joins(board)[2]
-    end
+        for placed_pieces = 1:nrows*ncols
+            row, col = _parse_position(path[placed_pieces])
+            board[row, col] = placed_pieces
+            joins[placed_pieces] = _count_joins(board)[2]
+        end
 
-    fill!(board, 0)
+        fill!(board, 0)
 
-    # Precomputed table with number of k-permutations of n
-    nmax = max(maximum(frame_joins), 2*maximum(inner_joins))
-    kmax = min(nmax, max(max_frame_joins, 2*max_inner_joins))
-    P = OffsetArrays.Origin(0)(zeros(Float128, nmax+1, kmax+1))
-    for n = 0:nmax, k = 0:min(n, kmax)
-        P[n, k] = perm(n, k)
-    end
+        # Precomputed table with number of k-permutations of n
+        nmax = max(maximum(frame_joins), 2*maximum(inner_joins))
+        kmax = min(nmax, max(max_frame_joins, 2*max_inner_joins))
+        P = zeros(Float128, nmax+1, kmax+1)
+        for n = 0:nmax, k = 0:min(n, kmax)
+            P[n, k] = perm(n, k)
+        end
 
-    # Precomputed table with number of k-combinations of n (Pascal's triangle)
-    nmax = max(max_frame_joins, max_inner_joins)
-    C = OffsetArrays.Origin(0)(zeros(Float128, nmax+1, nmax+1))
-    for n = 0:nmax, k = 0:n
-        C[n, k] = comb(n, k)
-    end
+        # Precomputed table with number of k-combinations of n (Pascal's triangle)
+        nmax = max(max_frame_joins, max_inner_joins)
+        C = zeros(Float128, nmax+1, nmax+1)
+        for n = 0:nmax, k = 0:n
+            C[n, k] = comb(n, k)
+        end
 
-    # Vb(i, b) = Number of valid configurations of b frame joins can be made using 2b edges of colors 1 to i
-    Vb = OffsetArrays.Origin(0)(zeros(Float128, frame_colors+1, max_frame_joins+1))
-    Vb[0, 0] = 1.0
-    for i = 1:frame_colors
-        n = frame_joins[i]
+        # Vb(i, b) = Number of valid configurations of b frame joins can be made using 2b edges of colors 1 to i
+        Vb = zeros(Float128, frame_colors+1, max_frame_joins+1)
+        Vb[0, 0] = 1.0
+        for i = 1:frame_colors
+            n = frame_joins[i]
+            for b = 0:max_frame_joins
+                Vb[i, b] = sum(Vb[i-1, b-j] * P[n, j]^2 * C[b, j] for j = 0:min(n, b))
+            end
+        end
+
+        # pb(b) = Probability that all b frame joins are valid using 2b edges
+        pb = zeros(Float128, max_frame_joins+1)
         for b = 0:max_frame_joins
-            Vb[i, b] = sum(Vb[i-1, b-j] * P[n, j]^2 * C[b, j] for j = 0:min(n, b))
+            pb[b] = Vb[frame_colors, b] / perm(Tb, b)^2
         end
-    end
 
-    # pb(b) = Probability that all b frame joins are valid using 2b edges
-    pb = OffsetArrays.Origin(0)(zeros(Float128, max_frame_joins+1))
-    for b = 0:max_frame_joins
-        pb[b] = Vb[frame_colors, b] / perm(Tb, b)^2
-    end
+        # Vm(i, m) = Number of valid configurations of m inner joins can be made using 2m edges of colors 1 to i
+        Vm = zeros(Float128, inner_colors+1, max_inner_joins+1)
+        Vm[0, 0] = 1.0
+        for i = 1:inner_colors
+            n = inner_joins[i]
+            for m = 0:max_inner_joins
+                Vm[i, m] = sum(Vm[i-1, m-j] * P[2n, 2j] * C[m, j] for j = 0:min(n, m))
+            end
+        end
 
-    # Vm(i, m) = Number of valid configurations of m inner joins can be made using 2m edges of colors 1 to i
-    Vm = OffsetArrays.Origin(0)(zeros(Float128, inner_colors+1, max_inner_joins+1))
-    Vm[0, 0] = 1.0
-    for i = 1:inner_colors
-        n = inner_joins[i]
+        # pm(m, v) = Probability the first v inner joins are valid and the rest are not using 2m edges
+        pm = zeros(Float128, max_inner_joins+1, max_inner_joins+1)
         for m = 0:max_inner_joins
-            Vm[i, m] = sum(Vm[i-1, m-j] * P[2n, 2j] * C[m, j] for j = 0:min(n, m))
+            pm[m, m] = Vm[inner_colors, m] / perm(2Tm, 2m)
+            for v = m-1:-1:0
+                pm[m, v] = pm[m-1, v] - pm[m, v+1]
+            end
+        end
+
+        # Wm(p, i) = Number of ways to arrange exactly i invalid inner joins after p placed pieces
+        Wm = zeros(Float128, nrows*ncols+1, max_errors+1)
+        Wm[:, 0] .= 1.0
+        for i = 1:max_errors
+            d = slip_array[i]
+            for p = d:nrows*ncols
+                Wm[p, i] = sum(Wm[d-1, k] * C[joins[p]-joins[d-1], i-k] for k = 0:i-1)
+            end
+        end
+
+        estimated_solutions::Float128 = 1.0
+        cumulative_sum::Float128 = 0.0
+
+        for placed_pieces = 1:nrows*ncols
+            square = path[placed_pieces]
+            row, col = _parse_position(square)
+            board[row, col] = placed_pieces
+            if placed_pieces > fixed_corner_pieces + fixed_edge_pieces + fixed_inner_pieces
+                placed_corner_pieces, placed_edge_pieces, placed_inner_pieces = _count_pieces(board)
+                c = placed_corner_pieces - fixed_corner_pieces  # Number of selected corner pieces
+                e = placed_edge_pieces - fixed_edge_pieces      # Number of selected edge pieces
+                i = placed_inner_pieces - fixed_inner_pieces    # Number of selected inner pieces
+                # Numbers of completed frame and inner joins between pieces on the board
+                b, m = _count_joins(board)
+                # Number of piece configurations including 4 orientations for the inner pieces
+                piece_configurations = perm(Cp, c) * perm(Ep, e) * perm(Ip, i) * 4.0^i
+                # estimated_solutions = piece_configurations * pb[b] * sum(pm[m, v] * C[m, v] for v = max(m-max_errors, 0):m)  # Old version that only supports the invalid joins considered to be anywhere on the board
+                estimated_solutions = piece_configurations * pb[b] * sum(pm[m, m-k] * Wm[placed_pieces, k] for k = 0:min(max_errors, m))
+            end
+            cumulative_sum += estimated_solutions
+            if verbose
+                @printf "%3i  %-3s  %.5e  %.5e\n" placed_pieces square estimated_solutions cumulative_sum
+            end
         end
     end
 
-    # pm(m, v) = Probability the first v inner joins are valid and the rest are not using 2m edges
-    pm = OffsetArrays.Origin(0)(zeros(Float128, max_inner_joins+1, max_inner_joins+1))
-    for m = 0:max_inner_joins
-        pm[m, m] = Vm[inner_colors, m] / perm(2Tm, 2m)
-        for v = m-1:-1:0
-            pm[m, v] = pm[m-1, v] - pm[m, v+1]
-        end
-    end
-
-    # Wm(p, i) = Number of ways to arrange exactly i invalid inner joins after p placed pieces
-    Wm = OffsetArrays.Origin(0)(zeros(Float128, nrows*ncols+1, max_errors+1))
-    Wm[:, 0] .= 1.0
-    for i = 1:max_errors
-        d = slip_array[i]
-        for p = d:nrows*ncols
-            Wm[p, i] = sum(Wm[d-1, k] * C[joins[p]-joins[d-1], i-k] for k = 0:i-1)
-        end
-    end
-
-    estimated_solutions::Float128 = 1.0
-    cumulative_sum::Float128 = 0.0
-
-    for placed_pieces = 1:nrows*ncols
-        square = path[placed_pieces]
-        row, col = _parse_position(square)
-        board[row, col] = placed_pieces
-        if placed_pieces > fixed_corner_pieces + fixed_edge_pieces + fixed_inner_pieces
-            placed_corner_pieces, placed_edge_pieces, placed_inner_pieces = _count_pieces(board)
-            c = placed_corner_pieces - fixed_corner_pieces  # Number of selected corner pieces
-            e = placed_edge_pieces - fixed_edge_pieces      # Number of selected edge pieces
-            i = placed_inner_pieces - fixed_inner_pieces    # Number of selected inner pieces
-            # Numbers of completed frame and inner joins between pieces on the board
-            b, m = _count_joins(board)
-            # Number of piece configurations including 4 orientations for the inner pieces
-            piece_configurations = perm(Cp, c) * perm(Ep, e) * perm(Ip, i) * 4.0^i
-            # estimated_solutions = piece_configurations * pb[b] * sum(pm[m, v] * C[m, v] for v = max(m-max_errors, 0):m)  # Old version that only supports the invalid joins considered to be anywhere on the board
-            estimated_solutions = piece_configurations * pb[b] * sum(pm[m, m-k] * Wm[placed_pieces, k] for k = 0:min(max_errors, m))
-        end
-        cumulative_sum += estimated_solutions
-        if verbose
-            @printf "%3i  %-3s  %.5e  %.5e\n" placed_pieces square estimated_solutions cumulative_sum
-        end
-    end
     return estimated_solutions, cumulative_sum
 end
 
