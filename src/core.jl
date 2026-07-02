@@ -1,7 +1,7 @@
 const STARTER_PIECE = 139
 
-const BOARD_BACKGROUND_IMG = PNGFiles.load(joinpath(@__DIR__, "images", "board.png"))
-const COLOR_PATTERNS_IMG = PNGFiles.load(joinpath(@__DIR__, "images", "colors.png"))
+const BOARD_BACKGROUND_IMG = PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/board.png"))
+const COLOR_PATTERNS_IMG = PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/colors.png"))
 
 
 """ Abstract type for a solver algorithm. """
@@ -396,7 +396,7 @@ function _get_color_patterns_image(puzzle::Eternity2Puzzle)
     end
 end
 
-_load_pieces(filename::String) = DelimitedFiles.readdlm(abspath(@__DIR__, "..", "pieces", filename), UInt8)
+_load_pieces(filename::String) = DelimitedFiles.readdlm(normpath("$(@__FILE__)/../../pieces/$filename"), UInt8)
 
 @eval _get_pieces(::Val{:eternity2}) = $(_load_pieces("e2pieces.txt")), 16, 16
 @eval _get_pieces(::Val{:meta_16x16}) = $(_load_pieces("meta_16x16.txt")), 16, 16

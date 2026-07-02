@@ -1,19 +1,17 @@
-using Colors
 import DelimitedFiles
-using GameZero
 import NativeFileDialog
 import PNGFiles
+import SimpleDirectMediaLayer
+using Colors
+using GameZero
 using Printf: @printf
 using Scratch: @get_scratch!, get_scratch!
-import SimpleDirectMediaLayer
+using ZeroOrigin: @origin
 
 
 SimpleDirectMediaLayer.LibSDL2.SDL_SetHint(SimpleDirectMediaLayer.LibSDL2.SDL_HINT_RENDER_SCALE_QUALITY, "2")
 
-
 game_include("core.jl")
-false && include("core.jl")  # make file contents visible to LSP
-
 
 const WIDTH = 1392
 const HEIGHT = 912

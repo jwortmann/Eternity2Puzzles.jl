@@ -58,4 +58,4 @@ Please visit the [documentation](https://jwortmann.github.io/Eternity2Puzzles.jl
 
 ## Preview
 
-![Preview](img/preview.png)
+![Preview](assets/preview.png)

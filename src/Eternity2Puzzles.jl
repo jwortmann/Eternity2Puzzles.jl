@@ -1,16 +1,19 @@
 module Eternity2Puzzles
 
-using BitIntegers: UInt256
-using Colors
 import DelimitedFiles
-using FixedSizeArrays
 import GameZero
+# import GLFW
 import NativeFileDialog
 import PNGFiles
+import Random
+using BitIntegers: UInt256
+using Colors: @colorant_str
+using Colors: distinguishable_colors
+using FixedSizeArrays
+# using ModernGL
 using PrecompileTools: @compile_workload
 using Printf: @printf
 using Quadmath: Float128
-import Random
 using Scratch: @get_scratch!
 using ZeroOrigin: @origin
 
