@@ -26,7 +26,7 @@ program benchmark
         implicit none
         integer, intent(in) :: maxdepth
         logical, dimension(256) :: used
-        integer, dimension(0:23, 0:22) :: index_table, index_table2
+        integer, dimension(0:23, 0:22) :: index_table
         type(rpiece), dimension(:), allocatable :: candidates
         type(rpiece) :: candidate
         type(rpiece), dimension(-15:256) :: board
@@ -103,10 +103,11 @@ program benchmark
         ], [4, 256])
 
         used = .false.
-        index_table = 0
+        index_table = 1
         board(-15:-1) = rpiece(0, 0, 0)
         board(0) = rpiece(0, 23, 0)
 
+        ! count the number of candidates for each bottom/left edge color combination
         do piece = 1, 256
             do rotation = 0, 3
                 bottom = pieces(rotation, piece)
@@ -116,30 +117,29 @@ program benchmark
                 if (top == 0) then
                     cycle
                 else if (bottom == 0 .and. right == 0) then
+                    ! virtual border color to enforce a corner piece at the bottom-right corner of the board
                     bottom = 23
                 end if
                 index_table(bottom, left) = index_table(bottom, left) + 1
             end do
         end do
 
+        ! start index in the candidates array for each bottom/left edge color combination
         idx = 2
         do bottom = 0, 23
             do left = 0, 22
                 tmp = index_table(bottom, left)
-                if (tmp == 0) then
-                    index_table(bottom, left) = 1
-                else
+                if (tmp > 1) then
                     index_table(bottom, left) = idx
-                    idx = idx + tmp + 1
+                    idx = idx + tmp
                 end if
             end do
         end do
 
-        index_table2 = index_table
-
         allocate(candidates(idx-1))
-        candidates(1) = rpiece(0, 0, 0)
+        candidates = rpiece(0, 0, 0)
 
+        ! assign prerotated pieces to the candidates array
         do piece = 1, 256
             do rotation = 0, 3
                 bottom = pieces(rotation, piece)
@@ -151,18 +151,11 @@ program benchmark
                 else if (bottom == 0 .and. right == 0) then
                     bottom = 23
                 end if
-                idx = index_table2(bottom, left)
-                index_table2(bottom, left) = index_table2(bottom, left) + 1
+                idx = index_table(bottom, left)
+                do while (candidates(idx)%number /= 0)
+                    idx = idx + 1
+                end do
                 candidates(idx) = rpiece(piece, top, right)
-            end do
-        end do
-
-        do bottom = 0, 23
-            do left = 0, 22
-                idx = index_table2(bottom, left)
-                if (idx /= 1) then
-                    candidates(idx) = rpiece(0, 0, 0)
-                end if
             end do
         end do
 
