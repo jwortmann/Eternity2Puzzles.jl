@@ -1,7 +1,9 @@
 const STARTER_PIECE = 139
 
-const BOARD_BACKGROUND_IMG = PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/board.png"))
-const COLOR_PATTERNS_IMG = PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/colors.png"))
+# const BOARD_BACKGROUND_IMG = PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/board.png"))
+# const COLOR_PATTERNS_IMG = PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/colors.png"))
+const BOARD_BACKGROUND_IMG = PNGFiles.load(normpath("$(@__FILE__)/../images/board.png"))
+const COLOR_PATTERNS_IMG = PNGFiles.load(normpath("$(@__FILE__)/../images/colors.png"))
 
 
 """ Abstract type for a solver algorithm. """
