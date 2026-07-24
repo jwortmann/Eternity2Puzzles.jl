@@ -934,6 +934,47 @@ function generate_search_path(puzzle::Eternity2Puzzle, strategy::Symbol)
 end
 
 
+function is_valid_search_path(puzzle::Eternity2Puzzle, path::Vector{String})
+    nrows, ncols = size(puzzle)
+    # Path must contain all board squares, including the squares of pre-placed pieces
+    if length(path) != nrows * ncols || !allunique(path)
+        return false
+    end
+    board = map(!iszero, puzzle.board)
+    fixed_pieces = count(board)
+    for square in path[1:fixed_pieces]
+        # Check whether path contains pre-placed pieces first
+        row, col = _parse_position(square)
+        if !board[row, col]
+            return false
+        end
+    end
+    for square in path[fixed_pieces+1:end]
+        row, col = _parse_position(square)
+        # Check whether the square is already occupied
+        if board[row, col]
+            return false
+        end
+        # Check whether the square has at least 2 adjacent known edges (constraints), which
+        # is a requirement for the candidates lookup table
+        constraints = [
+            row == 1 || board[row-1, col],      # top edge
+            col == ncols || board[row, col+1],  # right edge
+            row == nrows || board[row+1, col],  # bottom edge
+            col == 1 || board[row, col-1]       # left edge
+        ]
+        nconstraints = count(constraints)
+        if nconstraints < 2 || nconstraints == 2 && iseven(sum(findall(constraints)))
+            return false
+        end
+        # Mark square as occupied
+        board[row, col] = true
+    end
+    # Check whether all squares of the board are occupied
+    return all(board)
+end
+
+
 """
     symmetry_factor(puzzle::Eternity2Puzzle)
 

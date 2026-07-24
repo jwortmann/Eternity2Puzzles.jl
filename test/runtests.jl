@@ -55,10 +55,21 @@ end
 
 
 @testset "Search paths" begin
+    # Valid spiral-in path for rectangular boards with even/odd numbers or rows and columns
     for (nrows, ncols) in [(8, 8), (9, 9), (4, 8), (8, 4), (4, 9), (9, 4), (5, 8), (8, 5), (5, 9), (9, 5)]
         puzzle = Eternity2Puzzle(nrows, ncols)
         reset!(puzzle)
-        @test length(Eternity2Puzzles.generate_search_path(puzzle, :spiral_in)) == nrows * ncols
+        path = Eternity2Puzzles.generate_search_path(puzzle, :spiral_in)
+        @test Eternity2Puzzles.is_valid_search_path(puzzle, path)
+    end
+    # Valid path for boards with pre-placed pieces
+    for strategy in [:rowscan, :spiral_in]
+        puzzle = Eternity2Puzzle()
+        path = Eternity2Puzzles.generate_search_path(puzzle, strategy)
+        @test Eternity2Puzzles.is_valid_search_path(puzzle, path)
+        puzzle = Eternity2Puzzle(hint_pieces=true)
+        path = Eternity2Puzzles.generate_search_path(puzzle, strategy)
+        @test Eternity2Puzzles.is_valid_search_path(puzzle, path)
     end
 end
 
@@ -71,4 +82,9 @@ end
     # Predicted number of solutions without the starter-piece
     puzzle = Eternity2Puzzle(starter_piece=false)
     @test round(Int, estimate_solutions(puzzle)[1]) == 11526580
+
+    # Predicted number of solutions with the starter-piece and the 4 hint pieces (rounded up,
+    # because there is at least 1 solution which was used to generate the hint pieces)
+    puzzle = Eternity2Puzzle(hint_pieces=true)
+    @test ceil(Int, estimate_solutions(puzzle)[1]) == 1
 end
