@@ -28,9 +28,9 @@ control whether the mandatory starter-piece and the four hint pieces from the cl
 
 A different set of pieces with the corresponding board size can be used by passing either
 one of the predefined symbols `:eternity2`, `:meta_16x16`, `:meta_14x14`, `:meta_12x12`,
-`:meta_10x10`, `:clue1`, `:clue2`, `:clue4`, or a path to a file containing the edge color
-numbers for the pieces in the format as described in the README of this package. In the
-latter case, the input file is expected to contain an additional header line with the
+`:meta_10x10`, `:clue1`, `:clue2`, `:clue3` `:clue4`, or a path to a file containing the
+edge color numbers for the pieces in the format as described in the README of this package.
+In the latter case, the input file is expected to contain an additional header line with the
 numbers of rows and columns of the board. If the header line is missing, the numbers of rows
 and columns must be declared explicitly by passing two integers in addition to the filepath.
 If provided, those numbers override the derived size of the board. This can also be used,
@@ -972,6 +972,23 @@ function is_valid_search_path(puzzle::Eternity2Puzzle, path::Vector{String})
     end
     # Check whether all squares of the board are occupied
     return all(board)
+end
+
+
+function find_best_search_path(puzzle::Eternity2Puzzle)
+    # Find the search path with the smallest number of nodes in the search tree from some
+    # predefined paths
+    best_path = String[]
+    best_nodes = Inf
+    for strategy in [:rowscan, :colscan, :spiral_in]
+        path = generate_search_path(puzzle, strategy)
+        nodes = estimate_solutions(puzzle, path)[2]
+        if nodes < best_nodes
+            best_nodes = nodes
+            best_path = path
+        end
+    end
+    return best_path
 end
 
 

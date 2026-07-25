@@ -71,6 +71,11 @@ end
         path = Eternity2Puzzles.generate_search_path(puzzle, strategy)
         @test Eternity2Puzzles.is_valid_search_path(puzzle, path)
     end
+    # Best search paths for different puzzles
+    puzzle = Eternity2Puzzle(:clue1)
+    @test Eternity2Puzzles.find_best_search_path(puzzle) == Eternity2Puzzles.generate_search_path(puzzle, :spiral_in)
+    puzzle = Eternity2Puzzle(:clue2)
+    @test Eternity2Puzzles.find_best_search_path(puzzle) == Eternity2Puzzles.generate_search_path(puzzle, :colscan)
 end
 
 
