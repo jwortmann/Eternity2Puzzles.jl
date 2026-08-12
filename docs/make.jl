@@ -28,5 +28,5 @@ deploydocs(
     repo = "github.com/jwortmann/Eternity2Puzzles.jl.git",
     devbranch = "main",
     forcepush = true,
-    versions = nothing
+    versions = ["release" => "v^", "dev" => "dev"]
 )
