@@ -8,7 +8,7 @@
 [![Build Status](https://github.com/jwortmann/Eternity2Puzzles.jl/actions/workflows/UnitTests.yml/badge.svg)](https://github.com/jwortmann/Eternity2Puzzles.jl/actions/workflows/UnitTests.yml)
 
 <p align="center">
-  <img src="svg/logo.svg">
+  <img src="assets/svg/logo.svg">
 </p>
 
 Eternity2Puzzles.jl is an implementation of the [Eternity II puzzle](https://en.wikipedia.org/wiki/Eternity_II_puzzle) in the [Julia](https://julialang.org/) programming language.
@@ -25,35 +25,28 @@ julia> ]
 pkg> add Eternity2Puzzles
 ```
 
-> [!IMPORTANT]
-> Please note that the package is only tested on Windows and that the interactive game part might not work correctly on a Mac with Retina display.
-
 
 ## Rules
 
 The goal is to place all 256 pieces on the board, such that the colors and symbols of adjoining pairs of edges match, and with the grey edges around the outside.
-Piece number 139 is a mandatory starter-piece with a fixed position on the board, that can neither be moved nor rotated.
+Piece number 139 is a mandatory starter-piece with a fixed position on the board, that cannot be moved or rotated.
 
 
 ## Basic usage
 
-To start the interactive game, type in the Julia REPL:
+To start the interactive GUI, type in the Julia REPL:
 
 ```julia
 julia> using Eternity2Puzzles
 
-julia> play()
+julia> play!()
 ```
 
 Puzzle pieces can be moved with the left mouse button and rotated with a right click.
 
-You can also use the commands `play(:clue1)`, `play(:clue2)`, `play(:clue3)` or `play(:clue4)` to play one of the smaller clue puzzles.
+You can also use `play!(:clue1)`, `play!(:clue2)`, `play!(:clue3)` or `play!(:clue4)` to play one of the smaller clue puzzles.
 
-> [!IMPORTANT]
-> Unfortunately the interactive game is not yet compatible with Julia 1.12.
-> Upstream tracking issue: https://github.com/aviks/GameZero.jl/issues/86
-
-Please visit the [documentation](https://jwortmann.github.io/Eternity2Puzzles.jl/) for a detailed description about more features of this package, for example how to run a solver algorithm.
+Visit the [documentation](https://jwortmann.github.io/Eternity2Puzzles.jl/) for a detailed description about more features of this package, for example how to run a solver algorithm.
 
 
 ## Preview

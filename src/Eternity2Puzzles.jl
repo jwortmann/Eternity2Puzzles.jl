@@ -1,16 +1,14 @@
 module Eternity2Puzzles
 
 import DelimitedFiles
-import GameZero
-# import GLFW
-import NativeFileDialog
 import PNGFiles
 import Random
 using BitIntegers: UInt256
 using Colors: @colorant_str
 using Colors: distinguishable_colors
+using Colors: RGBA
+using FixedPointNumbers: N0f8
 using FixedSizeArrays
-# using ModernGL
 using PrecompileTools: @compile_workload
 using Printf: @printf
 using Quadmath: Float128
@@ -23,7 +21,7 @@ export SimpleBacktrackingSearch
 export E2BacktrackingSearch
 export E2BacktrackingSearch2x2
 export estimate_solutions
-export play
+export play!
 export preview
 export solve!
 export reset!
@@ -35,35 +33,7 @@ include("core.jl")
 include("solvers/simple_backtracking.jl")
 include("solvers/e2_backtracking.jl")
 include("solvers/e2_backtracking_2x2.jl")
-
-
-"""
-    play()
-    play(:clue1)
-    play(:clue2)
-    play(:clue3)
-    play(:clue4)
-
-Start the interactive game.
-"""
-function play(puzzle::Eternity2Puzzle)
-    nrows, ncols = size(puzzle.board)
-    @assert (nrows, ncols) in ((16, 16), (6, 12), (6, 6)) "Incompatible board size"
-    @assert size(puzzle.pieces, 1) == nrows * ncols "Wrong number of pieces"
-    cache_path = @get_scratch!("eternity2")
-    save(puzzle, joinpath(cache_path, "board.et2"))
-    open(joinpath(cache_path, "pieces.txt"), "w") do file
-        DelimitedFiles.writedlm(file, puzzle.pieces, ' ')
-    end
-    _project = Base.active_project()
-    Base.set_active_project(abspath(@__DIR__, "..", "Project.toml"))
-    GameZero.rungame(joinpath(@__DIR__, "eternity2.jl"))
-    Base.set_active_project(_project)
-    nothing
-end
-
-play() = play(Eternity2Puzzle())
-play(puzzle::Symbol) = play(Eternity2Puzzle(puzzle))
+include("gui.jl")
 
 
 """

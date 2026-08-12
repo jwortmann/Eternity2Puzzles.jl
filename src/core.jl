@@ -1,9 +1,7 @@
 const STARTER_PIECE = 139
 
-# const BOARD_BACKGROUND_IMG = PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/board.png"))
-# const COLOR_PATTERNS_IMG = PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/colors.png"))
-const BOARD_BACKGROUND_IMG = PNGFiles.load(normpath("$(@__FILE__)/../images/board.png"))
-const COLOR_PATTERNS_IMG = PNGFiles.load(normpath("$(@__FILE__)/../images/colors.png"))
+const BOARD_BACKGROUND_IMG = PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/board.png"))
+const COLOR_PATTERNS_IMG = PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/colors.png"))
 
 
 """ Abstract type for a solver algorithm. """
@@ -160,20 +158,23 @@ function Base.show(io::IO, ::MIME"text/plain", puzzle::Eternity2Puzzle)
     println(io, summary(puzzle), ":\n", grid)
 end
 
-function Base.show(io::IO, ::MIME"image/png", puzzle::Eternity2Puzzle)
-    nrows, ncols = size(puzzle.board)
-    img = if nrows == ncols == 16
-        copy(BOARD_BACKGROUND_IMG)
+function board_background_image(nrows::Int, ncols::Int)
+    if nrows == ncols == 16
+        return copy(BOARD_BACKGROUND_IMG)
     else
         height = 49 * nrows + 1
         width = 49 * ncols + 1
-        light_gray = colorant"#615e66"
         white = colorant"#a09ea3"
-        background = fill(light_gray, height, width)
-        background[[49*row+1 for row = 0:nrows], :] .= white
-        background[:, [49*col+1 for col = 0:ncols]] .= white
-        background
+        image = fill(colorant"#615e66", height, width)
+        image[[49*row+1 for row = 0:nrows], :] .= white
+        image[:, [49*col+1 for col = 0:ncols]] .= white
+        return image
     end
+end
+
+function Base.show(io::IO, ::MIME"image/png", puzzle::Eternity2Puzzle)
+    nrows, ncols = size(puzzle.board)
+    img = board_background_image(nrows, ncols)
     if !iszero(puzzle.board)
         dark_gray = colorant"#323135"
         colors_img = _get_color_patterns_image(puzzle)
