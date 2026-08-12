@@ -2,7 +2,7 @@
   <h1 align="center">Eternity2Puzzles.jl</h1>
 </p>
 
-[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://jwortmann.github.io/Eternity2Puzzles.jl/)
+[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://jwortmann.github.io/Eternity2Puzzles.jl/dev/)
 [![Julia](https://img.shields.io/badge/Julia-1.10%2B-9558b2.svg)](https://julialang.org/)
 [![License](https://img.shields.io/github/license/jwortmann/Eternity2Puzzles.jl)](https://github.com/jwortmann/Eternity2Puzzles.jl/blob/main/LICENSE)
 [![Build Status](https://github.com/jwortmann/Eternity2Puzzles.jl/actions/workflows/UnitTests.yml/badge.svg)](https://github.com/jwortmann/Eternity2Puzzles.jl/actions/workflows/UnitTests.yml)
