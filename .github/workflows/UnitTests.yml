@@ -31,7 +31,7 @@ jobs:
           - '1'
           - pre
         os:
-          - ubuntu-latest
+          # - ubuntu-latest  # https://github.com/JuliaGL/GLFW.jl/pull/256
           - windows-latest
           - macos-latest
     steps:
@@ -42,8 +42,6 @@ jobs:
       - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
-        env:
-          DISPLAY: ':0' # https://github.com/JuliaGL/GLFW.jl/issues/174
         with:
           annotate: false
           coverage: false
