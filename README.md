@@ -46,7 +46,7 @@ Puzzle pieces can be moved with the left mouse button and rotated with a right c
 
 You can also use `play!(:clue1)`, `play!(:clue2)`, `play!(:clue3)` or `play!(:clue4)` to play one of the smaller clue puzzles.
 
-Visit the [documentation](https://jwortmann.github.io/Eternity2Puzzles.jl/) for a detailed description about more features of this package, for example how to run a solver algorithm.
+Visit the [documentation](https://jwortmann.github.io/Eternity2Puzzles.jl/release/) for a detailed description about more features of this package, for example how to run a solver algorithm.
 
 
 ## Preview
