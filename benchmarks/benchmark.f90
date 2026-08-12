@@ -4,7 +4,7 @@ program benchmark
     character(len=3) :: arg1
     integer :: maxdepth
 
-    type :: rpiece
+    type :: piece_t
         integer :: number
         integer :: top
         integer :: right
@@ -27,9 +27,9 @@ program benchmark
         integer, intent(in) :: maxdepth
         logical, dimension(256) :: used
         integer, dimension(0:23, 0:22) :: index_table
-        type(rpiece), dimension(:), allocatable :: candidates
-        type(rpiece) :: candidate
-        type(rpiece), dimension(-15:256) :: board
+        type(piece_t), dimension(:), allocatable :: candidates
+        type(piece_t) :: candidate
+        type(piece_t), dimension(-15:256) :: board
         integer, dimension(256) :: idx_state
         integer :: depth, idx, bottom, left, top, right, piece, rotation, tmp
         integer(kind=4) :: nodes
@@ -104,8 +104,8 @@ program benchmark
 
         used = .false.
         index_table = 1
-        board(-15:-1) = rpiece(0, 0, 0)
-        board(0) = rpiece(0, 23, 0)
+        board(-15:-1) = piece_t(0, 0, 0)
+        board(0) = piece_t(0, 23, 0)
 
         ! count the number of candidates for each bottom/left edge color combination
         do piece = 1, 256
@@ -137,7 +137,7 @@ program benchmark
         end do
 
         allocate(candidates(idx-1))
-        candidates = rpiece(0, 0, 0)
+        candidates = piece_t(0, 0, 0)
 
         ! assign prerotated pieces to the candidates array
         do piece = 1, 256
@@ -155,7 +155,7 @@ program benchmark
                 do while (candidates(idx)%number /= 0)
                     idx = idx + 1
                 end do
-                candidates(idx) = rpiece(piece, top, right)
+                candidates(idx) = piece_t(piece, top, right)
             end do
         end do
 
