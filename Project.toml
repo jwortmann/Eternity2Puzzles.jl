@@ -1,6 +1,6 @@
 name = "Eternity2Puzzles"
 uuid = "7b8a590e-5f29-49cd-9d3d-d6aab43f7c56"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Janos Wortmann <jwortmann@outlook.com>"]
 
 [deps]

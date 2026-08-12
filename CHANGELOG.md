@@ -1,6 +1,34 @@
 Eternity2Puzzles.jl Changelog
 =============================
 
+v0.3.0 (2026-08-12)
+-------------------
+
+Breaking changes:
+
+* The `play` function was renamed to `play!` and the rendering backend for the
+  GUI was completely rewritten using GLFW and low-level OpenGL calls. The GUI is
+  now compatible with Julia 1.12 (or newer).
+
+
+New features and improvements:
+
+* Added support for the clue 3 puzzle; use `play!(:clue3)` to play it in the
+  interactive GUI. All 6x6 and 6x12 clue puzzles are available now: `play!(:clue1)`,
+  `play!(:clue2)`, `play!(:clue3)`, `play!(:clue4)`
+
+* Added a `symmetries` keyword argument (default `false`) for the `Eternity2Puzzle`
+  constructor, which controls whether symmetric and identical pieces are allowed
+  when generating a puzzle with random pieces. This makes it possible to generate
+  puzzle instances with a low number of different edge colors, for example:
+  ```julia
+  puzzle = Eternity2Puzzle(16, 16, frame_colors=3, inner_colors=5, symmetries=true)
+  ```
+
+* Added a new `E2BacktrackingSearch2x2` solver for the original Eternity II puzzle
+  using 2-by-2 compound pieces.
+
+
 v0.2.0 (2025-08-04)
 -------------------
 
