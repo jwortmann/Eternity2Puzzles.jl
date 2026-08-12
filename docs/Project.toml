@@ -7,4 +7,4 @@ Eternity2Puzzles = "7b8a590e-5f29-49cd-9d3d-d6aab43f7c56"
 Eternity2Puzzles = {path = ".."}
 
 [compat]
-Documenter = "1.14"
+Documenter = "1"
