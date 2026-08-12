@@ -9,7 +9,7 @@ SimpleBacktrackingSearch
 E2BacktrackingSearch
 E2BacktrackingSearch2x2
 estimate_solutions
-play
+play!
 preview
 solve!
 reset!

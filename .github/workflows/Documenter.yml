@@ -17,7 +17,8 @@ jobs:
       actions: write
       contents: write
       statuses: write
-    runs-on: ubuntu-latest
+    # runs-on: ubuntu-latest  # https://github.com/JuliaGL/GLFW.jl/pull/256
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3

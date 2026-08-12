@@ -22,10 +22,10 @@ In the Julia REPL, first load the package
 julia> using Eternity2Puzzles
 ```
 
-To start the interactive game in a new window, simply type
+To start the interactive GUI in a new window, simply type
 
 ```julia-repl
-julia> play()
+julia> play!()
 ```
 
 Puzzle pieces can be moved with the left mouse button and rotated with a right click.
@@ -35,18 +35,14 @@ Piece number 139 is a mandatory starter-piece with a fixed position on the board
 You can also use the following commands to play one of the smaller clue puzzles:
 
 ```julia-repl
-julia> play(:clue1)
+julia> play!(:clue1)
 
-julia> play(:clue2)
+julia> play!(:clue2)
 
-julia> play(:clue3)
+julia> play!(:clue3)
 
-julia> play(:clue4)
+julia> play!(:clue4)
 ```
-
-!!! warning
-
-    Please note that the package is only tested on Windows and that the interactive game part might not work correctly on a Mac with Retina display.
 
 The basic type provided by this package is [`Eternity2Puzzle`](@ref).
 This type represents a puzzle with the piece arrangement on the board and the edge color definitions for the pieces.
@@ -60,7 +56,15 @@ puzzle = Eternity2Puzzle()
 The output shows a representation of the board, with the piece numbers and with the piece rotations as number of quarter rotations in clockwise direction.
 For the default puzzle there is only the starter-piece pre-placed on square I8, and the other squares that don't have numbers on them are empty.
 
-A custom definition for the edge colors of the puzzle pieces can be loaded from a file by passing the filepath as an argument to the [`Eternity2Puzzle`](@ref) constructor:
+The [`play!`](@ref) function can also be called with an [`Eternity2Puzzle`](@ref) instance as the argument, but currently only puzzle boards with sizes 16x16, 6x6 and 6x12 are supported:
+
+```julia-repl
+julia> puzzle = Eternity2Puzzle()  # The original 16x16 Eternity II puzzle
+
+julia> play!(puzzle)
+```
+
+To load the edge color definitions for the puzzle pieces from a file, pass the filepath as an argument to the [`Eternity2Puzzle`](@ref) constructor:
 
 ```julia-repl
 julia> puzzle = Eternity2Puzzle("path/to/e2pieces.txt")
@@ -89,7 +93,7 @@ You can press and hold `Ctrl` + `C` in the REPL to stop the search.
 julia> solve!(puzzle)
 ```
 
-To open a visualization of the puzzle board use
+To open a visualization of the puzzle board in your default image viewer use
 
 ```julia-repl
 julia> preview(puzzle)
