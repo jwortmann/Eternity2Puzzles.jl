@@ -252,7 +252,6 @@ function play!(puzzle::Eternity2Puzzle)
     window = GLFW.CreateWindow(width, height, "Eternity II")
     GLFW.SetWindowIcon(window, ICONS)
     GLFW.MakeContextCurrent(window)
-    # GLFW.SwapInterval(1)
 
     glfw_update_title() = GLFW.SetWindowTitle(window, "Eternity II - Score: $(score(puzzle)[1])/$max_score")
     glfw_update_title()
@@ -591,7 +590,7 @@ end
 play!() = play!(Eternity2Puzzle())
 play!(puzzle::Symbol) = play!(Eternity2Puzzle(puzzle))
 
-# Non-interactive rendering of the puzzle board
+# Non-interactive continuous rendering of the puzzle board
 function render(puzzle::Eternity2Puzzle)
     @assert all(puzzle.pieces .<= 22)
     nrows, ncols = size(puzzle.board)
@@ -605,6 +604,7 @@ function render(puzzle::Eternity2Puzzle)
     window = GLFW.CreateWindow(width, height, "Eternity II")
     GLFW.SetWindowIcon(window, ICONS)
     GLFW.MakeContextCurrent(window)
+    GLFW.SwapInterval(1)
 
     GC.gc()
 
@@ -709,7 +709,7 @@ function render(puzzle::Eternity2Puzzle)
             end
 
             GLFW.SwapBuffers(window)
-            GLFW.WaitEvents()
+            GLFW.PollEvents()
         end
     finally
         GLFW.DestroyWindow(window)
