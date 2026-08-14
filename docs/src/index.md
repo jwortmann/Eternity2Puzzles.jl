@@ -32,6 +32,8 @@ Puzzle pieces can be moved with the left mouse button and rotated with a right c
 The goal is to place all 256 pieces on the board, such that the colors and symbols of adjoining pairs of edges match, and with the grey edges around the outside.
 Piece number 139 is a mandatory starter-piece with a fixed position on the board, that cannot be moved or rotated.
 
+Press the <kbd>H</kbd> key to toggle highlighting of applicable pieces when hovering over an empty square on the board.
+
 You can also use the following commands to play one of the smaller clue puzzles:
 
 ```julia-repl

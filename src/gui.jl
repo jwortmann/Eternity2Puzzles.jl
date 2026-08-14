@@ -8,33 +8,40 @@ using ModernGL
 
 
 function glGenTextures(n)::GLuint
-    textures = GLuint[0]
+    textures = Ref{GLuint}()
     glGenTextures(n, textures)
     return textures[]
 end
 
 function glGenVertexArrays(n)::GLuint
-    arrays = GLuint[0]
+    arrays = Ref{GLuint}()
     glGenVertexArrays(n, arrays)
     return arrays[]
 end
 
 function glGenBuffers(n)::GLuint
-    buffers = GLuint[0]
+    buffers = Ref{GLuint}()
     glGenBuffers(n, buffers)
     return buffers[]
 end
 
 function glGetShaderiv(shader, pname)::GLint
-    status = GLint[0]
+    status = Ref{GLint}()
     glGetShaderiv(shader, pname, status)
     return status[]
 end
 
 function glGetProgramiv(program, pname)::GLint
-    status = GLint[0]
+    status = Ref{GLint}()
     glGetProgramiv(program, pname, status)
     return status[]
+end
+
+
+function glfw_update_title(window::GLFW.Window, puzzle::Eternity2Puzzle)
+    nrows, ncols = size(puzzle.board)
+    max_score = 2 * nrows * ncols - nrows - ncols
+    GLFW.SetWindowTitle(window, "Eternity II - Score: $(score(puzzle)[1])/$max_score")
 end
 
 
@@ -135,12 +142,13 @@ end
 mutable struct UIState
     active_piece::Int
     active_piece_rotation::Int
+    show_hints::Bool
     hover_row::Int
     hover_col::Int
     highlighted_pieces::Dict{Tuple{Int, Int}, Vector{Int}}
 end
 
-UIState() = UIState(0, 0, 0, 0, Dict{Tuple{Int, Int}, Vector{Int}}())
+UIState() = UIState(0, 0, false, 0, 0, Dict{Tuple{Int, Int}, Vector{Int}}())
 
 struct BoundingBox
     xmin::Int
@@ -149,7 +157,7 @@ struct BoundingBox
     ymax::Int
 end
 
-Base.in(pos::Tuple{Int, Int}, bb::BoundingBox) = bb.xmin <= pos[1] <= bb.xmax && bb.ymin <= pos[2] <= bb.ymax
+Base.in(pos::NTuple{2, <:Real}, bb::BoundingBox) = bb.xmin <= pos[1] <= bb.xmax && bb.ymin <= pos[2] <= bb.ymax
 
 function _get_constraints(puzzle::Eternity2Puzzle, row::Int, col::Int)::Vector{Union{UInt8, Nothing}}
     nrows, ncols = size(puzzle.board)
@@ -232,8 +240,6 @@ function play!(puzzle::Eternity2Puzzle)
     npieces = size(puzzle.pieces, 1)
     @assert npieces == nrows * ncols "Puzzle must have $(nrows * ncols) pieces"
     tex_dx = Float32(1 / npieces)
-
-    max_score = 2 * nrows * ncols - nrows - ncols
     piece_numbers = [[piece for (piece, piece_colors) in enumerate(eachrow(puzzle.pieces)) if count(iszero, piece_colors) == border_edges] for border_edges = 0:2]
 
     # Pixel position of a board square
@@ -253,21 +259,10 @@ function play!(puzzle::Eternity2Puzzle)
     GLFW.SetWindowIcon(window, ICONS)
     GLFW.MakeContextCurrent(window)
 
-    glfw_update_title() = GLFW.SetWindowTitle(window, "Eternity II - Score: $(score(puzzle)[1])/$max_score")
-    glfw_update_title()
+    glfw_update_title(window, puzzle)
 
-    # function on_key_event(_, key, scancode, action, mods)
-    #     name = GLFW.GetKeyName(key, scancode)
-    #     if name === nothing
-    #         println("scancode $scancode ", action)
-    #     else
-    #         println("key $name ", action)
-    #     end
-    # end
-
-    function on_mouse_button_event(_, button, action, mods)
-        # println("$button $action")
-        pos = GLFW.GetCursorPos(window)
+    function on_mouse_button_event(w::GLFW.Window, button::GLFW.MouseButton, action::GLFW.Action, mods::Cint)
+        pos = GLFW.GetCursorPos(w)
         x = Int(pos.x)
         y = Int(pos.y)
         if button == GLFW.MOUSE_BUTTON_LEFT
@@ -286,7 +281,7 @@ function play!(puzzle::Eternity2Puzzle)
                     state.active_piece = piece
                     state.active_piece_rotation = rotation
                     empty!(state.highlighted_pieces)
-                    glfw_update_title()
+                    glfw_update_title(w, puzzle)
                 elseif (x, y) in stock_bb
                     row, r = fldmod1(y + 1 - stock_bb.ymin, 38)
                     if r > 32 return end
@@ -310,7 +305,7 @@ function play!(puzzle::Eternity2Puzzle)
                                 puzzle[row, col] = (state.active_piece, state.active_piece_rotation)
                                 placed_pieces[state.active_piece] = true
                                 empty!(state.highlighted_pieces)
-                                glfw_update_title()
+                                glfw_update_title(w, puzzle)
                             end
                         end
                     end
@@ -331,7 +326,7 @@ function play!(puzzle::Eternity2Puzzle)
                         # Rotate piece on the board
                         puzzle[row, col] = (piece, mod(rotation + 1, 4))
                         empty!(state.highlighted_pieces)
-                        glfw_update_title()
+                        glfw_update_title(w, puzzle)
                     end
                 else
                     # Rotate the active piece
@@ -342,8 +337,8 @@ function play!(puzzle::Eternity2Puzzle)
         end
     end
 
-    function on_cursor_pos_event(_, x, y)
-        # println("cursor: $x, $y")
+    function on_cursor_pos_event(w::GLFW.Window, x::Cdouble, y::Cdouble)
+        if !state.show_hints return end
         x = Int(x)
         y = Int(y)
         state.hover_row = 0
@@ -375,9 +370,20 @@ function play!(puzzle::Eternity2Puzzle)
         end
     end
 
-    # GLFW.SetKeyCallback(window, on_key_event)
+    function on_key_event(w::GLFW.Window, key::GLFW.Key, scancode::Cint, action::GLFW.Action, mods::Cint)
+        if key == GLFW.KEY_H && action == GLFW.PRESS
+            # Toggle applicable pieces highlight
+            state.show_hints = !state.show_hints
+            if state.show_hints
+                pos = GLFW.GetCursorPos(w)
+                on_cursor_pos_event(w, pos.x, pos.y)
+            end
+        end
+    end
+
     GLFW.SetMouseButtonCallback(window, on_mouse_button_event)
     GLFW.SetCursorPosCallback(window, on_cursor_pos_event)
+    GLFW.SetKeyCallback(window, on_key_event)
 
     GC.gc()
 
@@ -515,7 +521,7 @@ function play!(puzzle::Eternity2Puzzle)
 
             if state.active_piece == 0
                 # Draw applicable pieces highlight
-                if state.hover_row != 0
+                if state.show_hints && state.hover_row != 0
                     idx = 0
                     pieces = 0
                     for piece in get(state.highlighted_pieces, (state.hover_row, state.hover_col), [])
@@ -541,9 +547,11 @@ function play!(puzzle::Eternity2Puzzle)
                         vertices[idx + 16] = 1f0
                         idx += 16
                     end
-                    glBufferSubData(GL_ARRAY_BUFFER, 0, idx * sizeof(Float32), vertices[1:idx])
-                    glUniform1i(texture_sampler_id, 4)
-                    glDrawElements(GL_TRIANGLES, 6 * pieces, GL_UNSIGNED_INT, Ptr{Cvoid}(0))
+                    if pieces != 0
+                        glBufferSubData(GL_ARRAY_BUFFER, 0, idx * sizeof(Float32), vertices[1:idx])
+                        glUniform1i(texture_sampler_id, 4)
+                        glDrawElements(GL_TRIANGLES, 6 * pieces, GL_UNSIGNED_INT, Ptr{Cvoid}(0))
+                    end
                 end
             else
                 # Draw highlighted square
