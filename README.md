@@ -2,7 +2,7 @@
   <h1 align="center">Eternity2Puzzles.jl</h1>
 </p>
 
-[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://jwortmann.github.io/Eternity2Puzzles.jl/dev/)
+[![Docs](https://img.shields.io/badge/docs-release-blue.svg)](https://jwortmann.github.io/Eternity2Puzzles.jl/)
 [![Julia](https://img.shields.io/badge/Julia-1.10%2B-9558b2.svg)](https://julialang.org/)
 [![License](https://img.shields.io/github/license/jwortmann/Eternity2Puzzles.jl)](https://github.com/jwortmann/Eternity2Puzzles.jl/blob/main/LICENSE)
 [![Build Status](https://github.com/jwortmann/Eternity2Puzzles.jl/actions/workflows/UnitTests.yml/badge.svg)](https://github.com/jwortmann/Eternity2Puzzles.jl/actions/workflows/UnitTests.yml)
@@ -46,7 +46,7 @@ Puzzle pieces can be moved with the left mouse button and rotated with a right c
 
 You can also use `play!(:clue1)`, `play!(:clue2)`, `play!(:clue3)` or `play!(:clue4)` to play one of the smaller clue puzzles.
 
-Visit the [documentation](https://jwortmann.github.io/Eternity2Puzzles.jl/release/) for a detailed description about more features of this package, for example how to run a solver algorithm.
+Visit the [documentation](https://jwortmann.github.io/Eternity2Puzzles.jl/) for a detailed description about more features of this package, for example how to run a solver algorithm.
 
 
 ## Preview
