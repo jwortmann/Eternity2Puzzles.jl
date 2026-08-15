@@ -14,7 +14,6 @@ makedocs(
         mathengine = Documenter.KaTeX(Dict(:fleqn => true)),
         footer = nothing
     ),
-    # draft = true,
     pages = [
         "Overview" => "index.md",
         "Theory" => "theory.md",
@@ -28,5 +27,5 @@ deploydocs(
     repo = "github.com/jwortmann/Eternity2Puzzles.jl.git",
     devbranch = "main",
     forcepush = true,
-    versions = ["release" => "v^", "dev" => "dev"]
+    versions = ["v^", "dev" => "dev"]
 )
