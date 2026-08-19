@@ -1,9 +1,3 @@
-const STARTER_PIECE = 139
-
-const BOARD_BACKGROUND_IMG = PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/board.png"))
-const COLOR_PATTERNS_IMG = PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/colors.png"))
-
-
 """ Abstract type for a solver algorithm. """
 abstract type Eternity2Solver end
 
@@ -161,6 +155,8 @@ end
 function board_background_image(nrows::Int, ncols::Int)
     if nrows == ncols == 16
         return copy(BOARD_BACKGROUND_IMG)
+    elseif nrows <= 16 && ncols <= 16
+        return BOARD_BACKGROUND_IMG[1:1+49*nrows, 1:1+49*ncols]
     else
         height = 49 * nrows + 1
         width = 49 * ncols + 1
@@ -496,7 +492,7 @@ Clear all pieces from the board (except for the starter-piece in case of the 16Ã
 function reset!(puzzle::Eternity2Puzzle; starter_piece::Bool = true)
     fill!(puzzle.board, 0x0000)
     if starter_piece && size(puzzle.board) == (16, 16)
-        puzzle.board[9, 8] = STARTER_PIECE << 2 | 2
+        puzzle.board[9, 8] = 139 << 2 | 2
     end
     puzzle
 end

@@ -29,6 +29,10 @@ export load!
 export save
 
 
+const BOARD_BACKGROUND_IMG = PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/board.png"))
+const COLOR_PATTERNS_IMG = PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/colors.png"))
+
+
 include("core.jl")
 include("solvers/simple_backtracking.jl")
 include("solvers/e2_backtracking.jl")
@@ -58,7 +62,7 @@ function solve!(
 
     if isnothing(alg)
         seed = floor(Int, 1000 * t0)
-        alg = if size(puzzle) == (16, 16) && puzzle["I8"] == (STARTER_PIECE, 2)
+        alg = if size(puzzle) == (16, 16) && puzzle["I8"] == (139, 2)
             E2BacktrackingSearch(target_score=460, seed=seed)
         else
             SimpleBacktrackingSearch(seed=seed)

@@ -65,6 +65,31 @@ end
 
 create_texture(filename::String, slot = 0) = create_texture(convert(Matrix{RGBA{N0f8}}, PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/$filename"))), slot)
 
+function background_texture(puzzle::Eternity2Puzzle)
+    nrows, ncols = size(puzzle.board)
+    npieces = size(puzzle.pieces, 1)
+    if nrows == ncols == 16 && npieces == 256
+        return convert(Matrix{RGBA{N0f8}}, PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/background_16x16.png")))
+    end
+    stock_rows = fld1(npieces, 12)
+    width = 592 + ncols * 49
+    height = max(112 + nrows * 49, 60 + 38 * stock_rows)
+    board_bb = BoundingBox(57, 57, 56 + 49 * ncols, 56 + 49 * nrows)
+    stock_bb = BoundingBox(100 + 49 * ncols, 33, 550 + 49 * ncols, 27 + 38 * stock_rows)
+    background_img = Matrix{RGBA{N0f8}}(undef, height, width)
+    background_color = RGBA{N0f8}(0.353, 0.506, 0.541, 1.0)
+    fill!(background_img, background_color)
+    background_img[31:46, 57:56+49*ncols] = convert(Matrix{RGBA{N0f8}}, PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/background_cols.png")))[:, 1:49*ncols]
+    background_img[57:56+49*nrows, 32:47] = convert(Matrix{RGBA{N0f8}}, PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/background_rows.png")))[1:49*nrows, :]
+    background_img[board_bb.ymin:board_bb.ymax+1, board_bb.xmin:board_bb.xmax+1] = convert(Matrix{RGBA{N0f8}}, board_background_image(nrows, ncols))
+    background_img[31:30+38*stock_rows, stock_bb.xmin-2:stock_bb.xmax+3] = convert(Matrix{RGBA{N0f8}}, PNGFiles.load(normpath("$(@__FILE__)/../../assets/textures/background_pieces.png")))[1:38*stock_rows, :]
+    stock_trailing_cols = mod(npieces, 12)
+    if stock_trailing_cols > 0
+        background_img[38*stock_rows-7:30+38*stock_rows, stock_bb.xmin-2+38*stock_trailing_cols:stock_bb.xmax+3] .= background_color
+    end
+    return background_img
+end
+
 function pieces_texture(puzzle::Eternity2Puzzle)
     npieces = size(puzzle.pieces, 1)
     grey = RGBA{N0f8}(0.196, 0.192, 0.208, 1.0)
@@ -148,10 +173,6 @@ end
 Base.in(pos::NTuple{2, <:Real}, bb::BoundingBox) = bb.xmin <= pos[1] <= bb.xmax && bb.ymin <= pos[2] <= bb.ymax
 
 mutable struct UIState
-    board_bb::BoundingBox
-    stock_bb::BoundingBox
-    pieces_per_row::Int
-    has_fixed_starter_piece::Bool
     active_piece::Int
     active_piece_rotation::Int
     show_hints::Bool
@@ -161,14 +182,14 @@ mutable struct UIState
 end
 
 # Pixel position of a board square
-function get_pos(state::UIState, row::Int, col::Int)::Tuple{Float32, Float32}
-    return (state.board_bb.xmin + 49 * (col - 1), state.board_bb.ymin + 49 * (row - 1))
+function get_pos(bb::BoundingBox, row::Int, col::Int)::Tuple{Float32, Float32}
+    return (bb.xmin + 49 * (col - 1), bb.ymin + 49 * (row - 1))
 end
 
 # Pixel position of a piece in the stock
-function get_pos(state::UIState, piece::Int)::Tuple{Float32, Float32}
-    row, col = divrem(piece - 1, state.pieces_per_row)
-    return (state.stock_bb.xmin + 38 * col, state.stock_bb.ymin + 38 * row)
+function get_pos(bb::BoundingBox, piece::Int)::Tuple{Float32, Float32}
+    row, col = divrem(piece - 1, 12)
+    return (bb.xmin + 38 * col, bb.ymin + 38 * row)
 end
 
 function _get_constraints(puzzle::Eternity2Puzzle, row::Int, col::Int)::Vector{Union{UInt8, Nothing}}
@@ -216,45 +237,24 @@ end
 Start the interactive GUI. Supported board sizes (rows x columns) are 16x16, 6x6, and 6x12.
 """
 function play!(puzzle::Eternity2Puzzle)
-    @assert all(puzzle.pieces .<= 22)  "At most 22 different color patterns supported, but found $(maximum(puzzle.pieces))"
     nrows, ncols = size(puzzle.board)
-
-    if (nrows, ncols) == (16, 16)
-        width = 1376
-        height = 896
-        background_img = "background_16x16.png"
-        board_bb = BoundingBox(57, 57, 840, 840)
-        stock_bb = BoundingBox(884, 33, 1334, 863)
-        pieces_per_row = 12
-        has_fixed_starter_piece = puzzle["I8"] == (139, 2)
-    elseif (nrows, ncols) == (6, 6)
-        width = 576
-        height = 416
-        background_img = "background_6x6.png"
-        board_bb = BoundingBox(57, 57, 350, 350)
-        stock_bb = BoundingBox(394, 33, 540, 369)
-        pieces_per_row = 4
-        has_fixed_starter_piece = false
-    elseif (nrows, ncols) == (6, 12)
-        width = 704
-        height = 608
-        background_img = "background_6x12.png"
-        board_bb = BoundingBox(57, 57, 644, 350)
-        stock_bb = BoundingBox(51, 388, 653, 572)
-        pieces_per_row = 16
-        has_fixed_starter_piece = false
-    else
-        # TODO: add support for arbitrary board size and number of pieces
-        error("Unsupported board size")
-    end
-
-    nsquares = nrows * ncols
+    @assert nrows <= 16 "Puzzle must have at most 16 rows"
+    @assert ncols <= 16 "Puzzle must have at most 16 columns"
     npieces = size(puzzle.pieces, 1)
-    @assert npieces == nrows * ncols "Puzzle must have $(nrows * ncols) pieces"
+    @assert npieces <= 264 "Puzzle must have at most 264 pieces"
+    @assert npieces >= nrows * ncols "Puzzle for this board size must have at least $(nrows * ncols) pieces"
+    @assert all(puzzle.pieces .<= 22) "Only 22 different color patterns are supported, but found color number $(maximum(puzzle.pieces))"
+
+    stock_rows = fld1(npieces, 12)
+    width = 592 + ncols * 49
+    height = max(112 + nrows * 49, 60 + 38 * stock_rows)
+    board_bb = BoundingBox(57, 57, 56 + 49 * ncols, 56 + 49 * nrows)
+    stock_bb = BoundingBox(100 + 49 * ncols, 33, 550 + 49 * ncols, 27 + 38 * stock_rows)
+    has_fixed_starter_piece = nrows == 16 && ncols == 16 && puzzle["I8"] == (139, 2)
     tex_dx = Float32(1 / npieces)
     piece_numbers = [[piece for (piece, piece_colors) in enumerate(eachrow(puzzle.pieces)) if count(iszero, piece_colors) == border_edges] for border_edges = 0:2]
 
-    state = UIState(board_bb, stock_bb, pieces_per_row, has_fixed_starter_piece, 0, 0, false, 0, 0, Dict{Tuple{Int, Int}, Vector{Int}}())
+    state = UIState(0, 0, false, 0, 0, Dict{Tuple{Int, Int}, Vector{Int}}())
     placed_pieces = fill(false, npieces)
 
     GLFW.WindowHint(GLFW.RESIZABLE, false)
@@ -270,12 +270,12 @@ function play!(puzzle::Eternity2Puzzle)
         y = Int(pos.y)
         if button == GLFW.MOUSE_BUTTON_LEFT
             if action == GLFW.PRESS
-                if (x, y) in state.board_bb
-                    row, r = fldmod1(y + 1 - state.board_bb.ymin, 49)
+                if (x, y) in board_bb
+                    row, r = fldmod1(y + 1 - board_bb.ymin, 49)
                     if r > 48 return end
-                    col, r = fldmod1(x + 1 - state.board_bb.xmin, 49)
+                    col, r = fldmod1(x + 1 - board_bb.xmin, 49)
                     if r > 48 return end
-                    if state.has_fixed_starter_piece && row == 9 && col == 8 return end
+                    if has_fixed_starter_piece && row == 9 && col == 8 return end
                     piece, rotation = puzzle[row, col]
                     if piece == 0 return end
                     # Pick up piece from the board
@@ -285,12 +285,12 @@ function play!(puzzle::Eternity2Puzzle)
                     state.active_piece_rotation = rotation
                     empty!(state.highlighted_pieces)
                     glfw_update_title(w, puzzle)
-                elseif (x, y) in state.stock_bb
-                    row, r = fldmod1(y + 1 - state.stock_bb.ymin, 38)
+                elseif (x, y) in stock_bb
+                    row, r = fldmod1(y + 1 - stock_bb.ymin, 38)
                     if r > 32 return end
-                    col, r = fldmod1(x + 1 - state.stock_bb.xmin, 38)
+                    col, r = fldmod1(x + 1 - stock_bb.xmin, 38)
                     if r > 32 return end
-                    piece = state.pieces_per_row * (row - 1) + col
+                    piece = 12 * row + col - 12
                     if piece > npieces return end
                     if placed_pieces[piece] return end
                     # Pick up piece from stock
@@ -299,17 +299,15 @@ function play!(puzzle::Eternity2Puzzle)
                 end
             elseif action == GLFW.RELEASE
                 if state.active_piece != 0
-                    if (x, y) in state.board_bb
-                        row, r1 = fldmod1(y + 1 - state.board_bb.ymin, 49)
-                        col, r2 = fldmod1(x + 1 - state.board_bb.xmin, 49)
-                        if r1 < 49 && r2 < 49
-                            if puzzle[row, col][1] == 0
-                                # Place piece onto the board
-                                puzzle[row, col] = (state.active_piece, state.active_piece_rotation)
-                                placed_pieces[state.active_piece] = true
-                                empty!(state.highlighted_pieces)
-                                glfw_update_title(w, puzzle)
-                            end
+                    if (x, y) in board_bb
+                        row, r1 = fldmod1(y + 1 - board_bb.ymin, 49)
+                        col, r2 = fldmod1(x + 1 - board_bb.xmin, 49)
+                        if r1 < 49 && r2 < 49 && puzzle[row, col][1] == 0
+                            # Place piece onto the board
+                            puzzle[row, col] = (state.active_piece, state.active_piece_rotation)
+                            placed_pieces[state.active_piece] = true
+                            empty!(state.highlighted_pieces)
+                            glfw_update_title(w, puzzle)
                         end
                     end
                     state.active_piece = 0
@@ -318,12 +316,12 @@ function play!(puzzle::Eternity2Puzzle)
         elseif button == GLFW.MOUSE_BUTTON_RIGHT
             if action == GLFW.PRESS
                 if state.active_piece == 0
-                    if (x, y) in state.board_bb
-                        row, r = fldmod1(y + 1 - state.board_bb.ymin, 49)
+                    if (x, y) in board_bb
+                        row, r = fldmod1(y + 1 - board_bb.ymin, 49)
                         if r > 48 return end
-                        col, r = fldmod1(x + 1 - state.board_bb.xmin, 49)
+                        col, r = fldmod1(x + 1 - board_bb.xmin, 49)
                         if r > 48 return end
-                        if state.has_fixed_starter_piece && row == 9 && col == 8 return end
+                        if has_fixed_starter_piece && row == 9 && col == 8 return end
                         piece, rotation = puzzle[row, col]
                         if piece == 0 return end
                         # Rotate piece on the board
@@ -344,15 +342,14 @@ function play!(puzzle::Eternity2Puzzle)
         x = Int(x)
         y = Int(y)
         state.hover_row = 0
-        if !((x, y) in state.board_bb) return end
-        row, r = fldmod1(y + 1 - state.board_bb.ymin, 49)
+        if !((x, y) in board_bb) return end
+        row, r = fldmod1(y + 1 - board_bb.ymin, 49)
         if r > 48 return end
-        col, r = fldmod1(x + 1 - state.board_bb.xmin, 49)
+        col, r = fldmod1(x + 1 - board_bb.xmin, 49)
         if r > 48 return end
         state.hover_row = row
         state.hover_col = col
         # Calculate applicable pieces for the currently hovered empty square
-        # TODO: add a delay or fade-in when showing highlights
         if !state.show_hints return end
         if puzzle[row, col][1] != 0 return end
         if state.active_piece != 0 return end
@@ -407,7 +404,7 @@ function play!(puzzle::Eternity2Puzzle)
     glDeleteShader(fragment_shader_id)
     glUseProgram(program_id)
 
-    create_texture(background_img, 0)
+    create_texture(background_texture(puzzle), 0)
     create_texture(pieces_texture(puzzle), 1)
     create_texture("highlight.png", 2)
     create_texture("shadow.png", 3)
@@ -461,7 +458,7 @@ function play!(puzzle::Eternity2Puzzle)
                 piece, rotation = puzzle[row, col]
                 if piece != 0
                     pieces += 1
-                    x0, y0 = get_pos(state, row, col)
+                    x0, y0 = get_pos(board_bb, row, col)
                     x1 = x0 + 48f0
                     y1 = y0 + 48f0
                     tex_x1 = tex_dx * piece
@@ -493,7 +490,7 @@ function play!(puzzle::Eternity2Puzzle)
                 if placed_pieces[piece] continue end
                 if state.active_piece == piece continue end
                 pieces += 1
-                x0, y0 = get_pos(state, piece)
+                x0, y0 = get_pos(stock_bb, piece)
                 x1 = x0 + 32f0
                 y1 = y0 + 32f0
                 tex_x1 = tex_dx * piece
@@ -529,7 +526,7 @@ function play!(puzzle::Eternity2Puzzle)
                     pieces = 0
                     for piece in get(state.highlighted_pieces, (state.hover_row, state.hover_col), [])
                         pieces += 1
-                        x0, y0 = get_pos(state, piece)
+                        x0, y0 = get_pos(stock_bb, piece)
                         x1 = x0 + 32f0
                         y1 = y0 + 32f0
                         vertices[idx +  1] = x0
@@ -559,8 +556,8 @@ function play!(puzzle::Eternity2Puzzle)
             else
                 # Draw highlighted square
                 if state.hover_row != 0 && puzzle[state.hover_row, state.hover_col][1] == 0
-                    x1 = state.board_bb.xmin + 49 * state.hover_col
-                    y1 = state.board_bb.ymin + 49 * state.hover_row
+                    x1 = board_bb.xmin + 49 * state.hover_col
+                    y1 = board_bb.ymin + 49 * state.hover_row
                     x0 = x1 - 50
                     y0 = y1 - 50
                     glBufferSubData(GL_ARRAY_BUFFER, 0, 64, Float32[x0, y0, 0, 0, x1, y0, 1, 0, x1, y1, 1, 1, x0, y1, 0, 1])
