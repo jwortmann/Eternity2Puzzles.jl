@@ -153,15 +153,19 @@ function rotate(angle::Float32)
 end
 
 # 4x4 projection matrix
-function projection_matrix(window_width::Int, window_height::Int, x::Float32, y::Float32, w::Float32, h::Float32, rotation::Float32 = 0.0f0)
+function projection_matrix(window_width::Int, window_height::Int, x::Float64, y::Float64, rotation::Float32)
     proj = ortho(window_width, window_height)
     if rotation != 0.0
-        dx = x + w / 2
-        dy = y + h / 2
+        dx = Float32(x)
+        dy = Float32(y)
         proj *= translate(dx, dy) * rotate(rotation) * translate(-dx, -dy)
     end
     return proj
 end
+
+projection_matrix(window_width::Int, window_height::Int, x::Float64, y::Float64, w::Float64, h::Float64, rotation::Float32 = 0.0f0) = projection_matrix(window_width, window_height, x+w/2, y+h/2, rotation)
+
+smoothstep(a, b, n) = [a + (b-a)*(3*(k/(n-1))^2 - 2*(k/(n-1))^3) for k in 0:n-1]
 
 struct BoundingBox
     xmin::Int
@@ -175,6 +179,7 @@ Base.in(pos::NTuple{2, <:Real}, bb::BoundingBox) = bb.xmin <= pos[1] <= bb.xmax 
 mutable struct UIState
     active_piece::Int
     active_piece_rotation::Int
+    animation_frames::Int
     show_hints::Bool
     hover_row::Int
     hover_col::Int
@@ -253,14 +258,17 @@ function play!(puzzle::Eternity2Puzzle)
     has_fixed_starter_piece = nrows == 16 && ncols == 16 && puzzle["I8"] == (139, 2)
     tex_dx = Float32(1 / npieces)
     piece_numbers = [[piece for (piece, piece_colors) in enumerate(eachrow(puzzle.pieces)) if count(iszero, piece_colors) == border_edges] for border_edges = 0:2]
+    animation_frames_count = 10
+    rotation_angles = convert(Vector{Float32}, smoothstep(0f0, -90f0, animation_frames_count+1))
 
-    state = UIState(0, 0, false, 0, 0, Dict{Tuple{Int, Int}, Vector{Int}}())
+    state = UIState(0, 0, 0, false, 0, 0, Dict{Tuple{Int, Int}, Vector{Int}}())
     placed_pieces = fill(false, npieces)
 
     GLFW.WindowHint(GLFW.RESIZABLE, false)
     window = GLFW.CreateWindow(width, height, "Eternity II")
     GLFW.SetWindowIcon(window, ICONS)
     GLFW.MakeContextCurrent(window)
+    GLFW.SwapInterval(1)
 
     glfw_update_title(window, puzzle)
 
@@ -332,7 +340,7 @@ function play!(puzzle::Eternity2Puzzle)
                 else
                     # Rotate the active piece
                     state.active_piece_rotation = mod(state.active_piece_rotation + 1, 4)
-                    # TODO: add rotate animation
+                    state.animation_frames = animation_frames_count
                 end
             end
         end
@@ -554,6 +562,7 @@ function play!(puzzle::Eternity2Puzzle)
                     end
                 end
             else
+                pos = GLFW.GetCursorPos(window)
                 # Draw highlighted square
                 if state.hover_row != 0 && puzzle[state.hover_row, state.hover_col][1] == 0
                     x1 = board_bb.xmin + 49 * state.hover_col
@@ -565,11 +574,13 @@ function play!(puzzle::Eternity2Puzzle)
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Ptr{Cvoid}(0))
                 end
                 # Draw active piece shadow
-                pos = GLFW.GetCursorPos(window)
                 x0 = pos.x - 28
                 y0 = pos.y - 28
                 x1 = pos.x + 28
                 y1 = pos.y + 28
+                if state.animation_frames > 0
+                    glUniformMatrix4fv(proj_id, 1, GL_FALSE, projection_matrix(width, height, pos.x, pos.y, rotation_angles[state.animation_frames]))
+                end
                 glBufferSubData(GL_ARRAY_BUFFER, 0, 64, Float32[x0, y0, 0, 0, x1, y0, 1, 0, x1, y1, 1, 1, x0, y1, 0, 1])
                 glUniform1i(texture_sampler_id, 3)
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Ptr{Cvoid}(0))
@@ -585,10 +596,15 @@ function play!(puzzle::Eternity2Puzzle)
                 glBufferSubData(GL_ARRAY_BUFFER, 0, 64, Float32[x0, y0, tex_x0, tex_y0, x1, y0, tex_x1, tex_y0, x1, y1, tex_x1, tex_y1, x0, y1, tex_x0, tex_y1])
                 glUniform1i(texture_sampler_id, 1)
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, Ptr{Cvoid}(0))
+                if state.animation_frames > 0
+                    glUniformMatrix4fv(proj_id, 1, GL_FALSE, proj)
+                    state.animation_frames -= 1
+                end
             end
 
             GLFW.SwapBuffers(window)
-            GLFW.WaitEvents()
+            # GLFW.WaitEvents()
+            GLFW.PollEvents()
         end
     finally
         GLFW.DestroyWindow(window)
