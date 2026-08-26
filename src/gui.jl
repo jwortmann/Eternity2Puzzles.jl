@@ -1,47 +1,59 @@
 import GLFW
-import ModernGL: glGenBuffers
-import ModernGL: glGenTextures
-import ModernGL: glGenVertexArrays
-import ModernGL: glGetProgramiv
-import ModernGL: glGetShaderiv
 using ModernGL
 
 
-function glGenTextures(n)::GLuint
+const glfwCreateWindow = GLFW.CreateWindow
+const glfwDestroyWindow = GLFW.DestroyWindow
+const glfwGetCursorPos = GLFW.GetCursorPos
+const glfwMakeContextCurrent = GLFW.MakeContextCurrent
+const glfwPollEvents = GLFW.PollEvents
+const glfwSetCursorPosCallback = GLFW.SetCursorPosCallback
+const glfwSetKeyCallback = GLFW.SetKeyCallback
+const glfwSetMouseButtonCallback = GLFW.SetMouseButtonCallback
+const glfwSetWindowIcon = GLFW.SetWindowIcon
+const glfwSetWindowTitle = GLFW.SetWindowTitle
+const glfwSwapBuffers = GLFW.SwapBuffers
+const glfwSwapInterval = GLFW.SwapInterval
+const glfwWaitEvents = GLFW.WaitEvents
+const glfwWindowHint = GLFW.WindowHint
+const glfwWindowShouldClose = GLFW.WindowShouldClose
+
+
+function gl_gen_textures(n)::GLuint
     textures = Ref{GLuint}()
     glGenTextures(n, textures)
     return textures[]
 end
 
-function glGenVertexArrays(n)::GLuint
+function gl_gen_vertex_arrays(n)::GLuint
     arrays = Ref{GLuint}()
     glGenVertexArrays(n, arrays)
     return arrays[]
 end
 
-function glGenBuffers(n)::GLuint
+function gl_gen_buffers(n)::GLuint
     buffers = Ref{GLuint}()
     glGenBuffers(n, buffers)
     return buffers[]
 end
 
-function glGetShaderiv(shader, pname)::GLint
+function gl_get_shaderiv(shader, pname)::GLint
     status = Ref{GLint}()
     glGetShaderiv(shader, pname, status)
     return status[]
 end
 
-function glGetProgramiv(program, pname)::GLint
+function gl_get_programiv(program, pname)::GLint
     status = Ref{GLint}()
     glGetProgramiv(program, pname, status)
     return status[]
 end
 
 
-function glfw_update_title(window::GLFW.Window, puzzle::Eternity2Puzzle)
+function update_window_title(window::GLFW.Window, puzzle::Eternity2Puzzle)
     nrows, ncols = size(puzzle.board)
     max_score = 2 * nrows * ncols - nrows - ncols
-    GLFW.SetWindowTitle(window, "Eternity II - Score: $(score(puzzle)[1])/$max_score")
+    glfwSetWindowTitle(window, "Eternity II - Score: $(score(puzzle)[1])/$max_score")
 end
 
 
@@ -50,7 +62,7 @@ const ICONS = reinterpret.(NTuple{4, UInt8}, PNGFiles.load.([normpath("$(@__FILE
 
 function create_texture(texture_img::Matrix{RGBA{N0f8}}, slot = 0)
     @assert slot <= 32 "Invalid texture slot $slot"
-    texture_id = glGenTextures(1)
+    texture_id = gl_gen_textures(1)
     glActiveTexture(GL_TEXTURE0 + slot)
     glBindTexture(GL_TEXTURE_2D, texture_id)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
@@ -119,7 +131,7 @@ function create_shader(type_::GLenum, filename::String)
     @assert shader_id != 0 "Error creating shader"
     glShaderSource(shader_id, 1, Ref(pointer(source)), C_NULL)
     glCompileShader(shader_id)
-    @assert glGetShaderiv(shader_id, GL_COMPILE_STATUS) == GL_TRUE "Shader compilation error"
+    @assert gl_get_shaderiv(shader_id, GL_COMPILE_STATUS) == GL_TRUE "Shader compilation error"
     return shader_id
 end
 
@@ -264,16 +276,16 @@ function play!(puzzle::Eternity2Puzzle)
     state = UIState(0, 0, 0, false, 0, 0, Dict{Tuple{Int, Int}, Vector{Int}}())
     placed_pieces = fill(false, npieces)
 
-    GLFW.WindowHint(GLFW.RESIZABLE, false)
-    window = GLFW.CreateWindow(width, height, "Eternity II")
-    GLFW.SetWindowIcon(window, ICONS)
-    GLFW.MakeContextCurrent(window)
-    GLFW.SwapInterval(1)
+    glfwWindowHint(GLFW.RESIZABLE, false)
+    window = glfwCreateWindow(width, height, "Eternity II")
+    glfwSetWindowIcon(window, ICONS)
+    glfwMakeContextCurrent(window)
+    glfwSwapInterval(1)
 
-    glfw_update_title(window, puzzle)
+    update_window_title(window, puzzle)
 
     function on_mouse_button_event(w::GLFW.Window, button::GLFW.MouseButton, action::GLFW.Action, mods::Cint)
-        pos = GLFW.GetCursorPos(w)
+        pos = glfwGetCursorPos(w)
         x = Int(pos.x)
         y = Int(pos.y)
         if button == GLFW.MOUSE_BUTTON_LEFT
@@ -292,7 +304,7 @@ function play!(puzzle::Eternity2Puzzle)
                     state.active_piece = piece
                     state.active_piece_rotation = rotation
                     empty!(state.highlighted_pieces)
-                    glfw_update_title(w, puzzle)
+                    update_window_title(w, puzzle)
                 elseif (x, y) in stock_bb
                     row, r = fldmod1(y + 1 - stock_bb.ymin, 38)
                     if r > 32 return end
@@ -315,7 +327,7 @@ function play!(puzzle::Eternity2Puzzle)
                             puzzle[row, col] = (state.active_piece, state.active_piece_rotation)
                             placed_pieces[state.active_piece] = true
                             empty!(state.highlighted_pieces)
-                            glfw_update_title(w, puzzle)
+                            update_window_title(w, puzzle)
                         end
                     end
                     state.active_piece = 0
@@ -335,7 +347,7 @@ function play!(puzzle::Eternity2Puzzle)
                         # Rotate piece on the board
                         puzzle[row, col] = (piece, mod(rotation + 1, 4))
                         empty!(state.highlighted_pieces)
-                        glfw_update_title(w, puzzle)
+                        update_window_title(w, puzzle)
                     end
                 else
                     # Rotate the active piece
@@ -383,15 +395,15 @@ function play!(puzzle::Eternity2Puzzle)
             # Toggle applicable pieces highlight
             state.show_hints = !state.show_hints
             if state.show_hints
-                pos = GLFW.GetCursorPos(w)
+                pos = glfwGetCursorPos(w)
                 on_cursor_pos_event(w, pos.x, pos.y)
             end
         end
     end
 
-    GLFW.SetMouseButtonCallback(window, on_mouse_button_event)
-    GLFW.SetCursorPosCallback(window, on_cursor_pos_event)
-    GLFW.SetKeyCallback(window, on_key_event)
+    glfwSetMouseButtonCallback(window, on_mouse_button_event)
+    glfwSetCursorPosCallback(window, on_cursor_pos_event)
+    glfwSetKeyCallback(window, on_key_event)
 
     GC.gc()
 
@@ -405,7 +417,7 @@ function play!(puzzle::Eternity2Puzzle)
     glAttachShader(program_id, vertex_shader_id)
     glAttachShader(program_id, fragment_shader_id)
     glLinkProgram(program_id)
-    @assert glGetProgramiv(program_id, GL_LINK_STATUS) == GL_TRUE "Error linking shader program"
+    @assert gl_get_programiv(program_id, GL_LINK_STATUS) == GL_TRUE "Error linking shader program"
     proj_id::GLint = glGetUniformLocation(program_id, "proj")
     texture_sampler_id::GLint = glGetUniformLocation(program_id, "u_TextureSampler")
     glDeleteShader(vertex_shader_id)
@@ -421,7 +433,7 @@ function play!(puzzle::Eternity2Puzzle)
     proj = ortho(width, height)
     glUniformMatrix4fv(proj_id, 1, GL_FALSE, proj)
 
-    vao = glGenVertexArrays(1)
+    vao = gl_gen_vertex_arrays(1)
     glBindVertexArray(vao)
 
     vertices = Vector{Float32}(undef, npieces * 16)
@@ -439,7 +451,7 @@ function play!(puzzle::Eternity2Puzzle)
 
     bg_vertices = Float32[0, 0, 0, 0, width, 0, 1, 0, width, height, 1, 1, 0, height, 0, 1]
 
-    vbo = glGenBuffers(1)
+    vbo = gl_gen_buffers(1)
     glBindBuffer(GL_ARRAY_BUFFER, vbo)
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), Ptr{Cvoid}(C_NULL), GL_DYNAMIC_DRAW)
 
@@ -447,13 +459,13 @@ function play!(puzzle::Eternity2Puzzle)
     stride = 4 * sizeof(Float32)
     glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, stride, Ptr{Cvoid}(0))
 
-    ibo = glGenBuffers(1)
+    ibo = gl_gen_buffers(1)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo)
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW)
 
     try
         # Render loop
-        while !GLFW.WindowShouldClose(window)
+        while !glfwWindowShouldClose(window)
             # Draw background
             glBufferSubData(GL_ARRAY_BUFFER, 0, 64, bg_vertices)
             glUniform1i(texture_sampler_id, 0)
@@ -562,7 +574,7 @@ function play!(puzzle::Eternity2Puzzle)
                     end
                 end
             else
-                pos = GLFW.GetCursorPos(window)
+                pos = glfwGetCursorPos(window)
                 # Draw highlighted square
                 if state.hover_row != 0 && puzzle[state.hover_row, state.hover_col][1] == 0
                     x1 = board_bb.xmin + 49 * state.hover_col
@@ -602,15 +614,15 @@ function play!(puzzle::Eternity2Puzzle)
                 end
             end
 
-            GLFW.SwapBuffers(window)
+            glfwSwapBuffers(window)
             if state.animation_frames == 0
-                GLFW.WaitEvents()
+                glfwWaitEvents()
             else
-                GLFW.PollEvents()
+                glfwPollEvents()
             end
         end
     finally
-        GLFW.DestroyWindow(window)
+        glfwDestroyWindow(window)
     end
 end
 
@@ -627,11 +639,11 @@ function render(puzzle::Eternity2Puzzle)
     background_img = convert(Matrix{RGBA{N0f8}}, board_background_image(nrows, ncols))
     height, width = size(background_img)
 
-    GLFW.WindowHint(GLFW.RESIZABLE, false)
-    window = GLFW.CreateWindow(width, height, "Eternity II")
-    GLFW.SetWindowIcon(window, ICONS)
-    GLFW.MakeContextCurrent(window)
-    GLFW.SwapInterval(1)
+    glfwWindowHint(GLFW.RESIZABLE, false)
+    window = glfwCreateWindow(width, height, "Eternity II")
+    glfwSetWindowIcon(window, ICONS)
+    glfwMakeContextCurrent(window)
+    glfwSwapInterval(1)
 
     GC.gc()
 
@@ -645,7 +657,7 @@ function render(puzzle::Eternity2Puzzle)
     glAttachShader(program_id, vertex_shader_id)
     glAttachShader(program_id, fragment_shader_id)
     glLinkProgram(program_id)
-    @assert glGetProgramiv(program_id, GL_LINK_STATUS) == GL_TRUE "Error linking shader program"
+    @assert gl_get_programiv(program_id, GL_LINK_STATUS) == GL_TRUE "Error linking shader program"
     proj_id::GLint = glGetUniformLocation(program_id, "proj")
     texture_sampler_id::GLint = glGetUniformLocation(program_id, "u_TextureSampler")
     glDeleteShader(vertex_shader_id)
@@ -658,7 +670,7 @@ function render(puzzle::Eternity2Puzzle)
     proj = ortho(width, height)
     glUniformMatrix4fv(proj_id, 1, GL_FALSE, proj)
 
-    vao = glGenVertexArrays(1)
+    vao = gl_gen_vertex_arrays(1)
     glBindVertexArray(vao)
 
     vertices = Vector{Float32}(undef, nsquares * 16)
@@ -676,7 +688,7 @@ function render(puzzle::Eternity2Puzzle)
 
     bg_vertices = Float32[0, 0, 0, 0, width, 0, 1, 0, width, height, 1, 1, 0, height, 0, 1]
 
-    vbo = glGenBuffers(1)
+    vbo = gl_gen_buffers(1)
     glBindBuffer(GL_ARRAY_BUFFER, vbo)
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), Ptr{Cvoid}(C_NULL), GL_DYNAMIC_DRAW)
 
@@ -684,12 +696,12 @@ function render(puzzle::Eternity2Puzzle)
     stride = 4 * sizeof(Float32)
     glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, stride, Ptr{Cvoid}(0))
 
-    ibo = glGenBuffers(1)
+    ibo = gl_gen_buffers(1)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo)
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW)
 
     try
-        while !GLFW.WindowShouldClose(window)
+        while !glfwWindowShouldClose(window)
             # Draw background
             glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(bg_vertices), bg_vertices)
             glUniform1i(texture_sampler_id, 0)
@@ -735,10 +747,10 @@ function render(puzzle::Eternity2Puzzle)
                 glDrawElements(GL_TRIANGLES, 6 * pieces, GL_UNSIGNED_INT, Ptr{Cvoid}(0))
             end
 
-            GLFW.SwapBuffers(window)
-            GLFW.PollEvents()
+            glfwSwapBuffers(window)
+            glfwPollEvents()
         end
     finally
-        GLFW.DestroyWindow(window)
+        glfwDestroyWindow(window)
     end
 end
