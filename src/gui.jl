@@ -603,8 +603,11 @@ function play!(puzzle::Eternity2Puzzle)
             end
 
             GLFW.SwapBuffers(window)
-            # GLFW.WaitEvents()
-            GLFW.PollEvents()
+            if state.animation_frames == 0
+                GLFW.WaitEvents()
+            else
+                GLFW.PollEvents()
+            end
         end
     finally
         GLFW.DestroyWindow(window)
