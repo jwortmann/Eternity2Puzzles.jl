@@ -243,6 +243,57 @@ function _get_constraints(puzzle::Eternity2Puzzle, row::Int, col::Int)::Vector{U
 end
 
 
+function create_index_vector(num_quads::Int)
+    indices = Vector{UInt32}(undef, num_quads * 6)
+    offset = 0
+    for i = 1:6:length(indices)
+        indices[i + 0] = 0 + offset
+        indices[i + 1] = 1 + offset
+        indices[i + 2] = 2 + offset
+        indices[i + 3] = 2 + offset
+        indices[i + 4] = 3 + offset
+        indices[i + 5] = 0 + offset
+        offset += 4
+    end
+    return indices
+end
+
+
+# Store vertex values for a quad with coordinates `x0`, `y0`, `x1`, `y1` and with texture
+# coordinates `tex_x0`, `tex_y0`, `tex_x1`, `tex_y1` into the preallocated vector `vertices`
+# starting at (zero-based) index `idx`.
+function set_quad_vertices!(
+    vertices::Vector{Float32},
+    idx::Int,
+    x0::Float32,
+    y0::Float32,
+    x1::Float32,
+    y1::Float32,
+    tex_x0::Float32 = 0f0,
+    tex_y0::Float32 = 0f0,
+    tex_x1::Float32 = 1f0,
+    tex_y1::Float32 = 1f0
+)
+    vertices[idx +  1] = x0
+    vertices[idx +  2] = y0
+    vertices[idx +  3] = tex_x0
+    vertices[idx +  4] = tex_y0
+    vertices[idx +  5] = x1
+    vertices[idx +  6] = y0
+    vertices[idx +  7] = tex_x1
+    vertices[idx +  8] = tex_y0
+    vertices[idx +  9] = x1
+    vertices[idx + 10] = y1
+    vertices[idx + 11] = tex_x1
+    vertices[idx + 12] = tex_y1
+    vertices[idx + 13] = x0
+    vertices[idx + 14] = y1
+    vertices[idx + 15] = tex_x0
+    vertices[idx + 16] = tex_y1
+    return nothing
+end
+
+
 """
     play!()
     play!(:clue1)
@@ -437,17 +488,7 @@ function play!(puzzle::Eternity2Puzzle)
     glBindVertexArray(vao)
 
     vertices = Vector{Float32}(undef, npieces * 16)
-    indices = Vector{UInt32}(undef, npieces * 6)
-    offset = 0
-    for i = 1:6:length(indices)
-        indices[i + 0] = 0 + offset
-        indices[i + 1] = 1 + offset
-        indices[i + 2] = 2 + offset
-        indices[i + 3] = 2 + offset
-        indices[i + 4] = 3 + offset
-        indices[i + 5] = 0 + offset
-        offset += 4
-    end
+    indices = create_index_vector(npieces)
 
     bg_vertices = Float32[0, 0, 0, 0, width, 0, 1, 0, width, height, 1, 1, 0, height, 0, 1]
 
@@ -485,22 +526,7 @@ function play!(puzzle::Eternity2Puzzle)
                     tex_x0 = tex_x1 - tex_dx
                     tex_y0 = 0.25f0 * rotation
                     tex_y1 = tex_y0 + 0.25f0
-                    vertices[idx +  1] = x0
-                    vertices[idx +  2] = y0
-                    vertices[idx +  3] = tex_x0
-                    vertices[idx +  4] = tex_y0
-                    vertices[idx +  5] = x1
-                    vertices[idx +  6] = y0
-                    vertices[idx +  7] = tex_x1
-                    vertices[idx +  8] = tex_y0
-                    vertices[idx +  9] = x1
-                    vertices[idx + 10] = y1
-                    vertices[idx + 11] = tex_x1
-                    vertices[idx + 12] = tex_y1
-                    vertices[idx + 13] = x0
-                    vertices[idx + 14] = y1
-                    vertices[idx + 15] = tex_x0
-                    vertices[idx + 16] = tex_y1
+                    set_quad_vertices!(vertices, idx, x0, y0, x1, y1, tex_x0, tex_y0, tex_x1, tex_y1)
                     idx += 16
                     placed_pieces[piece] = true
                 end
@@ -517,22 +543,7 @@ function play!(puzzle::Eternity2Puzzle)
                 tex_x0 = tex_x1 - tex_dx
                 tex_y0 = 0f0
                 tex_y1 = 0.25f0
-                vertices[idx +  1] = x0
-                vertices[idx +  2] = y0
-                vertices[idx +  3] = tex_x0
-                vertices[idx +  4] = tex_y0
-                vertices[idx +  5] = x1
-                vertices[idx +  6] = y0
-                vertices[idx +  7] = tex_x1
-                vertices[idx +  8] = tex_y0
-                vertices[idx +  9] = x1
-                vertices[idx + 10] = y1
-                vertices[idx + 11] = tex_x1
-                vertices[idx + 12] = tex_y1
-                vertices[idx + 13] = x0
-                vertices[idx + 14] = y1
-                vertices[idx + 15] = tex_x0
-                vertices[idx + 16] = tex_y1
+                set_quad_vertices!(vertices, idx, x0, y0, x1, y1, tex_x0, tex_y0, tex_x1, tex_y1)
                 idx += 16
             end
             glBufferSubData(GL_ARRAY_BUFFER, 0, idx * sizeof(Float32), vertices[1:idx])
@@ -549,22 +560,7 @@ function play!(puzzle::Eternity2Puzzle)
                         x0, y0 = get_pos(stock_bb, piece)
                         x1 = x0 + 32f0
                         y1 = y0 + 32f0
-                        vertices[idx +  1] = x0
-                        vertices[idx +  2] = y0
-                        vertices[idx +  3] = 0f0
-                        vertices[idx +  4] = 0f0
-                        vertices[idx +  5] = x1
-                        vertices[idx +  6] = y0
-                        vertices[idx +  7] = 1f0
-                        vertices[idx +  8] = 0f0
-                        vertices[idx +  9] = x1
-                        vertices[idx + 10] = y1
-                        vertices[idx + 11] = 1f0
-                        vertices[idx + 12] = 1f0
-                        vertices[idx + 13] = x0
-                        vertices[idx + 14] = y1
-                        vertices[idx + 15] = 0f0
-                        vertices[idx + 16] = 1f0
+                        set_quad_vertices!(vertices, idx, x0, y0, x1, y1)
                         idx += 16
                     end
                     if pieces != 0
@@ -674,17 +670,7 @@ function render(puzzle::Eternity2Puzzle)
     glBindVertexArray(vao)
 
     vertices = Vector{Float32}(undef, nsquares * 16)
-    indices = Vector{UInt32}(undef, nsquares * 6)
-    offset = 0
-    for i = 1:6:length(indices)
-        indices[i + 0] = 0 + offset
-        indices[i + 1] = 1 + offset
-        indices[i + 2] = 2 + offset
-        indices[i + 3] = 2 + offset
-        indices[i + 4] = 3 + offset
-        indices[i + 5] = 0 + offset
-        offset += 4
-    end
+    indices = create_index_vector(nsquares)
 
     bg_vertices = Float32[0, 0, 0, 0, width, 0, 1, 0, width, height, 1, 1, 0, height, 0, 1]
 
@@ -722,22 +708,7 @@ function render(puzzle::Eternity2Puzzle)
                     tex_x0 = tex_x1 - tex_dx
                     tex_y0 = 0.25f0 * rotation
                     tex_y1 = tex_y0 + 0.25f0
-                    vertices[idx +  1] = x0
-                    vertices[idx +  2] = y0
-                    vertices[idx +  3] = tex_x0
-                    vertices[idx +  4] = tex_y0
-                    vertices[idx +  5] = x1
-                    vertices[idx +  6] = y0
-                    vertices[idx +  7] = tex_x1
-                    vertices[idx +  8] = tex_y0
-                    vertices[idx +  9] = x1
-                    vertices[idx + 10] = y1
-                    vertices[idx + 11] = tex_x1
-                    vertices[idx + 12] = tex_y1
-                    vertices[idx + 13] = x0
-                    vertices[idx + 14] = y1
-                    vertices[idx + 15] = tex_x0
-                    vertices[idx + 16] = tex_y1
+                    set_quad_vertices!(vertices, idx, x0, y0, x1, y1, tex_x0, tex_y0, tex_x1, tex_y1)
                     idx += 16
                 end
             end

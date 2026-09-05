@@ -32,7 +32,7 @@ Puzzle pieces can be moved with the left mouse button and rotated with a right c
 The goal is to place all 256 pieces on the board, such that the colors and symbols of adjoining pairs of edges match, and with the grey edges around the outside.
 Piece number 139 is a mandatory starter-piece with a fixed position on the board, that cannot be moved or rotated.
 
-Press the <kbd>H</kbd> key to toggle highlighting of applicable pieces when hovering over an empty square on the board.
+Press the `H` key to toggle highlighting of applicable pieces when hovering over an empty square on the board.
 
 You can also use the following commands to play one of the smaller clue puzzles:
 
@@ -56,9 +56,10 @@ puzzle = Eternity2Puzzle()
 ```
 
 The output shows a representation of the board, with the piece numbers and with the piece rotations as number of quarter rotations in clockwise direction.
-For the default puzzle there is only the starter-piece pre-placed on square I8, and the other squares that don't have numbers on them are empty.
+Here, the default puzzle only has the starter-piece pre-placed on square I8, and all other board squares are empty.
 
-The [`play!`](@ref) function can also be called with an [`Eternity2Puzzle`](@ref) instance as the argument. Currently only puzzle boards with sizes 16x16, 6x6 and 6x12 are supported.
+You can also pass an [`Eternity2Puzzle`](@ref) instance as argument to the [`play!`](@ref) function to open an arbitrary puzzle in the GUI.
+Board sizes with up to 16 rows and columns are supported.
 
 ```julia-repl
 julia> puzzle = Eternity2Puzzle()  # The original 16x16 Eternity II puzzle
