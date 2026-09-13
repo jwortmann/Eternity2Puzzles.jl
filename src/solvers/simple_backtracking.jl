@@ -263,6 +263,7 @@ function solve!(puzzle::Eternity2Puzzle, solver::SimpleBacktrackingSearch)
             if solver.exhaustive_search
                 @info "Search finished with $solutions solutions after $(sum(nodes)) nodes"
                 @info "Nodes per depth" nodes=Tuple(nodes)
+                @info "Nodes (cumulated sum)" nodes=Tuple(cumsum(nodes))
             else
                 @warn "Search finished with no valid solution found after $(sum(nodes)) nodes"
             end

@@ -674,7 +674,7 @@ function estimate_solutions(
     nrows, ncols = size(puzzle.board)
     max_errors = length(slip_array)
 
-    @assert length(path) == nrows * ncols "Invalid search path"
+    @assert is_valid_search_path(puzzle, path) "Invalid search path"
     @assert issorted(slip_array) "Error depths must be a weakly increasing sequence"
 
     # Number of border edges for each piece
@@ -689,10 +689,13 @@ function estimate_solutions(
     @assert edge_pieces >= 2nrows + 2ncols - 8 "Not enough edge pieces"
     @assert inner_pieces >= (nrows-2) * (ncols-2) "Not enough inner pieces"
 
-    # Number of pre-placed corner, edge and inner pieces
+    # Numbers of pre-placed corner, edge and inner pieces
     fixed_corner_pieces, fixed_edge_pieces, fixed_inner_pieces = _count_pieces(puzzle.board)
 
-    # Number of available (i.e. not pre-placed) corner, edge and inner pieces
+    # Number of frame and inner joins that are initially on the board, i.e. between adjacent pre-placed pieces
+    b0, m0 = _count_joins(puzzle.board)
+
+    # Numbers of available (i.e. not pre-placed) corner, edge and inner pieces
     Cp = corner_pieces - fixed_corner_pieces
     Ep = edge_pieces - fixed_edge_pieces
     Ip = inner_pieces - fixed_inner_pieces
@@ -703,9 +706,24 @@ function estimate_solutions(
     frame_colors = length(frame_colors_range)
     inner_colors = length(inner_colors_range)
 
-    # Number of frame joins and inner joins for each color
-    frame_joins = Int[count(isequal(color), pieces)/2 for color in frame_colors_range]
-    inner_joins = Int[count(isequal(color), pieces)/2 for color in inner_colors_range]
+    # Number of joins per color between adjacent pre-placed pieces
+    initial_joins = zeros(Int, frame_colors + inner_colors)
+    for row = 1:nrows-1, col = 1:ncols
+        piece, rotation = puzzle[row, col]
+        if !iszero(piece) && !iszero(puzzle.board[row+1, col])
+            initial_joins[pieces[piece, mod1(1 - rotation, 4)]] += 1  # increment join count for bottom edge color
+        end
+    end
+    for row = 1:nrows, col = 1:ncols-1
+        piece, rotation = puzzle[row, col]
+        if !iszero(piece) && !iszero(puzzle.board[row, col+1])
+            initial_joins[pieces[piece, 4 - rotation]] += 1  # increment join count for the right edge color
+        end
+    end
+
+    # Number of frame joins and inner joins for each color, excluding the joins of adjacent pre-placed pieces
+    frame_joins = Int[count(isequal(color), pieces)/2 - initial_joins[color] for color in frame_colors_range]
+    inner_joins = Int[count(isequal(color), pieces)/2 - initial_joins[color] for color in inner_colors_range]
 
     # Total number of frame joins and inner joins in the given set of pieces
     Tb = sum(frame_joins)
@@ -715,8 +733,8 @@ function estimate_solutions(
     max_frame_joins = 2 * (nrows - 1) + 2 * (ncols - 1)
     max_inner_joins = (nrows - 1) * (ncols - 2) + (nrows - 2) * (ncols - 1)
 
-    @assert Tb >= max_frame_joins
-    @assert Tm >= max_inner_joins
+    @assert Tb >= max_frame_joins - b0
+    @assert Tm >= max_inner_joins - m0
 
     board = zeros(Int, nrows, ncols)
 
@@ -806,9 +824,16 @@ function estimate_solutions(
                 i = placed_inner_pieces - fixed_inner_pieces    # Number of selected inner pieces
                 # Numbers of completed frame and inner joins between pieces on the board
                 b, m = _count_joins(board)
+                # Numbers of frame and inner joins without the joins between adjacent pre-placed pieces
+                b -= b0
+                m -= m0
                 # Number of piece configurations including 4 orientations for the inner pieces
                 piece_configurations = perm(Cp, c) * perm(Ep, e) * perm(Ip, i) * 4.0^i
-                # estimated_solutions = piece_configurations * pb[b] * sum(pm[m, v] * C[m, v] for v = max(m-max_errors, 0):m)  # Old version that only supports the invalid joins considered to be anywhere on the board
+                # Initial version that only estimates the number of exact solutions, i.e. `slip_array` parameter is ignored
+                # estimated_solutions = piece_configurations * pb[b] * pm[m, m]
+                # Enhanced version that considers up to `max_errors` invalid inner joins, but doesn't support restrictions about where on the board these invalid joins can occur, i.e. they can be anywhere
+                # estimated_solutions = piece_configurations * pb[b] * sum(pm[m, v] * C[m, v] for v = max(m-max_errors, 0):m)
+                # Enhanced version that supports to specify the exact search depths for another allowed invalid join via `slip_array` parameter
                 estimated_solutions = piece_configurations * pb[b] * sum(pm[m, m-k] * Wm[placed_pieces, k] for k = 0:min(max_errors, m))
             end
             cumulative_sum += estimated_solutions
