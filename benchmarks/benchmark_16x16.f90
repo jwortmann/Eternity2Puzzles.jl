@@ -1,4 +1,4 @@
-! gfortran -Ofast benchmark.f90 -o benchmark
+! gfortran -Ofast benchmark_16x16.f90 -o benchmark
 program benchmark
     integer :: nargs
     character(len=3) :: arg1
