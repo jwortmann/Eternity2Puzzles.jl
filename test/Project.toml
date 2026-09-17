@@ -1,0 +1,6 @@
+[deps]
+Eternity2Puzzles = "7b8a590e-5f29-49cd-9d3d-d6aab43f7c56"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[sources]
+Eternity2Puzzles = {path = ".."}
