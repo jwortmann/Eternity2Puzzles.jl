@@ -1,6 +1,23 @@
 Eternity2Puzzles.jl Changelog
 =============================
 
+v0.3.1 (2026-09-19)
+-------------------
+
+New features and improvements:
+
+* The `play!` function now supports puzzles with arbitrary board sizes (up to
+  16 rows and columns) and with up to 264 pieces.
+
+* Improved GUI rendering and added animation when rotating the active piece.
+
+
+Fixes:
+
+* Fixed `estimate_solutions` giving wrong results for puzzles with multiple
+  pre-placed pieces on adjacent board squares.
+
+
 v0.3.0 (2026-08-12)
 -------------------
 
