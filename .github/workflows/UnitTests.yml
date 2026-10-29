@@ -31,7 +31,7 @@ jobs:
           - '1'
           - pre
         os:
-          # - ubuntu-latest  # https://github.com/JuliaGL/GLFW.jl/pull/256
+          - ubuntu-latest
           - windows-latest
           - macos-latest
     steps:
